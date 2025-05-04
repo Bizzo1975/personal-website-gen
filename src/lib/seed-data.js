@@ -40,6 +40,15 @@ const Project = mongoose.models.Project || mongoose.model('Project', new mongoos
   updatedAt: Date
 }));
 
+const Page = mongoose.models.Page || mongoose.model('Page', new mongoose.Schema({
+  name: String,
+  title: String,
+  slug: String,
+  content: String,
+  metaDescription: String,
+  updatedAt: Date
+}));
+
 async function seedDatabase() {
   try {
     console.log('Connecting to database...');
@@ -50,6 +59,7 @@ async function seedDatabase() {
     await User.deleteMany({});
     await Post.deleteMany({});
     await Project.deleteMany({});
+    await Page.deleteMany({});
     console.log('Cleared existing data');
 
     // Create admin user
@@ -122,6 +132,62 @@ async function seedDatabase() {
     ];
     await Project.insertMany(projects);
     console.log('Created sample projects');
+
+    // Create sample pages
+    const pages = [
+      {
+        name: 'Homepage',
+        title: 'Home',
+        slug: 'home',
+        content: `# Welcome to My Personal Website
+
+I'm a full-stack developer with a passion for creating modern, intuitive web applications using cutting-edge technologies.
+
+## What I Do
+
+- Frontend Development with React and Next.js
+- Backend Development with Node.js and MongoDB
+- UI/UX Design and Implementation
+- Performance Optimization and Accessibility
+
+Check out my [projects](/projects) or read my latest [blog posts](/blog).`,
+        metaDescription: 'Personal website and portfolio of a full-stack developer specializing in React, Next.js, and modern web technologies.',
+        updatedAt: new Date()
+      },
+      {
+        name: 'About Page',
+        title: 'About Me',
+        slug: 'about',
+        content: `# About Me
+
+## My Journey
+
+I started my coding journey over 5 years ago, initially working with HTML, CSS, and JavaScript. As I grew as a developer, I expanded my skill set to include modern frameworks and technologies like React, Next.js, Node.js, and MongoDB.
+
+## Technologies I Work With
+
+- **Frontend**: React, Next.js, TypeScript, Tailwind CSS
+- **Backend**: Node.js, Express, MongoDB, PostgreSQL
+- **Tools**: Git, Docker, VS Code, Figma
+- **Testing**: Jest, React Testing Library, Cypress
+
+## My Philosophy
+
+I believe in creating clean, maintainable code that solves real problems. User experience is at the center of everything I build, and I'm constantly learning and adapting to new technologies and best practices.
+
+## Beyond Coding
+
+When I'm not coding, you can find me hiking in the mountains, reading science fiction, or experimenting with new recipes in the kitchen.
+
+## Let's Connect
+
+Interested in working together? Feel free to [contact me](/contact) or connect with me on [GitHub](https://github.com) and [LinkedIn](https://linkedin.com).`,
+        metaDescription: 'Learn more about my background, skills, and experience as a full-stack developer.',
+        updatedAt: new Date()
+      }
+    ];
+    await Page.insertMany(pages);
+    console.log('Created sample pages');
 
     console.log('Database seeded successfully');
   } catch (error) {
