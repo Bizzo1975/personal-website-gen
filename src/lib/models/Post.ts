@@ -12,11 +12,11 @@ const PostSchema = new Schema({
   },
   date: {
     type: Date,
-    default: Date.now,
+    required: true,
   },
   readTime: {
     type: Number,
-    required: true,
+    default: 5,
   },
   excerpt: {
     type: String,
@@ -31,8 +31,9 @@ const PostSchema = new Schema({
     default: [],
   },
   author: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
+    required: true,
   },
   published: {
     type: Boolean,

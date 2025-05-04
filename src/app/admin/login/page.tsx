@@ -1,17 +1,32 @@
-'use client';
+'use client'
+import '@/styles/globals.css';
+;
 
 import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import Button from '@/components/Button';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Check for error or success message in URL
+  React.useEffect(() => {
+    const errorMsg = searchParams.get('error');
+    const successMsg = searchParams.get('success');
+    
+    if (errorMsg) {
+      setError(decodeURIComponent(errorMsg));
+    } else if (successMsg) {
+      // Handle success message if needed
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,21 +34,26 @@ export default function AdminLoginPage() {
     setError('');
 
     try {
+      console.log('Attempting to sign in with:', { email });
+      
       const result = await signIn('credentials', {
         redirect: false,
         email,
         password,
       });
 
+      console.log('SignIn result:', result);
+
       if (result?.error) {
-        setError('Invalid email or password');
+        setError(`Authentication error: ${result.error}`);
         setIsLoading(false);
         return;
       }
 
       router.push('/admin/dashboard');
     } catch (error) {
-      setError('An error occurred during login');
+      console.error('Login error:', error);
+      setError(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
       setIsLoading(false);
     }
   };
@@ -81,6 +101,13 @@ export default function AdminLoginPage() {
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
+          <div className="mt-4 text-center text-sm">
+            <p>Default admin credentials:</p>
+            <p className="font-mono bg-gray-100 dark:bg-gray-800 p-1 rounded mt-1">
+              Email: admin@example.com<br/>
+              Password: admin12345
+            </p>
+          </div>
         </CardBody>
       </Card>
     </div>

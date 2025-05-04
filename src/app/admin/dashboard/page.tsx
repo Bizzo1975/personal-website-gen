@@ -1,18 +1,52 @@
-'use client';
+'use client'
+import '@/styles/globals.css';
+;
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import Link from 'next/link';
 
 export default function AdminDashboardPage() {
   const { data: session } = useSession();
+  const [pageCount, setPageCount] = useState<string>('...');
+  const [blogCount, setBlogCount] = useState<string>('5');
+  const [projectCount, setProjectCount] = useState<string>('4');
+  const [userCount, setUserCount] = useState<string>('1');
+  const [loading, setLoading] = useState(true);
+
+  // Fetch page count from API
+  useEffect(() => {
+    const fetchPageCount = async () => {
+      try {
+        console.log('Fetching pages from API...');
+        const response = await fetch('/api/pages');
+        
+        if (!response.ok) {
+          console.error('API response error:', response.status, response.statusText);
+          setPageCount('!');
+          return;
+        }
+        
+        const pages = await response.json();
+        console.log('Fetched pages:', pages);
+        setPageCount(String(pages.length));
+      } catch (error) {
+        console.error('Error fetching pages:', error);
+        setPageCount('!');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPageCount();
+  }, []);
 
   const stats = [
-    { title: 'Pages', count: '2', href: '/admin/pages' },
-    { title: 'Blog Posts', count: '5', href: '/admin/posts' },
-    { title: 'Projects', count: '4', href: '/admin/projects' },
-    { title: 'Users', count: '1', href: '/admin/settings' },
+    { title: 'Pages', count: pageCount, href: '/admin/pages' },
+    { title: 'Blog Posts', count: blogCount, href: '/admin/posts' },
+    { title: 'Projects', count: projectCount, href: '/admin/projects' },
+    { title: 'Users', count: userCount, href: '/admin/settings' },
   ];
 
   return (

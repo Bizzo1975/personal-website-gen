@@ -25,8 +25,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} bg-tech-light dark:bg-tech-dark text-slate-800 dark:text-slate-200 min-h-screen flex flex-col antialiased`}>
         <div className="fixed inset-0 bg-[url('/grid-light.svg')] bg-center dark:bg-[url('/grid-dark.svg')] dark:opacity-20 opacity-10 pointer-events-none z-0"></div>
-        <Providers>
-          <ThemeProvider>
+        <ThemeProvider>
+          <Providers>
+          
             <div className="relative z-10 flex flex-col min-h-screen">
               <Header />
               <main className="container mx-auto px-4 py-8 flex-grow">
@@ -34,8 +35,9 @@ export default function RootLayout({
               </main>
               <Footer />
             </div>
-          </ThemeProvider>
+          
         </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

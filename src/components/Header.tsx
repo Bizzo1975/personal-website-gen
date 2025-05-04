@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import ThemeSwitcher from './ThemeSwitcher';
 
 const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const isAdmin = session?.user?.role === 'admin';
+  const isAuthenticated = status === 'authenticated';
 
   return (
     <header className="py-6 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm bg-white/70 dark:bg-slate-900/80 sticky top-0 z-40">
@@ -61,7 +62,32 @@ const Header: React.FC = () => {
                 )}
               </ul>
             </nav>
-            <ThemeSwitcher />
+            <div className="flex items-center space-x-4">
+              <ThemeSwitcher />
+              {isAuthenticated ? (
+                <button 
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
+                >
+                  Logout
+                </button>
+              ) : (
+                <>
+                  <Link 
+                    href="/admin/login" 
+                    className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
+                  >
+                    Login
+                  </Link>
+                  <Link 
+                    href="/admin/signup" 
+                    className="bg-primary-600 dark:bg-primary-500 text-white py-2 px-4 rounded hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors"
+                  >
+                    Signup
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Mobile Menu Button */}
@@ -144,6 +170,40 @@ const Header: React.FC = () => {
                     Admin Dashboard
                   </Link>
                 </li>
+              )}
+              {isAuthenticated ? (
+                <li>
+                  <button 
+                    onClick={() => {
+                      signOut({ callbackUrl: '/' });
+                      setMobileMenuOpen(false);
+                    }}
+                    className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium block"
+                  >
+                    Logout
+                  </button>
+                </li>
+              ) : (
+                <>
+                  <li>
+                    <Link 
+                      href="/admin/login" 
+                      className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium block"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Login
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href="/admin/signup" 
+                      className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-500 transition-colors font-medium block"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Signup
+                    </Link>
+                  </li>
+                </>
               )}
             </ul>
           </nav>

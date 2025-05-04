@@ -1,4 +1,6 @@
-'use client';
+'use client'
+import '@/styles/globals.css';
+;
 
 import React, { useState } from 'react';
 import { signOut } from 'next-auth/react';

@@ -16,7 +16,7 @@ const ProjectSchema = new Schema({
   },
   image: {
     type: String,
-    required: true,
+    default: '',
   },
   technologies: {
     type: [String],
@@ -24,9 +24,11 @@ const ProjectSchema = new Schema({
   },
   liveDemo: {
     type: String,
+    default: '',
   },
   sourceCode: {
     type: String,
+    default: '',
   },
   featured: {
     type: Boolean,

@@ -1,10 +1,13 @@
-'use client';
+'use client'
+import '@/styles/globals.css';
+;
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Card, { CardBody } from '@/components/Card';
+import Card from '@/components/Card';
 import Button from '@/components/Button';
 
+// Define the PageData interface directly instead of importing it
 interface PageData {
   _id: string;
   name: string;
@@ -12,14 +15,19 @@ interface PageData {
   slug: string;
   content: string;
   metaDescription: string;
-  updatedAt: string;
+  updatedAt: Date;
 }
+
+// Simple markdown editor component
+import dynamic from 'next/dynamic';
+const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
+import 'easymde/dist/easymde.min.css';
 
 export default function EditPagePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { id } = params;
   
-  const [formData, setFormData] = useState({
+  const [pageData, setPageData] = useState<Partial<PageData>>({
     name: '',
     title: '',
     slug: '',
@@ -27,223 +35,212 @@ export default function EditPagePage({ params }: { params: { id: string } }) {
     metaDescription: '',
   });
   
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Fetch the page data from API
   useEffect(() => {
-    async function fetchPage() {
+    const fetchPage = async () => {
       try {
+        // Use actual API call with debugging
+        console.log(`Fetching page data for ID: ${id}`);
         const response = await fetch(`/api/pages/${id}`);
         
         if (!response.ok) {
-          throw new Error('Failed to fetch page');
+          console.error('API response error:', response.status, response.statusText);
+          throw new Error(`Failed to fetch page data: ${response.status} ${response.statusText}`);
         }
         
-        const page = await response.json();
-        setFormData({
-          name: page.name,
-          title: page.title,
-          slug: page.slug,
-          content: page.content,
-          metaDescription: page.metaDescription || '',
-        });
+        const data = await response.json();
+        console.log('Fetched page data:', data);
+        setPageData(data);
+        setLoading(false);
       } catch (err) {
-        setError('Failed to load page. Please try again.');
-        console.error(err);
-      } finally {
-        setIsFetching(false);
+        console.error('Error fetching page:', err);
+        setError('Failed to load page. Please check console for details.');
+        setLoading(false);
       }
-    }
-    
+    };
+
     fetchPage();
   }, [id]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setPageData({
+      ...pageData,
+      [name]: value,
+    });
+  };
+
+  const handleContentChange = (value: string) => {
+    setPageData({
+      ...pageData,
+      content: value,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    setMessage('');
-
+    setSaving(true);
+    setError(null);
+    setSaveSuccess(false);
+    
     try {
+      // Make actual API call to update the page with debugging
+      console.log(`Updating page ${id} with data:`, pageData);
       const response = await fetch(`/api/pages/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(pageData),
       });
       
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to update page');
+        const errorData = await response.json();
+        console.error('API save error:', response.status, errorData);
+        throw new Error(errorData.error || `Failed to save page: ${response.status}`);
       }
       
-      setMessage('Page updated successfully');
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Failed to update page');
-      }
-    } finally {
-      setIsLoading(false);
+      // Process successful response
+      const result = await response.json();
+      console.log('Page updated successfully:', result);
+      setSaving(false);
+      setSaveSuccess(true);
+      
+      // Redirect after a short delay to show success message
+      setTimeout(() => {
+        router.push('/admin/pages');
+      }, 1000);
+    } catch (err: any) {
+      console.error('Error saving page:', err);
+      setError(err.message || 'Failed to save page');
+      setSaving(false);
     }
   };
 
-  const isHomePage = formData.slug === 'home';
-  const isAboutPage = formData.slug === 'about';
-  const isEssentialPage = isHomePage || isAboutPage;
+  if (loading) {
+    return <div className="text-center py-10">Loading page data...</div>;
+  }
 
-  if (isFetching) {
+  if (error) {
     return (
       <div className="text-center py-10">
-        <p className="text-gray-500 dark:text-gray-400">Loading page...</p>
+        <div className="text-red-600 mb-4">{error}</div>
+        <Button onClick={() => window.location.reload()}>Retry</Button>
+        <Button variant="outline" className="ml-4" onClick={() => router.push('/admin/pages')}>
+          Back to Pages
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Edit Page: {formData.title}</h1>
-          <p className="text-gray-600 dark:text-gray-300">Update page content and settings</p>
-        </div>
-        <Button href="/admin/pages" variant="outline">
-          Back to Pages
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Edit Page: {pageData.name}</h1>
+        <Button variant="outline" onClick={() => router.push('/admin/pages')}>
+          Cancel
         </Button>
       </div>
 
+      {saveSuccess && (
+        <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded">
+          Page saved successfully! Redirecting...
+        </div>
+      )}
+
       <Card variant="default">
-        <CardBody>
-          {error && (
-            <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4 dark:bg-red-900 dark:text-red-300">
-              {error}
-            </div>
-          )}
-          
-          {message && (
-            <div className="bg-green-100 text-green-700 p-3 rounded-md mb-4 dark:bg-green-900 dark:text-green-300">
-              {message}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium mb-1">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Internal Name
               </label>
               <input
+                type="text"
                 id="name"
                 name="name"
-                type="text"
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                value={pageData.name || ''}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                 required
               />
-              <p className="mt-1 text-sm text-gray-500">
-                For internal reference only (not displayed to users).
-              </p>
             </div>
             
             <div>
-              <label htmlFor="title" className="block text-sm font-medium mb-1">
-                Page Title
+              <label htmlFor="slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                URL Slug
               </label>
               <input
-                id="title"
-                name="title"
                 type="text"
-                value={formData.title}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                id="slug"
+                name="slug"
+                value={pageData.slug || ''}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                 required
+                disabled={pageData.slug === 'home' || pageData.slug === 'about'}
               />
-            </div>
-            
-            <div>
-              <label htmlFor="slug" className="block text-sm font-medium mb-1">
-                Slug
-              </label>
-              <div className="flex items-center">
-                <span className="text-gray-500 mr-2">/</span>
-                <input
-                  id="slug"
-                  name="slug"
-                  type="text"
-                  value={formData.slug}
-                  onChange={handleChange}
-                  className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  required
-                  readOnly={isEssentialPage}
-                  title={isEssentialPage ? "Slug cannot be changed for essential pages" : ""}
-                />
-              </div>
-              {isHomePage && (
-                <p className="mt-1 text-sm text-gray-500">Home page will be accessible at the root URL.</p>
+              {(pageData.slug === 'home' || pageData.slug === 'about') && (
+                <p className="text-xs text-gray-500 mt-1">This is a system page and the slug cannot be changed.</p>
               )}
             </div>
-            
-            <div>
-              <label htmlFor="metaDescription" className="block text-sm font-medium mb-1">
-                Meta Description
-              </label>
-              <input
-                id="metaDescription"
-                name="metaDescription"
-                type="text"
-                value={formData.metaDescription}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                maxLength={160}
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Maximum 160 characters for SEO optimization. {formData.metaDescription.length}/160
-              </p>
-            </div>
-            
-            <div>
-              <label htmlFor="content" className="block text-sm font-medium mb-1">
-                Content (Markdown)
-              </label>
-              <textarea
-                id="content"
-                name="content"
-                value={formData.content}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm h-96"
-                required
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Use Markdown for formatting. Supports headings, lists, links, bold, italic, etc.
-              </p>
-            </div>
-            
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button 
-                href="/admin/pages" 
-                variant="outline"
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </form>
-        </CardBody>
+          </div>
+
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Page Title
+            </label>
+            <input
+              type="text"
+              id="title"
+              name="title"
+              value={pageData.title || ''}
+              onChange={handleInputChange}
+              className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="metaDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Meta Description
+            </label>
+            <textarea
+              id="metaDescription"
+              name="metaDescription"
+              value={pageData.metaDescription || ''}
+              onChange={handleInputChange}
+              rows={2}
+              className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Content (Markdown)
+            </label>
+            <SimpleMDE
+              value={pageData.content || ''}
+              onChange={handleContentChange}
+              options={{
+                spellChecker: false,
+                status: false,
+                placeholder: 'Write your page content here using Markdown...',
+              }}
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving...' : 'Save Page'}
+            </Button>
+          </div>
+        </form>
       </Card>
     </div>
   );

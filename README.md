@@ -1,6 +1,6 @@
 # Personal Website
 
-A modern, responsive personal website built with Next.js, TypeScript, and Tailwind CSS. This website serves as a portfolio, blog, and project showcase.
+A modern, responsive personal website built with Next.js, TypeScript, and Tailwind CSS. This website serves as a portfolio, blog, and project showcase. With an admin dashboard that allows editing of all listed static content for all pages including hone and about.
 
 ## Features
 

@@ -1,4 +1,6 @@
-'use client';
+'use client'
+import '@/styles/globals.css';
+;
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -14,7 +16,7 @@ const mockProjects = [
     title: 'E-commerce Platform',
     slug: 'ecommerce-platform',
     description: 'A full-featured e-commerce platform built with Next.js.',
-    image: 'https://images.unsplash.com/photo-1557821552-17105176677c',
+    image: 'https://images.unsplash.com/photo-1557821552-17105176677c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80',
     technologies: ['Next.js', 'React', 'MongoDB', 'Stripe', 'Tailwind CSS'],
     liveDemo: 'https://example.com/ecommerce',
     sourceCode: 'https://github.com/johndoe/ecommerce',
@@ -25,7 +27,7 @@ const mockProjects = [
     title: 'Task Management App',
     slug: 'task-management-app',
     description: 'A productivity application for managing tasks and projects.',
-    image: 'https://images.unsplash.com/photo-1540350394557-8d14678e7f91',
+    image: 'https://images.unsplash.com/photo-1540350394557-8d14678e7f91?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80',
     technologies: ['React', 'TypeScript', 'Redux', 'Firebase'],
     liveDemo: 'https://example.com/taskmanager',
     sourceCode: 'https://github.com/johndoe/taskmanager',
@@ -36,7 +38,7 @@ const mockProjects = [
     title: 'Weather Dashboard',
     slug: 'weather-dashboard',
     description: 'A responsive weather application with forecasts.',
-    image: 'https://images.unsplash.com/photo-1504608524841-42fe6f032b4b',
+    image: 'https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80',
     technologies: ['JavaScript', 'React', 'Weather API', 'Chart.js'],
     liveDemo: 'https://example.com/weather',
     sourceCode: 'https://github.com/johndoe/weather',
@@ -47,7 +49,7 @@ const mockProjects = [
     title: 'Personal Finance Tracker',
     slug: 'personal-finance-tracker',
     description: 'An application to track income, expenses, and savings.',
-    image: 'https://images.unsplash.com/photo-1520695725800-cb80e647a499',
+    image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80',
     technologies: ['Next.js', 'TypeScript', 'PostgreSQL', 'Prisma'],
     liveDemo: 'https://example.com/finance',
     sourceCode: 'https://github.com/johndoe/finance',

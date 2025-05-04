@@ -1,151 +1,150 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
-import Page from '@/lib/models/Page';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getPageById, updatePage, deletePage } from '@/lib/services/page-service';
 
+// GET: Fetch a single page by ID
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await dbConnect();
-    const { id } = params;
-
-    // Get the page by ID
-    const page = await Page.findById(id);
+    const page = await getPageById(params.id);
     
     if (!page) {
       return NextResponse.json(
-        { message: 'Page not found' },
+        { error: 'Page not found' }, 
         { status: 404 }
       );
     }
     
     return NextResponse.json(page);
   } catch (error) {
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { message: error.message },
-        { status: 500 }
-      );
-    }
-    
+    console.error('Error in GET /api/pages/[id]:', error);
     return NextResponse.json(
-      { message: 'An error occurred' },
+      { error: 'Failed to fetch page' }, 
       { status: 500 }
     );
   }
 }
 
+// PUT: Update a page
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await dbConnect();
-    const { id } = params;
-    const { name, title, slug, content, metaDescription } = await request.json();
+    // Check authentication
+    const session = await getServerSession(authOptions);
     
-    // Basic validation
-    if (!name || !title || !slug || !content) {
+    if (!session || session.user.role !== 'admin') {
       return NextResponse.json(
-        { message: 'Missing required fields' },
+        { error: 'Unauthorized' }, 
+        { status: 401 }
+      );
+    }
+    
+    const body = await request.json();
+    const { name, title, slug, content, metaDescription } = body;
+    
+    // Validate required fields
+    if (!name || !title || !content) {
+      return NextResponse.json(
+        { error: 'Missing required fields' }, 
         { status: 400 }
       );
     }
     
-    // Find page
-    const page = await Page.findById(id);
-    if (!page) {
+    // Don't allow changing the slug for essential pages (home and about)
+    const currentPage = await getPageById(params.id);
+    if (!currentPage) {
       return NextResponse.json(
-        { message: 'Page not found' },
+        { error: 'Page not found' }, 
         { status: 404 }
       );
     }
     
-    // Check slug uniqueness if changing slug
-    if (page.slug !== slug) {
-      const existingPage = await Page.findOne({ slug, _id: { $ne: id } });
-      if (existingPage) {
-        return NextResponse.json(
-          { message: 'A page with this slug already exists' },
-          { status: 400 }
-        );
-      }
-    }
+    const isEssentialPage = ['home', 'about'].includes(currentPage.slug);
+    const updatedSlug = isEssentialPage ? currentPage.slug : slug;
     
-    // Update page
-    const updatedPage = await Page.findByIdAndUpdate(
-      id,
-      {
-        name,
-        title,
-        slug,
-        content,
-        metaDescription: metaDescription || '',
-        updatedAt: new Date()
-      },
-      { new: true }
-    );
+    // Update the page
+    const updatedPage = await updatePage(params.id, {
+      name,
+      title,
+      slug: updatedSlug,
+      content,
+      metaDescription: metaDescription || '',
+    });
     
-    return NextResponse.json(
-      { message: 'Page updated successfully', page: updatedPage }
-    );
-  } catch (error) {
-    if (error instanceof Error) {
+    if (!updatedPage) {
       return NextResponse.json(
-        { message: error.message },
+        { error: 'Failed to update page' }, 
         { status: 500 }
       );
     }
     
+    return NextResponse.json({ 
+      message: 'Page updated successfully',
+      page: updatedPage 
+    });
+  } catch (error) {
+    console.error('Error in PUT /api/pages/[id]:', error);
     return NextResponse.json(
-      { message: 'An error occurred' },
+      { error: 'Failed to update page' }, 
       { status: 500 }
     );
   }
 }
 
+// DELETE: Delete a page
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await dbConnect();
-    const { id } = params;
+    // Check authentication
+    const session = await getServerSession(authOptions);
     
-    // Find page
-    const page = await Page.findById(id);
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized' }, 
+        { status: 401 }
+      );
+    }
+    
+    // Check if it's an essential page (don't allow deletion)
+    const page = await getPageById(params.id);
     if (!page) {
       return NextResponse.json(
-        { message: 'Page not found' },
+        { error: 'Page not found' }, 
         { status: 404 }
       );
     }
     
-    // Prevent deletion of essential pages
-    if (page.slug === 'home' || page.slug === 'about') {
+    if (['home', 'about'].includes(page.slug)) {
       return NextResponse.json(
-        { message: 'Cannot delete essential pages' },
-        { status: 400 }
+        { error: 'Cannot delete essential pages' }, 
+        { status: 403 }
       );
     }
     
-    // Delete page
-    await Page.findByIdAndDelete(id);
+    // Delete the page
+    const success = await deletePage(params.id);
     
-    return NextResponse.json(
-      { message: 'Page deleted successfully' }
-    );
-  } catch (error) {
-    if (error instanceof Error) {
+    if (!success) {
       return NextResponse.json(
-        { message: error.message },
+        { error: 'Failed to delete page' }, 
         { status: 500 }
       );
     }
     
+    return NextResponse.json({ 
+      message: 'Page deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Error in DELETE /api/pages/[id]:', error);
     return NextResponse.json(
-      { message: 'An error occurred' },
+      { error: 'Failed to delete page' }, 
       { status: 500 }
     );
   }

@@ -1,14 +1,21 @@
-'use client';
+'use client'
+import '@/styles/globals.css';
+;
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Card, { CardBody } from '@/components/Card';
+import Card from '@/components/Card';
 import Button from '@/components/Button';
+
+// Simple markdown editor component
+import dynamic from 'next/dynamic';
+const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
+import 'easymde/dist/easymde.min.css';
 
 export default function NewPagePage() {
   const router = useRouter();
   
-  const [formData, setFormData] = useState({
+  const [pageData, setPageData] = useState({
     name: '',
     title: '',
     slug: '',
@@ -16,175 +23,189 @@ export default function NewPagePage() {
     metaDescription: '',
   });
   
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setPageData({
+      ...pageData,
+      [name]: value,
+    });
+  };
+
+  const handleContentChange = (value: string) => {
+    setPageData({
+      ...pageData,
+      content: value,
+    });
+  };
+
+  const generateSlug = () => {
+    if (pageData.title) {
+      const slug = pageData.title
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-');
+      
+      setPageData({
+        ...pageData,
+        slug,
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
+    setSaving(true);
+    
     try {
+      // Make the actual API call
       const response = await fetch('/api/pages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(pageData),
       });
       
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to create page');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create page');
       }
       
-      const data = await response.json();
-      
-      // Redirect to the edit page for the newly created page
-      router.push(`/admin/pages/${data.page._id}`);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Failed to create page');
-      }
-      setIsLoading(false);
+      // Process successful response
+      const result = await response.json();
+      setSaving(false);
+      router.push('/admin/pages');
+    } catch (err: any) {
+      setError(err.message || 'Failed to create page');
+      setSaving(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Create New Page</h1>
-          <p className="text-gray-600 dark:text-gray-300">Add a new page to your website</p>
-        </div>
-        <Button href="/admin/pages" variant="outline">
-          Back to Pages
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Create New Page</h1>
+        <Button variant="outline" onClick={() => router.push('/admin/pages')}>
+          Cancel
         </Button>
       </div>
 
+      {error && (
+        <div className="bg-red-100 text-red-700 p-3 rounded-md dark:bg-red-900 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
       <Card variant="default">
-        <CardBody>
-          {error && (
-            <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4 dark:bg-red-900 dark:text-red-300">
-              {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium mb-1">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Internal Name
               </label>
               <input
+                type="text"
                 id="name"
                 name="name"
-                type="text"
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                value={pageData.name}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                 required
+                placeholder="e.g., Contact Page"
               />
-              <p className="mt-1 text-sm text-gray-500">
-                For internal reference only (not displayed to users).
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Internal reference only (not displayed to users)</p>
             </div>
             
             <div>
-              <label htmlFor="title" className="block text-sm font-medium mb-1">
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Page Title
               </label>
-              <input
-                id="title"
-                name="title"
-                type="text"
-                value={formData.title}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                required
-              />
+              <div className="flex items-center">
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={pageData.title}
+                  onChange={handleInputChange}
+                  onBlur={() => {
+                    if (!pageData.slug) generateSlug();
+                  }}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+                  required
+                  placeholder="e.g., Contact Us"
+                />
+              </div>
             </div>
-            
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="slug" className="block text-sm font-medium mb-1">
-                Slug
+              <label htmlFor="slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                URL Slug
               </label>
               <div className="flex items-center">
                 <span className="text-gray-500 mr-2">/</span>
                 <input
+                  type="text"
                   id="slug"
                   name="slug"
-                  type="text"
-                  value={formData.slug}
-                  onChange={handleChange}
-                  className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={pageData.slug}
+                  onChange={handleInputChange}
+                  className="flex-1 p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                   required
-                  placeholder="e.g. services, faq, etc."
+                  placeholder="e.g., contact"
                 />
+                <button
+                  type="button"
+                  onClick={generateSlug}
+                  className="ml-2 px-3 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md text-xs"
+                >
+                  Generate
+                </button>
               </div>
-              <p className="mt-1 text-sm text-gray-500">
-                The URL path for this page (e.g. /services)
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Will be used in the URL: yourdomain.com/[slug]</p>
             </div>
             
             <div>
-              <label htmlFor="metaDescription" className="block text-sm font-medium mb-1">
+              <label htmlFor="metaDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Meta Description
               </label>
-              <input
+              <textarea
                 id="metaDescription"
                 name="metaDescription"
-                type="text"
-                value={formData.metaDescription}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                maxLength={160}
+                value={pageData.metaDescription}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+                placeholder="Brief description for search engines (optional)"
               />
-              <p className="mt-1 text-sm text-gray-500">
-                Maximum 160 characters for SEO optimization. {formData.metaDescription.length}/160
-              </p>
             </div>
-            
-            <div>
-              <label htmlFor="content" className="block text-sm font-medium mb-1">
-                Content (Markdown)
-              </label>
-              <textarea
-                id="content"
-                name="content"
-                value={formData.content}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm h-96"
-                required
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Use Markdown for formatting. Supports headings, lists, links, bold, italic, etc.
-              </p>
-            </div>
-            
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button 
-                href="/admin/pages" 
-                variant="outline"
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Creating...' : 'Create Page'}
-              </Button>
-            </div>
-          </form>
-        </CardBody>
+          </div>
+
+          <div>
+            <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Content (Markdown)
+            </label>
+            <SimpleMDE
+              value={pageData.content}
+              onChange={handleContentChange}
+              options={{
+                spellChecker: false,
+                status: false,
+                placeholder: 'Write your page content here using Markdown...',
+              }}
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Creating...' : 'Create Page'}
+            </Button>
+          </div>
+        </form>
       </Card>
     </div>
   );

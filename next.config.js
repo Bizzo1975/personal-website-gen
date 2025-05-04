@@ -2,7 +2,13 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['images.unsplash.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '**',
+      },
+    ],
   },
   webpack(config) {
     // Configures webpack to handle MDX files
@@ -17,6 +23,14 @@ const nextConfig = {
     
     return config;
   },
+  
+  // Add this to ensure output is traced properly
+  output: 'standalone',
+  
+  // Try experimental settings if needed
+  experimental: {
+    serverActions: true,
+  },
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;

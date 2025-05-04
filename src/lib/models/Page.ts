@@ -1,6 +1,15 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, model, Model } from 'mongoose';
 
-const PageSchema = new Schema({
+interface PageDocument extends Document {
+  name: string;
+  title: string;
+  slug: string;
+  content: string;
+  metaDescription: string;
+  updatedAt: Date;
+}
+
+const PageSchema = new Schema<PageDocument>({
   name: {
     type: String,
     required: true,
@@ -28,4 +37,16 @@ const PageSchema = new Schema({
   },
 });
 
-export default mongoose.models.Page || mongoose.model('Page', PageSchema); 
+// Use mongoose.models to check if the model exists already
+// This prevents "Cannot overwrite model once compiled" errors
+let Page: Model<PageDocument>;
+
+try {
+  // Check if the model is already defined
+  Page = mongoose.models.Page as Model<PageDocument>;
+} catch {
+  // If not, define it
+  Page = mongoose.model<PageDocument>('Page', PageSchema);
+}
+
+export default Page;

@@ -13,11 +13,13 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log("Missing credentials");
           return null;
         }
 
         const user = await getUserByEmail(credentials.email);
         if (!user) {
+          console.log("User not found:", credentials.email);
           return null;
         }
 
@@ -27,9 +29,11 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isValid) {
+          console.log("Invalid password for:", credentials.email);
           return null;
         }
 
+        console.log("Authentication successful for:", credentials.email);
         return {
           id: user._id.toString(),
           email: user.email,
@@ -55,16 +59,18 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  debug: process.env.NODE_ENV === 'development',
   pages: {
     signIn: '/admin/login',
     error: '/admin/login',
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST }; 
+export { handler as GET, handler as POST };

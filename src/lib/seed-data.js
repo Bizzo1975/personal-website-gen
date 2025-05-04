@@ -49,6 +49,22 @@ const Page = mongoose.models.Page || mongoose.model('Page', new mongoose.Schema(
   updatedAt: Date
 }));
 
+const Profile = mongoose.models.Profile || mongoose.model('Profile', new mongoose.Schema({
+  name: String,
+  imageUrl: String,
+  skills: [String],
+  bio: String,
+  location: String,
+  email: String,
+  socialLinks: {
+    github: String,
+    twitter: String,
+    linkedin: String,
+    website: String
+  },
+  updatedAt: Date
+}));
+
 async function seedDatabase() {
   try {
     console.log('Connecting to database...');
@@ -60,6 +76,7 @@ async function seedDatabase() {
     await Post.deleteMany({});
     await Project.deleteMany({});
     await Page.deleteMany({});
+    await Profile.deleteMany({});
     console.log('Cleared existing data');
 
     // Create admin user
@@ -125,7 +142,19 @@ async function seedDatabase() {
         technologies: ['React', 'TypeScript', 'Redux', 'Firebase'],
         liveDemo: 'https://example.com/taskmanager',
         sourceCode: 'https://github.com/johndoe/taskmanager',
-        featured: false,
+        featured: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        title: 'AI Image Generator',
+        slug: 'ai-image-generator',
+        description: 'An application that generates images from text descriptions using AI.',
+        image: 'https://images.unsplash.com/photo-1526378722484-bd91ca387e72',
+        technologies: ['Python', 'TensorFlow', 'FastAPI', 'React'],
+        liveDemo: 'https://example.com/ai-image-generator',
+        sourceCode: 'https://github.com/johndoe/ai-image',
+        featured: true,
         createdAt: new Date(),
         updatedAt: new Date()
       }
@@ -133,56 +162,66 @@ async function seedDatabase() {
     await Project.insertMany(projects);
     console.log('Created sample projects');
 
+    // Create profile
+    const profile = {
+      name: 'John Doe',
+      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
+      skills: [
+        'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js',
+        'Express', 'MongoDB', 'PostgreSQL', 'HTML5', 'CSS3',
+        'Tailwind CSS', 'Git', 'Docker', 'AWS'
+      ],
+      bio: "Full-stack developer with a passion for building web applications",
+      location: "New York, USA",
+      email: "john@example.com",
+      socialLinks: {
+        github: "https://github.com/johndoe",
+        twitter: "https://twitter.com/johndoe",
+        linkedin: "https://linkedin.com/in/johndoe",
+        website: "https://johndoe.com"
+      },
+      updatedAt: new Date()
+    };
+    await Profile.create(profile);
+    console.log('Created profile');
+
     // Create sample pages
     const pages = [
       {
-        name: 'Homepage',
-        title: 'Home',
-        slug: 'home',
-        content: `# Welcome to My Personal Website
-
-I'm a full-stack developer with a passion for creating modern, intuitive web applications using cutting-edge technologies.
-
-## What I Do
-
-- Frontend Development with React and Next.js
-- Backend Development with Node.js and MongoDB
-- UI/UX Design and Implementation
-- Performance Optimization and Accessibility
-
-Check out my [projects](/projects) or read my latest [blog posts](/blog).`,
-        metaDescription: 'Personal website and portfolio of a full-stack developer specializing in React, Next.js, and modern web technologies.',
-        updatedAt: new Date()
-      },
-      {
         name: 'About Page',
-        title: 'About Me',
+        title: 'About Me | John Doe',
         slug: 'about',
         content: `# About Me
 
-## My Journey
+I am a passionate developer with experience in web technologies. I love building apps with React, Next.js, and TypeScript.
 
-I started my coding journey over 5 years ago, initially working with HTML, CSS, and JavaScript. As I grew as a developer, I expanded my skill set to include modern frameworks and technologies like React, Next.js, Node.js, and MongoDB.
+## Experience
 
-## Technologies I Work With
+Over 5 years of experience in web development, specializing in modern JavaScript frameworks. I've worked on a variety of projects from e-commerce solutions to content management systems.
 
-- **Frontend**: React, Next.js, TypeScript, Tailwind CSS
-- **Backend**: Node.js, Express, MongoDB, PostgreSQL
-- **Tools**: Git, Docker, VS Code, Figma
-- **Testing**: Jest, React Testing Library, Cypress
+## Education
 
-## My Philosophy
+- Bachelor's Degree in Computer Science
+- Various online courses and certifications in modern web development
 
-I believe in creating clean, maintainable code that solves real problems. User experience is at the center of everything I build, and I'm constantly learning and adapting to new technologies and best practices.
+## Interests
 
-## Beyond Coding
+When I'm not coding, I enjoy hiking, reading science fiction, and exploring new technologies.`,
+        metaDescription: 'Learn more about John Doe, a full stack developer specializing in React and Next.js',
+        updatedAt: new Date()
+      },
+      {
+        name: 'Home Page',
+        title: 'John Doe | Developer Portfolio',
+        slug: 'home',
+        content: `# Welcome to My Portfolio
 
-When I'm not coding, you can find me hiking in the mountains, reading science fiction, or experimenting with new recipes in the kitchen.
+I'm a full-stack developer specializing in building exceptional digital experiences. Currently, I'm focused on creating accessible, human-centered products.
 
-## Let's Connect
+## My Skills
 
-Interested in working together? Feel free to [contact me](/contact) or connect with me on [GitHub](https://github.com) and [LinkedIn](https://linkedin.com).`,
-        metaDescription: 'Learn more about my background, skills, and experience as a full-stack developer.',
+I have expertise in modern web development technologies, including React, Next.js, Node.js, and more. I'm passionate about creating clean, efficient, and user-friendly applications.`,
+        metaDescription: 'John Doe - Full Stack Developer portfolio showcasing projects and skills in React, Next.js, and more',
         updatedAt: new Date()
       }
     ];
