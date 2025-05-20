@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "data": {
+    "id": "user-123",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "image": "/images/avatars/john-doe.jpg",
+    "role": "admin"
+  }
+} 

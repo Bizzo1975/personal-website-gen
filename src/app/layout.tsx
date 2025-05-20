@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Providers from './providers';
+import SkipToContent from '@/components/SkipToContent';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -27,16 +28,15 @@ export default function RootLayout({
         <div className="fixed inset-0 bg-[url('/grid-light.svg')] bg-center dark:bg-[url('/grid-dark.svg')] dark:opacity-20 opacity-10 pointer-events-none z-0"></div>
         <ThemeProvider>
           <Providers>
-          
             <div className="relative z-10 flex flex-col min-h-screen">
+              <SkipToContent />
               <Header />
-              <main className="container mx-auto px-4 py-8 flex-grow">
+              <main id="main-content" className="container mx-auto px-4 py-8 flex-grow" tabIndex={-1}>
                 {children}
               </main>
               <Footer />
             </div>
-          
-        </Providers>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>

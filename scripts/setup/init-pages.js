@@ -102,6 +102,18 @@ I'm a passionate developer with experience in web development, cloud computing, 
 Feel free to reach out to me at example@email.com or connect with me on [LinkedIn](https://linkedin.com).`,
     metaDescription: 'Learn about my professional background, skills, experience, and education.',
   },
+  {
+    name: 'Contact Page',
+    title: 'Contact Me',
+    slug: 'contact',
+    content: `# Contact Me
+
+Have a question or want to work together? Feel free to get in touch with me using the contact form or through any of the channels below.
+
+I'm always open to discussing new projects, creative ideas, or opportunities to be part of your vision.
+`,
+    metaDescription: 'Get in touch with me. Contact information and contact form.',
+  },
 ];
 
 async function initPages() {

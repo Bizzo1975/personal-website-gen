@@ -12,13 +12,16 @@ interface PageProps {
   };
 }
 
+// Define paths that have dedicated directories and should not be captured by [slug]
+const DEDICATED_PATHS = ['about', 'blog', 'projects', 'contact', 'admin'];
+
 // Generate static params for pages that exist in the database
 export async function generateStaticParams() {
   const pages = await getAllPages();
   
-  // Filter out the home page as it's handled by the root route
+  // Filter out the home page and other dedicated paths
   return pages
-    .filter(page => page.slug !== 'home')
+    .filter(page => page.slug !== 'home' && !DEDICATED_PATHS.includes(page.slug))
     .map(page => ({
       slug: page.slug,
     }));
@@ -29,6 +32,11 @@ export async function generateMetadata(
   { params }: PageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
+  // Redirect dedicated paths to their proper routes
+  if (DEDICATED_PATHS.includes(params.slug)) {
+    notFound();
+  }
+  
   const page = await getPageBySlug(params.slug);
   
   if (!page) {
@@ -45,6 +53,11 @@ export async function generateMetadata(
 
 // The page component that fetches and renders the content
 export default async function Page({ params }: PageProps) {
+  // Redirect dedicated paths to their proper routes
+  if (DEDICATED_PATHS.includes(params.slug)) {
+    notFound();
+  }
+  
   const page = await getPageBySlug(params.slug);
   
   // If page doesn't exist, show 404

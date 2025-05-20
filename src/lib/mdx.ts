@@ -1,7 +1,16 @@
 import { serialize } from 'next-mdx-remote/serialize';
 
 export async function serializeMarkdown(content: string) {
+  if (!content) {
+    console.warn('Empty content passed to serializeMarkdown');
+    return {
+      compiledSource: 'export default function MDXContent() { return null; }',
+      frontmatter: {},
+    };
+  }
+  
   try {
+    console.log('Serializing markdown, content length:', content.length);
     const mdxSource = await serialize(content, {
       // Add any serialize options here
       mdxOptions: {
@@ -12,9 +21,10 @@ export async function serializeMarkdown(content: string) {
     return mdxSource;
   } catch (error) {
     console.error('Error serializing markdown:', error);
+    console.error('Content that caused the error:', content.substring(0, 100) + '...');
     // Return a minimal valid MDX source in case of error
     return {
-      compiledSource: 'export default function MDXContent() { return "Error rendering content"; }',
+      compiledSource: 'export default function MDXContent() { return React.createElement("div", { className: "text-red-500" }, "Error rendering content. Please check console for details."); }',
       frontmatter: {},
     };
   }

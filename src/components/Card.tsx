@@ -6,12 +6,18 @@ type CardProps = {
   children: React.ReactNode;
   className?: string;
   variant?: 'default' | 'elevated' | 'bordered';
+  interactive?: boolean;
+  onClick?: () => void;
+  ariaLabel?: string;
 };
 
 const Card: React.FC<CardProps> = ({
   children,
   className = '',
   variant = 'default',
+  interactive = false,
+  onClick,
+  ariaLabel,
 }) => {
   const baseClasses = 'bg-white dark:bg-slate-900 rounded-lg overflow-hidden';
   
@@ -21,10 +27,28 @@ const Card: React.FC<CardProps> = ({
     bordered: 'border border-slate-200 dark:border-slate-800',
   };
   
-  const classes = `${baseClasses} ${variantClasses[variant]} ${className}`;
+  const interactiveClasses = interactive 
+    ? 'transition-all duration-300 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-primary-500 outline-none cursor-pointer' 
+    : '';
+  
+  const classes = `${baseClasses} ${variantClasses[variant]} ${interactiveClasses} ${className}`;
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (interactive && onClick && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onClick();
+    }
+  };
   
   return (
-    <div className={classes}>
+    <div 
+      className={classes}
+      onClick={interactive ? onClick : undefined}
+      onKeyDown={interactive ? handleKeyDown : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      role={interactive ? 'button' : undefined}
+      aria-label={ariaLabel}
+    >
       {children}
     </div>
   );

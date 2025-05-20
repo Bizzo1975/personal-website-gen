@@ -34,8 +34,31 @@ const defaultProfile: ProfileData = {
   }
 };
 
+// Mock data storage key for Node.js global object
+const MOCK_PROFILE_KEY = 'mockProfileData';
+
+// Helper function to determine if we should use mock data
+const useMockData = () => {
+  return !process.env.MONGODB_URI || process.env.NODE_ENV === 'development';
+};
+
+// Function to get mock profile from global store
+const getMockProfileFromGlobal = (): ProfileData => {
+  // Check if we have already stored mock profile in the global object
+  if ((global as any)[MOCK_PROFILE_KEY]) {
+    return (global as any)[MOCK_PROFILE_KEY];
+  }
+  return defaultProfile;
+};
+
 export async function getProfileData(): Promise<ProfileData> {
   try {
+    // For development without MongoDB, try to get from the global store first
+    if (useMockData()) {
+      console.log('📖 Getting profile data from global store');
+      return getMockProfileFromGlobal();
+    }
+    
     await dbConnect();
     
     // Try to get the profile from the database

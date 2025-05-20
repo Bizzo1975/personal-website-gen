@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { MDXRemote } from 'next-mdx-remote';
 
@@ -35,6 +35,29 @@ export default function AboutPage({
     email: 'john@example.com'
   } 
 }: AboutPageProps) {
+  const [mdxError, setMdxError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // This will detect if the MDX content is not valid
+    if (!content || !content.compiledSource) {
+      setMdxError('Content could not be loaded properly.');
+      console.error('Invalid MDX content received:', content);
+    }
+  }, [content]);
+
+  // Show error state if there's an issue with MDX content
+  if (mdxError) {
+    return (
+      <div className="max-w-4xl mx-auto py-8">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-md">
+          <h2 className="text-red-600 dark:text-red-400 font-bold text-lg mb-2">Error Loading Content</h2>
+          <p className="text-red-600 dark:text-red-400">{mdxError}</p>
+          <p className="mt-2">Please try refreshing the page or contact the site administrator.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto py-8">
       <div className="flex flex-col md:flex-row gap-8 mb-10">
@@ -116,7 +139,11 @@ export default function AboutPage({
         <div className="md:w-2/3">
           {/* Render the markdown content from MongoDB */}
           <div className="prose prose-lg dark:prose-invert max-w-none">
-            <MDXRemote {...content} />
+            {content ? (
+              <MDXRemote {...content} />
+            ) : (
+              <p className="text-yellow-600 dark:text-yellow-400">Content is loading...</p>
+            )}
           </div>
         </div>
       </div>

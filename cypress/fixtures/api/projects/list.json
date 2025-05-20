@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "1",
+        "title": "E-Commerce Platform",
+        "slug": "ecommerce-platform",
+        "description": "A full-featured online store with payment integration, user authentication, and admin dashboard.",
+        "technologies": ["React", "Node.js", "MongoDB"],
+        "featured": true,
+        "githubUrl": "https://github.com/johndoe/ecommerce-platform",
+        "demoUrl": "https://ecommerce-platform-demo.vercel.app",
+        "thumbnailUrl": "/images/projects/ecommerce-thumbnail.jpg"
+      },
+      {
+        "id": "2",
+        "title": "Task Management App",
+        "slug": "task-management-app",
+        "description": "A productivity tool for managing tasks, projects, and team collaboration with real-time updates.",
+        "technologies": ["Next.js", "tRPC", "Prisma"],
+        "featured": true,
+        "githubUrl": "https://github.com/johndoe/task-management-app",
+        "demoUrl": "https://task-management-app-demo.vercel.app",
+        "thumbnailUrl": "/images/projects/taskmanager-thumbnail.jpg"
+      },
+      {
+        "id": "3",
+        "title": "AI Image Generator",
+        "slug": "ai-image-generator",
+        "description": "An application that generates images from text descriptions using AI models and APIs.",
+        "technologies": ["Python", "TensorFlow", "FastAPI"],
+        "featured": false,
+        "githubUrl": "https://github.com/johndoe/ai-image-generator",
+        "demoUrl": "https://ai-image-generator-demo.vercel.app",
+        "thumbnailUrl": "/images/projects/ai-image-thumbnail.jpg"
+      }
+    ],
+    "totalItems": 3,
+    "totalPages": 1,
+    "currentPage": 1,
+    "hasMore": false
+  }
+} 

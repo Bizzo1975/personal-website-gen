@@ -70,10 +70,12 @@ async function debugPages() {
     // Check for home and about pages
     const homePage = await Page.findOne({ slug: 'home' });
     const aboutPage = await Page.findOne({ slug: 'about' });
+    const contactPage = await Page.findOne({ slug: 'contact' });
 
     console.log('\n4. Critical Pages:');
     console.log(`   - Home Page: ${homePage ? '✅ Found' : '❌ MISSING'}`);
     console.log(`   - About Page: ${aboutPage ? '✅ Found' : '❌ MISSING'}`);
+    console.log(`   - Contact Page: ${contactPage ? '✅ Found' : '❌ MISSING'}`);
 
     // List all pages
     const allPages = await Page.find({});
@@ -95,8 +97,8 @@ async function debugPages() {
     console.log('\n=== DEBUGGING RECOMMENDATIONS ===');
     if (pageCount === 0) {
       console.log('• No pages found in database. Run scripts/setup/init-pages.js to initialize pages.');
-    } else if (!homePage || !aboutPage) {
-      console.log('• Home or About page is missing. Run scripts/setup/init-pages.js to initialize pages.');
+    } else if (!homePage || !aboutPage || !contactPage) {
+      console.log('• One or more critical pages are missing. Run scripts/setup/init-pages.js to initialize pages.');
     } else {
       console.log('• Database appears to have pages properly configured.');
       console.log('• If admin dashboard is not showing pages, check:');

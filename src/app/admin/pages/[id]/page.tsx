@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
+import Link from 'next/link';
 
 // Define the PageData interface directly instead of importing it
 interface PageData {
@@ -97,6 +98,8 @@ export default function EditPagePage({ params }: { params: { id: string } }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(pageData),
+        // Add cache: 'no-store' to ensure the response isn't cached
+        cache: 'no-store',
       });
       
       if (!response.ok) {
@@ -111,10 +114,21 @@ export default function EditPagePage({ params }: { params: { id: string } }) {
       setSaving(false);
       setSaveSuccess(true);
       
-      // Redirect after a short delay to show success message
+      // Use Next.js router for navigation instead of window.location
+      // This ensures proper handling within the Next.js app
       setTimeout(() => {
-        router.push('/admin/pages');
-      }, 1000);
+        if (pageData.slug === 'about') {
+          // For critical pages like about, revalidate by visiting the page first
+          fetch(`/api/revalidate?path=/about`, { method: 'POST' })
+            .then(() => router.push('/admin/pages'))
+            .catch(err => {
+              console.error('Error revalidating page:', err);
+              router.push('/admin/pages');
+            });
+        } else {
+          router.push('/admin/pages');
+        }
+      }, 1500);
     } catch (err: any) {
       console.error('Error saving page:', err);
       setError(err.message || 'Failed to save page');
@@ -138,6 +152,9 @@ export default function EditPagePage({ params }: { params: { id: string } }) {
     );
   }
 
+  // Check if this is the About page
+  const isAboutPage = pageData.slug === 'about';
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -150,6 +167,20 @@ export default function EditPagePage({ params }: { params: { id: string } }) {
       {saveSuccess && (
         <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded">
           Page saved successfully! Redirecting...
+        </div>
+      )}
+
+      {isAboutPage && (
+        <div className="bg-blue-100 dark:bg-blue-900 border border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-300 px-4 py-3 rounded flex justify-between items-center">
+          <p>
+            <strong>About Page:</strong> To edit profile information, photo, skills, and social links, use the Profile Editor.
+          </p>
+          <Link 
+            href="/admin/settings/profile" 
+            className="ml-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium"
+          >
+            Go to Profile Editor
+          </Link>
         </div>
       )}
 

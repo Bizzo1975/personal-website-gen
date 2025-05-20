@@ -125,7 +125,7 @@ export default function AdminPagesPage() {
                   >
                     Edit
                   </Link>
-                  {['home', 'about'].includes(page.slug) ? (
+                  {['home', 'about', 'contact'].includes(page.slug) ? (
                     <button
                       disabled
                       className="bg-gray-100 text-gray-400 cursor-not-allowed px-3 py-1 rounded text-sm font-medium"

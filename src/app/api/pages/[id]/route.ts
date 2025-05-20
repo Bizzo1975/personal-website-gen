@@ -77,8 +77,9 @@ export async function PUT(
     });
     
     if (!updatedPage) {
+      console.error(`Failed to update page ${params.id}. Check server logs for details.`);
       return NextResponse.json(
-        { error: 'Failed to update page' }, 
+        { error: 'Failed to update page. This could be because the page was not found or there was a database error.' }, 
         { status: 500 }
       );
     }
