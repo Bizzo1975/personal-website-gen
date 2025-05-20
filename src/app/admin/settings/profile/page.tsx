@@ -1,10 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Card from '@/components/Card';
-import Button from '@/components/Button';
 import Image from 'next/image';
+import AdminLayout from '../../components/AdminLayout';
+import AdminPageLayout from '../../components/AdminPageLayout';
+import AdminFormLayout from '../../components/AdminFormLayout';
+import { AdminInput, AdminTextarea } from '../../components/AdminFormField';
 
 interface SocialLinks {
   github?: string;
@@ -26,6 +28,8 @@ interface ProfileData {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const skillInputRef = useRef<HTMLInputElement>(null);
   
   const [profileData, setProfileData] = useState<ProfileData>({
     name: '',
@@ -47,6 +51,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [newSkill, setNewSkill] = useState('');
+  const [isAddingSkill, setIsAddingSkill] = useState(false);
 
   // Fetch the profile data from API
   useEffect(() => {
@@ -94,6 +99,42 @@ export default function ProfilePage() {
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        if (event.target && typeof event.target.result === 'string') {
+          setProfileData({
+            ...profileData,
+            imageUrl: event.target.result
+          });
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // Show skill input field
+  const showSkillInput = () => {
+    setIsAddingSkill(true);
+    // Focus the input field after it appears
+    setTimeout(() => {
+      if (skillInputRef.current) {
+        skillInputRef.current.focus();
+      }
+    }, 10);
+  };
+
+  // Handle adding a skill
   const handleAddSkill = () => {
     if (newSkill.trim()) {
       setProfileData({
@@ -101,6 +142,26 @@ export default function ProfilePage() {
         skills: [...profileData.skills, newSkill.trim()]
       });
       setNewSkill('');
+      setIsAddingSkill(false);
+    } else if (isAddingSkill) {
+      // If the field is empty and they click add, just hide the field
+      setIsAddingSkill(false);
+    }
+  };
+
+  // Cancel adding a skill
+  const handleCancelAddSkill = () => {
+    setNewSkill('');
+    setIsAddingSkill(false);
+  };
+
+  // Handle pressing Enter or Escape in the skill input
+  const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddSkill();
+    } else if (e.key === 'Escape') {
+      handleCancelAddSkill();
     }
   };
 
@@ -176,231 +237,208 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return <div className="text-center py-10">Loading profile data...</div>;
+    return (
+      <AdminLayout title="Loading...">
+        <div className="text-center py-10">Loading profile data...</div>
+      </AdminLayout>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Edit Profile</h1>
-        <Button variant="outline" onClick={() => router.push('/admin/dashboard')}>
-          Back to Dashboard
-        </Button>
-      </div>
-
-      {saveSuccess && (
-        <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded">
-          Profile saved successfully!
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Image Preview Card */}
-        <Card variant="default" className="p-6 flex flex-col items-center space-y-4">
-          <h2 className="text-lg font-semibold mb-4">Profile Image</h2>
-          <div className="relative h-48 w-48 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700">
-            <Image 
-              src={profileData.imageUrl || 'https://via.placeholder.com/200?text=Profile+Image'} 
-              alt="Profile Preview" 
-              fill
-              style={{objectFit: 'cover'}}
-              className="rounded-full"
+    <AdminLayout title="Edit Profile">
+      <AdminPageLayout
+        title="Edit Profile"
+        status={
+          saveSuccess 
+            ? { type: 'success', message: 'Profile saved successfully!' }
+            : error 
+              ? { type: 'error', message: error }
+              : undefined
+        }
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Image Preview Card */}
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 flex flex-col items-center space-y-4">
+            <h2 className="text-lg font-semibold mb-4">Profile Image</h2>
+            
+            {/* Hidden file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              accept="image/*"
+              className="hidden"
             />
-          </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">
-            Preview of your profile image
-          </div>
-        </Card>
-
-        {/* Profile Data Form */}
-        <Card variant="default" className="md:col-span-2">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={profileData.name || ''}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  required
-                />
+            
+            {/* Clickable profile image */}
+            <div 
+              className="relative h-48 w-48 rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={handleImageClick}
+              title="Click to upload a new image"
+            >
+              <Image 
+                src={profileData.imageUrl || 'https://via.placeholder.com/200?text=Profile+Image'} 
+                alt="Profile Preview" 
+                fill
+                style={{objectFit: 'cover'}}
+                className="rounded-full"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity text-white">
+                <span>Upload Photo</span>
               </div>
+            </div>
+            <div className="text-sm text-slate-500 dark:text-slate-400 text-center mt-2">
+              Click on the image to upload a new photo
+            </div>
+            
+            {/* Skills section moved here */}
+            <div className="w-full mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <h3 className="text-md font-semibold mb-3 text-center">Skills</h3>
               
-              <div>
-                <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Profile Image URL
-                </label>
-                <input
-                  type="url"
-                  id="imageUrl"
-                  name="imageUrl"
-                  value={profileData.imageUrl || ''}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">Enter a valid image URL (e.g., from Unsplash)</p>
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={profileData.email || ''}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  id="location"
-                  name="location"
-                  value={profileData.location || ''}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Bio
-                </label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  value={profileData.bio || ''}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Skills
-                </label>
-                <div className="flex flex-wrap gap-2 p-2 border border-gray-300 dark:border-gray-700 rounded-md min-h-[100px]">
-                  {profileData.skills.map((skill, index) => (
-                    <div key={index} className="flex items-center bg-blue-100 dark:bg-blue-900 px-3 py-1 rounded-full">
-                      <span>{skill}</span>
-                      <button 
-                        type="button"
-                        onClick={() => handleRemoveSkill(index)}
-                        className="ml-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
+              {isAddingSkill ? (
+                <div className="flex w-full border border-slate-300 dark:border-slate-700 rounded-md overflow-hidden">
                   <input
                     type="text"
                     id="newSkill"
+                    ref={skillInputRef}
                     value={newSkill}
                     onChange={(e) => setNewSkill(e.target.value)}
-                    className="flex-1 p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                    placeholder="Add a skill"
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSkill())}
+                    onKeyDown={handleSkillKeyDown}
+                    className="w-[calc(100%-64px)] h-10 px-3 border-0 dark:bg-slate-800 text-sm focus:outline-none focus:ring-0"
+                    placeholder="Add a skill (e.g., React, Node.js)"
                   />
-                  <Button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={handleAddSkill}
-                    variant="outline"
-                    size="sm"
+                    className="w-16 h-10 bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors border-0 flex items-center justify-center"
                   >
                     Add
-                  </Button>
+                  </button>
                 </div>
-              </div>
-
-              <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 pt-2">Social Links</h3>
+              ) : (
+                <button
+                  type="button"
+                  onClick={showSkillInput}
+                  className="w-full h-9 flex items-center justify-center space-x-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-md text-sm transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add Skill</span>
+                </button>
+              )}
               
-              <div>
-                <label htmlFor="social.github" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  GitHub URL
-                </label>
-                <input
-                  type="url"
-                  id="social.github"
+              <div className="mt-2 flex flex-wrap gap-2">
+                {profileData.skills.map((skill, index) => (
+                  <div 
+                    key={index} 
+                    className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full flex items-center"
+                  >
+                    <span className="text-sm text-slate-800 dark:text-slate-200">{skill}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSkill(index)}
+                      className="ml-2 text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Profile Data Form */}
+          <div className="md:col-span-2">
+            <AdminFormLayout 
+              onSubmit={handleSubmit}
+              isSubmitting={saving}
+              submitLabel="Save Profile"
+            >
+              <AdminInput
+                id="name"
+                name="name"
+                label="Name"
+                value={profileData.name || ''}
+                onChange={handleInputChange}
+                required
+              />
+              
+              <AdminInput
+                id="email"
+                name="email"
+                label="Email Address"
+                type="email"
+                value={profileData.email || ''}
+                onChange={handleInputChange}
+              />
+              
+              <AdminInput
+                id="location"
+                name="location"
+                label="Location"
+                value={profileData.location || ''}
+                onChange={handleInputChange}
+                placeholder="e.g., San Francisco, CA"
+              />
+              
+              <AdminTextarea
+                id="bio"
+                name="bio"
+                label="Bio"
+                value={profileData.bio || ''}
+                onChange={handleInputChange}
+                rows={4}
+                placeholder="A short description about yourself"
+              />
+              
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                <h3 className="text-lg font-medium mb-3">Social Links</h3>
+                
+                <AdminInput
+                  id="github"
                   name="social.github"
+                  label="GitHub"
+                  type="url"
                   value={profileData.socialLinks?.github || ''}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+                  placeholder="https://github.com/yourusername"
                 />
-              </div>
-
-              <div>
-                <label htmlFor="social.twitter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Twitter URL
-                </label>
-                <input
-                  type="url"
-                  id="social.twitter"
+                
+                <AdminInput
+                  id="twitter"
                   name="social.twitter"
+                  label="Twitter"
+                  type="url"
                   value={profileData.socialLinks?.twitter || ''}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+                  placeholder="https://twitter.com/yourusername"
                 />
-              </div>
-
-              <div>
-                <label htmlFor="social.linkedin" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  LinkedIn URL
-                </label>
-                <input
-                  type="url"
-                  id="social.linkedin"
+                
+                <AdminInput
+                  id="linkedin"
                   name="social.linkedin"
+                  label="LinkedIn"
+                  type="url"
                   value={profileData.socialLinks?.linkedin || ''}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+                  placeholder="https://linkedin.com/in/yourusername"
                 />
-              </div>
-
-              <div>
-                <label htmlFor="social.website" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Personal Website URL
-                </label>
-                <input
-                  type="url"
-                  id="social.website"
+                
+                <AdminInput
+                  id="website"
                   name="social.website"
+                  label="Personal Website"
+                  type="url"
                   value={profileData.socialLinks?.website || ''}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+                  placeholder="https://yourwebsite.com"
                 />
               </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : 'Save Profile'}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      </div>
-    </div>
+            </AdminFormLayout>
+          </div>
+        </div>
+      </AdminPageLayout>
+    </AdminLayout>
   );
 } 

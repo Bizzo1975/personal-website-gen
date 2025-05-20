@@ -1,4 +1,4 @@
-import dbConnect from '@/lib/db';
+import dbConnect, { isMockMode } from '@/lib/db';
 import Page from '@/lib/models/Page';
 import { Document } from 'mongoose';
 
@@ -106,8 +106,8 @@ const saveMockPages = (pages: PageData[]) => {
 
 // Helper function to determine if we should use mock data
 const useMockData = () => {
-  // Use mock data if no MongoDB URI or in development mode
-  return !process.env.MONGODB_URI || process.env.NODE_ENV === 'development';
+  // Use the isMockMode function from db.ts
+  return isMockMode();
 };
 
 export async function getPageBySlug(slug: string): Promise<PageData | null> {

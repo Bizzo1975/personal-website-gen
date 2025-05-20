@@ -1,14 +1,15 @@
 'use client'
 import '@/styles/globals.css';
-;
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import Link from 'next/link';
 import { BiPlus } from 'react-icons/bi';
+import AdminLayout from '@/app/admin/components/AdminLayout';
+import AdminPageLayout from '@/app/admin/components/AdminPageLayout';
 
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const { data: session } = useSession();
   const [blogCount, setBlogCount] = useState<string>('5');
   const [projectCount, setProjectCount] = useState<string>('4');
@@ -28,19 +29,19 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <div className="text-gray-600 dark:text-gray-300">
+    <AdminPageLayout>
+      {/* Welcome message */}
+      <div className="mb-6">
+        <h2 className="text-lg font-medium text-slate-700 dark:text-slate-300">
           Welcome, {session?.user?.name}
-        </div>
+        </h2>
       </div>
-
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((stat, index) => (
           <Card key={index} variant="default" className="hover:shadow-md transition-shadow">
             <CardBody className="flex flex-col items-center py-6">
-              <h2 className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-2">{stat.title}</h2>
+              <h2 className="text-lg font-medium text-slate-600 dark:text-slate-300 mb-2">{stat.title}</h2>
               <p className="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4">{stat.count}</p>
               <Link 
                 href={stat.href}
@@ -61,7 +62,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardBody>
             <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-300">Create new website pages or edit content.</p>
+              <p className="text-slate-600 dark:text-slate-300">Create new website pages or edit content.</p>
               <div className="flex space-x-3">
                 <Link 
                   href="/admin/pages/new" 
@@ -71,7 +72,7 @@ export default function AdminDashboardPage() {
                 </Link>
                 <Link 
                   href="/admin/contact" 
-                  className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Edit Contact
                 </Link>
@@ -86,7 +87,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardBody>
             <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-300">Manage your blog posts or create a new one.</p>
+              <p className="text-slate-600 dark:text-slate-300">Manage your blog posts or create a new one.</p>
               <div className="flex space-x-3">
                 <Link 
                   href="/admin/posts/new" 
@@ -96,7 +97,7 @@ export default function AdminDashboardPage() {
                 </Link>
                 <Link 
                   href="/admin/posts" 
-                  className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Manage Posts
                 </Link>
@@ -111,7 +112,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardBody>
             <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-300">Manage your portfolio projects or create a new one.</p>
+              <p className="text-slate-600 dark:text-slate-300">Manage your portfolio projects or create a new one.</p>
               <div className="flex space-x-3">
                 <Link 
                   href="/admin/projects/new" 
@@ -121,7 +122,7 @@ export default function AdminDashboardPage() {
                 </Link>
                 <Link 
                   href="/admin/projects" 
-                  className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Manage Projects
                 </Link>
@@ -130,6 +131,14 @@ export default function AdminDashboardPage() {
           </CardBody>
         </Card>
       </div>
-    </div>
+    </AdminPageLayout>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <AdminLayout title="Dashboard">
+      <AdminDashboardContent />
+    </AdminLayout>
   );
 } 

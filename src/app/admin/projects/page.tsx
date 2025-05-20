@@ -6,8 +6,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Card, { CardBody } from '@/components/Card';
-import Button from '@/components/Button';
 import Badge from '@/components/Badge';
+import AdminLayout from '../components/AdminLayout';
+import AdminPageLayout from '../components/AdminPageLayout';
 
 // Mock project data (will be replaced with API calls)
 const mockProjects = [
@@ -68,91 +69,92 @@ export default function AdminProjectsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Projects</h1>
-          <p className="text-gray-600 dark:text-gray-300">Manage your portfolio projects</p>
-        </div>
-        <Button href="/admin/projects/new">Add New Project</Button>
-      </div>
-
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-        {projects.map((project) => (
-          <Card key={project.id} variant="default" className="overflow-hidden">
-            <div className="relative h-48 w-full">
-              <Image 
-                src={project.image} 
-                alt={project.title}
-                fill
-                style={{objectFit: 'cover'}}
-              />
-              {project.featured && (
-                <div className="absolute top-2 right-2">
-                  <Badge variant="primary">Featured</Badge>
-                </div>
-              )}
-            </div>
-            <CardBody>
-              <h2 className="text-xl font-bold mb-2">{project.title}</h2>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                {project.description}
-              </p>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {project.technologies.map((tech, index) => (
-                  <Badge key={index} variant="secondary" size="sm">{tech}</Badge>
-                ))}
+    <AdminLayout title="Projects">
+      <AdminPageLayout
+        title="Projects"
+        description="Manage your portfolio projects"
+        action={{
+          label: "Add New Project",
+          href: "/admin/projects/new"
+        }}
+      >
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+          {projects.map((project) => (
+            <Card key={project.id} variant="default" className="overflow-hidden">
+              <div className="relative h-48 w-full">
+                <Image 
+                  src={project.image} 
+                  alt={project.title}
+                  fill
+                  style={{objectFit: 'cover'}}
+                />
+                {project.featured && (
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="primary">Featured</Badge>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between items-center">
-                <div className="space-x-2">
-                  <Link 
-                    href={`/admin/projects/${project.id}`}
-                    className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded text-sm font-medium"
-                  >
-                    Edit
-                  </Link>
-                  <button
-                    onClick={() => handleDeleteProject(project.id)}
-                    className="bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium"
-                  >
-                    Delete
-                  </button>
+              <CardBody>
+                <h2 className="text-xl font-bold mb-2">{project.title}</h2>
+                <p className="text-slate-600 dark:text-slate-300 mb-4">
+                  {project.description}
+                </p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {project.technologies.map((tech, index) => (
+                    <Badge key={index} variant="secondary" size="sm">{tech}</Badge>
+                  ))}
                 </div>
-                <div className="flex space-x-2">
-                  {project.liveDemo && (
-                    <a 
-                      href={project.liveDemo} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium"
+                <div className="flex justify-between items-center">
+                  <div className="space-x-2">
+                    <Link 
+                      href={`/admin/projects/${project.id}`}
+                      className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded text-sm font-medium"
                     >
-                      Live Demo
-                    </a>
-                  )}
-                  {project.sourceCode && (
-                    <a 
-                      href={project.sourceCode} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium"
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDeleteProject(project.id)}
+                      className="bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium"
                     >
-                      Source Code
-                    </a>
-                  )}
+                      Delete
+                    </button>
+                  </div>
+                  <div className="flex space-x-2">
+                    {project.liveDemo && (
+                      <a 
+                        href={project.liveDemo} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium"
+                      >
+                        Live Demo
+                      </a>
+                    )}
+                    {project.sourceCode && (
+                      <a 
+                        href={project.sourceCode} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium"
+                      >
+                        Source Code
+                      </a>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardBody>
-          </Card>
-        ))}
-      </div>
-
-      {projects.length === 0 && (
-        <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <p className="text-gray-500 dark:text-gray-400">
-            No projects found. Add a new project to get started.
-          </p>
+              </CardBody>
+            </Card>
+          ))}
         </div>
-      )}
-    </div>
+
+        {projects.length === 0 && (
+          <div className="text-center py-10 bg-white dark:bg-slate-800 rounded-lg shadow">
+            <p className="text-slate-500 dark:text-slate-400">
+              No projects found. Add a new project to get started.
+            </p>
+          </div>
+        )}
+      </AdminPageLayout>
+    </AdminLayout>
   );
 } 

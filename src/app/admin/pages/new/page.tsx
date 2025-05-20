@@ -146,22 +146,22 @@ export default function NewPagePage() {
               <label htmlFor="slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 URL Slug
               </label>
-              <div className="flex items-center">
-                <span className="text-gray-500 mr-2">/</span>
+              <div className="flex items-stretch">
+                <span className="text-gray-500 mr-2 flex items-center">/</span>
                 <input
                   type="text"
                   id="slug"
                   name="slug"
                   value={pageData.slug}
                   onChange={handleInputChange}
-                  className="flex-1 p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                   required
                   placeholder="e.g., contact"
                 />
                 <button
                   type="button"
                   onClick={generateSlug}
-                  className="ml-2 px-3 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md text-xs"
+                  className="ml-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md text-sm flex-none self-stretch"
                 >
                   Generate
                 </button>

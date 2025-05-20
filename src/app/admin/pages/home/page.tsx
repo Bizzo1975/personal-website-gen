@@ -3,8 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminLayout from '../../components/AdminLayout';
-import Button from '@/components/Button';
+import AdminPageLayout from '../../components/AdminPageLayout';
+import AdminFormLayout from '../../components/AdminFormLayout';
+import { AdminInput, AdminTextarea } from '../../components/AdminFormField';
 import Card from '@/components/Card';
+import Button from '@/components/Button';
 
 // Import SimpleMDE editor
 import dynamic from 'next/dynamic';
@@ -152,105 +155,60 @@ export default function AdminHomePageEditor() {
   
   return (
     <AdminLayout title="Edit Home Page">
-      <div className="space-y-6">
-        {saveSuccess && (
-          <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded">
-            Home page saved successfully! Redirecting...
+      <AdminPageLayout
+        status={
+          saveSuccess 
+            ? { type: 'success', message: 'Home page saved successfully! Redirecting...' }
+            : undefined
+        }
+      >
+        <AdminFormLayout 
+          onSubmit={handleSubmit}
+          isSubmitting={saving}
+          submitLabel="Save Home Page"
+        >
+          <AdminInput
+            id="name"
+            name="name"
+            label="Internal Name"
+            value={pageData.name || ''}
+            onChange={handleInputChange}
+            required
+          />
+
+          <AdminInput
+            id="title"
+            name="title"
+            label="Page Title"
+            value={pageData.title || ''}
+            onChange={handleInputChange}
+            required
+          />
+
+          <AdminInput
+            id="metaDescription"
+            name="metaDescription"
+            label="Meta Description"
+            value={pageData.metaDescription || ''}
+            onChange={handleInputChange}
+            helpText="Brief description for search engines (recommended: 150-160 characters)"
+          />
+
+          <div className="space-y-1">
+            <label htmlFor="content" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Content (Markdown)
+            </label>
+            <SimpleMDE
+              value={pageData.content || ''}
+              onChange={handleContentChange}
+              options={{
+                spellChecker: false,
+                status: false,
+              }}
+            />
           </div>
-        )}
-        
-        <Card variant="default">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Internal Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={pageData.name || ''}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  URL Slug
-                </label>
-                <input
-                  type="text"
-                  id="slug"
-                  name="slug"
-                  value="home"
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 bg-gray-100"
-                  disabled
-                />
-                <p className="text-xs text-gray-500 mt-1">This is a system page and the slug cannot be changed.</p>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Page Title
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={pageData.title || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="metaDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Meta Description
-              </label>
-              <textarea
-                id="metaDescription"
-                name="metaDescription"
-                value={pageData.metaDescription || ''}
-                onChange={handleInputChange}
-                rows={2}
-                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Content (Markdown)
-              </label>
-              <SimpleMDE
-                value={pageData.content || ''}
-                onChange={handleContentChange}
-                options={{
-                  spellChecker: false,
-                  status: false,
-                }}
-              />
-            </div>
-
-            <div className="flex justify-end gap-4">
-              <Button 
-                variant="outline" 
-                type="button" 
-                onClick={() => router.push('/admin/pages')}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      </div>
+        </AdminFormLayout>
+      </AdminPageLayout>
     </AdminLayout>
   );
 } 

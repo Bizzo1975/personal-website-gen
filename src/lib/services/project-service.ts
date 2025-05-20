@@ -1,4 +1,4 @@
-import dbConnect from '@/lib/db';
+import dbConnect, { isMockMode } from '@/lib/db';
 import Project from '@/lib/models/Project';
 import { SortOrder } from 'mongoose';
 
@@ -69,8 +69,7 @@ export interface ProjectQuery {
 
 // Helper function to determine if we should use mock data
 const useMockData = () => {
-  // Use mock data if no MongoDB URI or in development mode
-  return !process.env.MONGODB_URI || process.env.NODE_ENV === 'development';
+  return isMockMode();
 };
 
 export async function getProjects(query: ProjectQuery = {}): Promise<ProjectData[]> {

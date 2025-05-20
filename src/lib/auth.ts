@@ -1,5 +1,5 @@
 import { compare, hash } from 'bcrypt';
-import dbConnect from './db';
+import dbConnect, { isMockMode } from './db';
 import User from './models/User';
 
 // Mock user data for development
@@ -17,8 +17,8 @@ const mockUsers = [
 
 // Helper function to determine if we should use mock data
 const useMockData = () => {
-  // Use mock data if no MongoDB URI or in development mode
-  return !process.env.MONGODB_URI || process.env.NODE_ENV === 'development';
+  // Use the isMockMode function from db.ts
+  return isMockMode();
 };
 
 export async function createUser(userData: {

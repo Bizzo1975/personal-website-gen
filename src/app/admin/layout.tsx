@@ -39,61 +39,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const navLinks = [
-    { href: '/admin/dashboard', label: 'Dashboard' },
-    { href: '/admin/pages/home', label: 'Home Page' },
-    { href: '/admin/pages/about', label: 'About Me' },
-    { href: '/admin/contact', label: 'Contact' },
-    { href: '/admin/posts', label: 'Blog Posts' },
-    { href: '/admin/projects', label: 'Projects' },
-    { href: '/admin/settings/profile', label: 'Profile' },
-    { href: '/admin/settings', label: 'Settings' },
-  ];
-
-  return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-gray-800 shadow-md flex flex-col">
-        <div className="p-4 border-b dark:border-gray-700">
-          <h2 className="text-xl font-bold text-primary-600 dark:text-primary-400">Admin Panel</h2>
-        </div>
-        <nav className="p-4 flex-grow">
-          <ul className="space-y-2">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
-              return (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className={`block p-2 rounded-md ${
-                      isActive
-                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-        
-        {/* Add New Page Button at bottom */}
-        <div className="p-4 border-t dark:border-gray-700">
-          <Link 
-            href="/admin/pages/new"
-            className="flex items-center justify-center gap-2 w-full py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
-          >
-            <span>Add New Page</span>
-          </Link>
-        </div>
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto p-8">
-        {children}
-      </main>
-    </div>
-  );
+  // Just return the children - the AdminLayout component will handle the UI
+  return <>{children}</>;
 } 

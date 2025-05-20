@@ -1,4 +1,4 @@
-import dbConnect from '@/lib/db';
+import dbConnect, { isMockMode } from '@/lib/db';
 import Profile from '@/lib/models/Profile';
 
 export interface ProfileData {
@@ -39,7 +39,7 @@ const MOCK_PROFILE_KEY = 'mockProfileData';
 
 // Helper function to determine if we should use mock data
 const useMockData = () => {
-  return !process.env.MONGODB_URI || process.env.NODE_ENV === 'development';
+  return isMockMode();
 };
 
 // Function to get mock profile from global store

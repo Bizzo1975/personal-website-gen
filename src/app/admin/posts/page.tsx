@@ -4,9 +4,11 @@ import '@/styles/globals.css';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import AdminLayout from '../components/AdminLayout';
 import Card, { CardBody } from '@/components/Card';
-import Button from '@/components/Button';
 import Badge from '@/components/Badge';
+import AdminPageLayout from '../components/AdminPageLayout';
+import { AdminFilterBar, AdminFilterButton } from '../components/AdminDataTable';
 
 // Mock blog post data (will be replaced with API calls)
 const mockPosts = [
@@ -61,52 +63,39 @@ export default function AdminPostsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Blog Posts</h1>
-          <p className="text-gray-600 dark:text-gray-300">Manage your blog posts</p>
-        </div>
-        <Button href="/admin/posts/new">Create New Post</Button>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button
+    <AdminLayout title="Blog Posts">
+      <AdminPageLayout
+        title="Blog Posts"
+        description="Manage your blog posts"
+        action={{
+          label: "Create New Post",
+          href: "/admin/posts/new"
+        }}
+      >
+        <AdminFilterBar>
+          <AdminFilterButton
+            isActive={filter === 'all'}
             onClick={() => setFilter('all')}
-            className={`px-3 py-1 text-sm rounded-full ${
-              filter === 'all'
-                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            }`}
           >
             All Posts
-          </button>
-          <button
+          </AdminFilterButton>
+          <AdminFilterButton
+            isActive={filter === 'published'}
             onClick={() => setFilter('published')}
-            className={`px-3 py-1 text-sm rounded-full ${
-              filter === 'published'
-                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            }`}
           >
             Published
-          </button>
-          <button
+          </AdminFilterButton>
+          <AdminFilterButton
+            isActive={filter === 'drafts'}
             onClick={() => setFilter('drafts')}
-            className={`px-3 py-1 text-sm rounded-full ${
-              filter === 'drafts'
-                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            }`}
           >
             Drafts
-          </button>
-        </div>
+          </AdminFilterButton>
+        </AdminFilterBar>
 
         {filteredPosts.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-gray-500 dark:text-gray-400">
+          <div className="text-center py-10 bg-white dark:bg-slate-800 rounded-lg shadow">
+            <p className="text-slate-500 dark:text-slate-400">
               No posts found. Create a new post to get started.
             </p>
           </div>
@@ -123,10 +112,10 @@ export default function AdminPostsPage() {
                           <Badge variant="warning" size="sm">Draft</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
                         {new Date(post.date).toLocaleDateString()} • {post.readTime} min read
                       </p>
-                      <p className="text-gray-600 dark:text-gray-300 mb-2">{post.excerpt}</p>
+                      <p className="text-slate-600 dark:text-slate-300 mb-2">{post.excerpt}</p>
                       <div className="flex flex-wrap gap-1">
                         {post.tags.map((tag, index) => (
                           <Badge key={index} variant="secondary" size="sm">{tag}</Badge>
@@ -153,7 +142,7 @@ export default function AdminPostsPage() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </AdminPageLayout>
+    </AdminLayout>
   );
 } 

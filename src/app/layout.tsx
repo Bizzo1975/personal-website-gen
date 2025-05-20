@@ -5,8 +5,6 @@ import '@/styles/globals.css';
 import '@fontsource/inter';
 import '@fontsource/jetbrains-mono';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import Providers from './providers';
 import SkipToContent from '@/components/SkipToContent';
 
@@ -30,11 +28,7 @@ export default function RootLayout({
           <Providers>
             <div className="relative z-10 flex flex-col min-h-screen">
               <SkipToContent />
-              <Header />
-              <main id="main-content" className="container mx-auto px-4 py-8 flex-grow" tabIndex={-1}>
-                {children}
-              </main>
-              <Footer />
+              {children}
             </div>
           </Providers>
         </ThemeProvider>

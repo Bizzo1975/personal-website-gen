@@ -160,50 +160,21 @@ export default function AdminAboutPageEditor() {
           </div>
         )}
         
-        <div className="bg-blue-100 dark:bg-blue-900 border border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-300 px-4 py-3 rounded flex justify-between items-center">
-          <p>
-            <strong>About Page:</strong> To edit profile information, photo, skills, and social links, use the Profile Editor.
-          </p>
-          <Link 
-            href="/admin/settings/profile" 
-            className="ml-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium"
-          >
-            Go to Profile Editor
-          </Link>
-        </div>
-        
         <Card variant="default">
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Internal Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={pageData.name || ''}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  URL Slug
-                </label>
-                <input
-                  type="text"
-                  id="slug"
-                  name="slug"
-                  value="about"
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 bg-gray-100"
-                  disabled
-                />
-                <p className="text-xs text-gray-500 mt-1">This is a system page and the slug cannot be changed.</p>
-              </div>
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Internal Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={pageData.name || ''}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
+                required
+              />
             </div>
 
             <div>
