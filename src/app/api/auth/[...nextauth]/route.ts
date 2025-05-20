@@ -53,13 +53,29 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Initial sign in
       if (user) {
         console.log("🔑 Creating JWT for user:", user.email);
         token.role = user.role;
         token.id = user.id;
+        // Set token creation time
+        token.createdAt = Date.now();
+        // Set token expiry for rotation (12 hours)
+        token.rotationExpiry = Date.now() + 12 * 60 * 60 * 1000;
       }
-      return token;
+      
+      // Return previous token if the token hasn't expired yet
+      if (Date.now() < (token.rotationExpiry as number)) {
+        return token;
+      }
+      
+      // Token has expired, create a new one with extended expiry
+      console.log("🔄 Rotating token for user ID:", token.id);
+      return {
+        ...token,
+        rotationExpiry: Date.now() + 12 * 60 * 60 * 1000,
+      };
     },
     async session({ session, token }) {
       if (session.user) {

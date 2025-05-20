@@ -1,0 +1,12 @@
+This file is a placeholder to ensure the projects image directory exists in version control.
+
+The following images should be placed in this directory:
+- ecommerce-platform.jpg
+- task-management.jpg
+- ai-image-generator.jpg
+
+These images should be properly optimized for web use:
+- Resolution: Recommended 1200px × 800px (16:9 aspect ratio)
+- Format: .jpg or .webp for photos
+- Size: Under 200KB each
+- Optimization: Use tools like ImageOptim, TinyPNG, or Next.js Image Optimization

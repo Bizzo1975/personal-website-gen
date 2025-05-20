@@ -1,6 +1,9 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// Import custom test setup for TypeScript type definitions
+import './src/__tests__/setup';
+
 // Mock next/router
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({

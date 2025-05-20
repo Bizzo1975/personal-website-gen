@@ -16,6 +16,9 @@
 // Import commands.js using ES2015 syntax:
 import './commands'
 
+// Import admin testing commands
+import './admin-commands'
+
 // Hide fetch/XHR requests in console
 const app = window.top;
 if (app && !app.document.head.querySelector('[data-hide-command-log-request]')) {

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 // Get the MongoDB URI from environment variables
 const MONGODB_URI = process.env.MONGODB_URI;
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
+const DB_NAME = process.env.DB_NAME || 'personal_website';
 
 // Define types for cached mongoose connection
 interface MongooseConnection {
@@ -44,11 +45,25 @@ async function dbConnect() {
 
   // Connect to MongoDB if we have a URI and aren't connected yet
   if (!cached.promise) {
+    // Enhanced MongoDB connection options with proper pooling
     const opts = {
       bufferCommands: false,
+      dbName: DB_NAME,
+      // Connection pool settings
+      maxPoolSize: 10, // Maximum number of connections in the pool
+      minPoolSize: 2,  // Minimum number of connections to maintain in the pool
+      maxIdleTimeMS: 45000, // How long a connection can be idle before being closed
+      socketTimeoutMS: 30000, // How long to wait for socket operations
+      connectTimeoutMS: 10000, // How long to wait for an initial connection
+      // Heartbeat to keep connections alive 
+      heartbeatFrequencyMS: 10000,
+      // Auto reconnect settings
+      serverSelectionTimeoutMS: 5000, // Timeout for server selection
+      retryWrites: true,
+      retryReads: true
     };
 
-    console.log('Attempting to connect to MongoDB...');
+    console.log('Attempting to connect to MongoDB with connection pooling...');
     
     cached.promise = mongoose.connect(MONGODB_URI, opts)
       .then((mongoose) => {

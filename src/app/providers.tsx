@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import PageTransition from '@/components/PageTransition';
@@ -10,6 +10,15 @@ export default function Providers({
 }: {
   children: React.ReactNode;
 }) {
+  // Initialize axe-core for accessibility testing in development mode
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      import('@/lib/axe-helper').then(axeHelper => {
+        axeHelper.initializeAxe();
+      });
+    }
+  }, []);
+
   return (
     <SessionProvider>
       <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
