@@ -47,7 +47,8 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     { href: '/admin/contact', label: 'Contact', icon: <BiEnvelope className="w-5 h-5" /> },
     { href: '/admin/posts', label: 'Posts', icon: <BiNews className="w-5 h-5" /> },
     { href: '/admin/projects', label: 'Projects', icon: <BiCodeBlock className="w-5 h-5" /> },
-    { href: '/admin/settings/profile', label: 'Settings', icon: <BiCog className="w-5 h-5" /> },
+    { href: '/admin/settings/profile', label: 'Profile', icon: <BiUser className="w-5 h-5" /> },
+    { href: '/admin/settings/site', label: 'Site Settings', icon: <BiCog className="w-5 h-5" /> },
   ];
   
   const isActive = (path: string) => {
@@ -100,8 +101,8 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
           </div>
         </div>
         
-        {/* Main Content - removed the header section */}
-        <div className="flex-1 bg-slate-50 dark:bg-slate-900 min-h-screen">
+        {/* Main Content with 20% grey background */}
+        <div className="flex-1 bg-gray-200 dark:bg-gray-800 min-h-screen">
           <main className="container mx-auto px-4 py-6">
             {children}
           </main>

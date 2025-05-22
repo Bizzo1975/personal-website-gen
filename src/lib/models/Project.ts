@@ -44,4 +44,7 @@ const ProjectSchema = new Schema({
   },
 });
 
-export default mongoose.models.Project || mongoose.model('Project', ProjectSchema); 
+// Fix for "mongoose.models is undefined" error
+export default (mongoose.models && mongoose.models.Project) 
+  ? mongoose.models.Project 
+  : mongoose.model('Project', ProjectSchema); 

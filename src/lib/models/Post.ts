@@ -84,8 +84,9 @@ PostSchema.pre('save', async function(next) {
   if (this.isModified('category') || 
      (this.isModified('published') && this.published && this.category)) {
     try {
-      const Category = mongoose.models.Category;
-      if (Category) {
+      // Check if Category model exists
+      if (mongoose.models && mongoose.models.Category) {
+        const Category = mongoose.models.Category;
         // Update the post count for the category
         await Category.findByIdAndUpdate(
           this.category,
@@ -99,4 +100,7 @@ PostSchema.pre('save', async function(next) {
   next();
 });
 
-export default mongoose.models.Post || mongoose.model<PostDocument>('Post', PostSchema); 
+// Fix for "mongoose.models is undefined" error
+export default (mongoose.models && mongoose.models.Post) 
+  ? mongoose.models.Post 
+  : mongoose.model<PostDocument>('Post', PostSchema); 

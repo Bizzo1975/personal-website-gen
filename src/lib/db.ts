@@ -4,6 +4,8 @@ import mongoose from 'mongoose';
 const MONGODB_URI = process.env.MONGODB_URI;
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 const DB_NAME = process.env.DB_NAME || 'personal_website';
+// Allow forced mock mode via environment variables
+const FORCE_MOCK_MODE = process.env.MOCK_DATA === 'true';
 
 // Define types for cached mongoose connection
 interface MongooseConnection {
@@ -19,13 +21,25 @@ declare global {
 
 let cached: MongooseConnection = global.mongoose || { conn: null, promise: null, mockMode: false };
 
+// Initialize mock mode early if forced via environment
+if (FORCE_MOCK_MODE) {
+  console.log('🔶 Forced mock data mode enabled via environment variable');
+  cached.mockMode = true;
+}
+
 if (!global.mongoose) {
   global.mongoose = cached;
 }
 
 async function dbConnect() {
-  // If we already have a connection, return it
+  // If we already have a connection or we're in mock mode, return immediately
   if (cached.conn) {
+    return cached.conn;
+  }
+  
+  // If mock mode is forced, skip connection attempt entirely
+  if (FORCE_MOCK_MODE) {
+    cached.conn = mongoose;
     return cached.conn;
   }
 
@@ -98,7 +112,7 @@ async function dbConnect() {
 
 // Helper function to check if we're using mock data
 export function isMockMode() {
-  return cached.mockMode || !MONGODB_URI;
+  return cached.mockMode || FORCE_MOCK_MODE || !MONGODB_URI;
 }
 
 export default dbConnect;

@@ -1,24 +1,26 @@
 import React from 'react';
-import Link from 'next/link';
-import { getPosts, PostData } from '@/lib/services/post-service';
-import BlogClientPage from './blog-client-page';
+import { getPosts } from '@/lib/services/post-service';
+import BlogContent from './blog-content';
 
-export async function generateMetadata() {
-  return {
-    title: 'Blog | Personal Website',
-    description: 'Read my latest thoughts, tutorials, and insights on web development and technology.',
-  };
-}
+export const metadata = {
+  title: 'Blog - Personal Website',
+  description: 'Read my latest articles and thoughts on web development, design, and technology.',
+};
 
 export default async function BlogPage() {
-  // Fetch posts from the API with pagination and sorting
-  const posts = await getPosts({
-    published: true,
-    limit: 10,
-    sort: { date: -1 }
-  });
-
-  return <BlogClientPage initialPosts={posts} />;
+  console.log('🔄 Fetching blog posts...');
+  
+  // Get blog posts from the database
+  const posts = await getPosts({ limit: 20 });
+  
+  if (posts.length > 0) {
+    console.log(`📝 Retrieved ${posts.length} blog posts`);
+  } else {
+    console.log('❓ No blog posts found, will use default content');
+  }
+  
+  // Render the page
+  return <BlogContent posts={posts} />;
 }
 
  

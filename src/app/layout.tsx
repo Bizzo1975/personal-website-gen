@@ -13,6 +13,17 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'John Doe | Developer Portfolio',
   description: 'Personal website, portfolio and blog of John Doe - Full Stack Developer',
+  icons: {
+    icon: [
+      { url: '/images/wizard-icon.svg' },
+      { url: '/images/wizard-logo.svg', type: 'image/svg+xml' }
+    ],
+    apple: '/images/wizard-logo.svg',
+    other: {
+      rel: 'mask-icon',
+      url: '/images/wizard-logo.svg',
+    },
+  },
 };
 
 export default function RootLayout({

@@ -1,76 +1,64 @@
 'use client';
 
-import React, { useState } from 'react';
-import Image, { ImageProps } from 'next/image';
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-interface OptimizedImageProps extends Omit<ImageProps, 'placeholder' | 'blurDataURL'> {
-  placeholderType?: 'blur' | 'empty' | 'color';
-  placeholderColor?: string;
+interface OptimizedImageProps {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
   className?: string;
-  imgClassName?: string;
-  aspectRatio?: number;
+  priority?: boolean;
+  quality?: number;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  blur?: boolean;
 }
 
-export default function OptimizedImage({
+const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
   alt,
-  width,
-  height,
-  placeholderType = 'empty',
-  placeholderColor = '#f3f4f6', // Light gray default
-  className,
-  imgClassName,
-  aspectRatio,
-  ...rest
-}: OptimizedImageProps) {
-  const [isLoading, setIsLoading] = useState(true);
+  width = 800,
+  height = 500,
+  className = '',
+  priority = false,
+  quality = 85,
+  objectFit = 'cover',
+  blur = false,
+}) => {
+  const [imgSrc, setImgSrc] = useState<string>(src);
+  const [isError, setIsError] = useState<boolean>(false);
+  const placeholderSrc = '/images/projects/placeholder.jpg';
   
-  // Handle image load complete
-  const handleLoadingComplete = () => {
-    setIsLoading(false);
+  // Reset the image source when the src prop changes
+  useEffect(() => {
+    setImgSrc(src);
+    setIsError(false);
+  }, [src]);
+
+  // Always use standard img tag in development to avoid Next.js image optimization issues
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  const handleError = () => {
+    console.warn(`Image failed to load: ${imgSrc}`);
+    setIsError(true);
+    setImgSrc(placeholderSrc);
   };
 
-  // Generate inline styles for aspect ratio container if provided
-  const containerStyle: React.CSSProperties = {};
-  if (aspectRatio) {
-    containerStyle.paddingBottom = `${(1 / aspectRatio) * 100}%`;
-  }
-
+  // Use a standard img tag for simplicity in development or if there was an error
   return (
-    <div 
-      className={cn(
-        'relative overflow-hidden', 
-        aspectRatio && 'w-full h-0',
-        className
-      )}
-      style={containerStyle}
-    >
-      {/* Show placeholder while loading */}
-      {isLoading && placeholderType === 'color' && (
-        <div 
-          className="absolute inset-0 z-0 animate-pulse"
-          style={{ backgroundColor: placeholderColor }}
-        />
-      )}
-      
-      <Image
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        onLoadingComplete={handleLoadingComplete}
-        className={cn(
-          'transition-opacity duration-300',
-          isLoading ? 'opacity-0' : 'opacity-100',
-          imgClassName
-        )}
-        placeholder={placeholderType === 'blur' ? 'blur' : 'empty'}
-        blurDataURL={placeholderType === 'blur' ? 
-          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzAwIiBoZWlnaHQ9IjQ3NSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiLz4=' : 
-          undefined}
-        {...rest}
-      />
-    </div>
+    <img
+      src={isError ? placeholderSrc : imgSrc}
+      alt={alt}
+      width={width}
+      height={height}
+      className={`${className} ${blur ? 'blur-sm hover:blur-none transition-all duration-500' : ''}`}
+      style={{ objectFit }}
+      onError={handleError}
+      loading="lazy"
+    />
   );
-} 
+};
+
+export default OptimizedImage; 

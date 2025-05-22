@@ -3,7 +3,7 @@
 import React from 'react';
 import { MDXRemote } from 'next-mdx-remote';
 import Link from 'next/link';
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
 
 // Define the components to be used in MDX
 const components = {
@@ -23,7 +23,7 @@ const components = {
       </a>
     );
   },
-  // Enhanced image component with Next.js Image
+  // Enhanced image component with OptimizedImage
   img: ({ src, alt, ...props }: any) => {
     if (!src) return null;
     
@@ -31,11 +31,15 @@ const components = {
     if (src.startsWith('http')) {
       return (
         <div className="relative w-full h-64 md:h-96 my-8 overflow-hidden rounded-lg">
-          <Image 
+          <OptimizedImage 
             src={src} 
             alt={alt || ''} 
             fill 
             style={{ objectFit: 'cover' }}
+            placeholderType="blur"
+            fallbackSrc="/images/placeholder-image.png"
+            quality={80}
+            sizes="(max-width: 768px) 100vw, 800px"
             className="transition-transform hover:scale-105 duration-300"
           />
         </div>
@@ -45,10 +49,16 @@ const components = {
     // For local images
     return (
       <div className="relative w-full h-64 md:h-96 my-8 overflow-hidden rounded-lg">
-        <img 
+        <OptimizedImage 
           src={src} 
           alt={alt || ''} 
-          className="w-full h-full object-cover transition-transform hover:scale-105 duration-300" 
+          fill
+          style={{ objectFit: 'cover' }}
+          placeholderType="blur"
+          fallbackSrc="/images/placeholder-image.png"
+          quality={85}
+          sizes="(max-width: 768px) 100vw, 800px"
+          className="transition-transform hover:scale-105 duration-300"
           {...props}
         />
       </div>
@@ -69,7 +79,7 @@ export default function MarkdownContent({ content }: MarkdownContentProps) {
   }
   
   return (
-    <div className="prose prose-lg dark:prose-invert max-w-none">
+    <div className="prose prose-lg dark:prose-invert max-w-none !mt-0">
       <MDXRemote {...content} components={components} />
     </div>
   );

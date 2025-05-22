@@ -87,9 +87,11 @@ interface AdminFilterBarProps {
 
 export function AdminFilterBar({ children, className = '' }: AdminFilterBarProps) {
   return (
-    <div className={`bg-white dark:bg-slate-800 p-4 rounded-lg shadow mb-6 flex flex-wrap gap-2 ${className}`}>
-      {children}
-    </div>
+    <Card variant="default" className="mb-6">
+      <div className={`p-4 flex flex-wrap gap-2 ${className}`}>
+        {children}
+      </div>
+    </Card>
   );
 }
 

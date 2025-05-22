@@ -54,7 +54,7 @@ export function TagInput({
           placeholder={placeholder}
           className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 
                      rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 
-                     bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                     bg-white dark:bg-white text-slate-900 dark:text-slate-800"
           aria-label={label}
         />
       </div>
@@ -65,14 +65,18 @@ export function TagInput({
       
       <div className="flex flex-wrap gap-2 mt-2">
         {value.map((tag, index) => (
-          <Badge
-            key={index}
-            variant="secondary"
+          <div 
+            key={index} 
+            className="flex items-center cursor-pointer" 
             onClick={() => removeTag(tag)}
-            className="cursor-pointer"
           >
-            {tag} &times;
-          </Badge>
+            <Badge
+              variant="secondary"
+              className="pr-1"
+            >
+              {tag} <span className="ml-1 text-xs">&times;</span>
+            </Badge>
+          </div>
         ))}
       </div>
     </div>

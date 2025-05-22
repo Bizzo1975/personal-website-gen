@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
-import Header from '@/components/Header';
+import React, { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
-import { useEffect, useState } from 'react';
+import ModernNavbar from '@/components/ModernNavbar';
 import { ProfileData } from '@/lib/services/profile-service';
+import { SiteSettings, getSiteSettings } from '@/lib/services/site-settings-service';
 
 export default function MainLayout({
   children,
@@ -17,30 +17,62 @@ export default function MainLayout({
     skills: [],
   });
   
-  // Fetch profile data on component mount
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+    logoUrl: '/images/wizard-icon.svg',
+    logoText: 'John Doe',
+    footerText: 'Built with Next.js and Tailwind CSS',
+    navbarStyle: 'default',
+    navbarLinks: [
+      { label: 'Home', url: '/', isExternal: false },
+      { label: 'About', url: '/about', isExternal: false },
+      { label: 'Projects', url: '/projects', isExternal: false },
+      { label: 'Blog', url: '/blog', isExternal: false },
+      { label: 'Contact', url: '/contact', isExternal: false },
+    ]
+  });
+  
+  // Fetch profile data and site settings on component mount
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/profile');
-        if (response.ok) {
-          const data = await response.json();
-          setProfileData(data);
+        // Fetch profile data
+        const profileResponse = await fetch('/api/profile');
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          setProfileData(profileData);
         }
+        
+        // Fetch site settings
+        const settings = await getSiteSettings();
+        setSiteSettings(settings);
       } catch (error) {
-        console.error('Failed to fetch profile data:', error);
+        console.error('Failed to fetch data:', error);
       }
     };
     
-    fetchProfile();
+    fetchData();
   }, []);
 
   return (
-    <>
-      <Header profileName={profileData.name} />
-      <main id="main-content" className="container mx-auto px-4 py-8 flex-grow" tabIndex={-1}>
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
+      {/* Background decorative elements */}
+      <div className="fixed inset-0 bg-grid opacity-10 dark:opacity-5 z-0 pointer-events-none"></div>
+      
+      {/* Modern Navbar */}
+      <ModernNavbar siteSettings={siteSettings} />
+      
+      {/* Main content - Add padding top for the fixed navbar */}
+      <main id="main-content" className="flex-grow z-10 relative mt-16 pt-4" tabIndex={-1}>
         {children}
       </main>
-      <Footer profileName={profileData.name} />
-    </>
+      
+      {/* Footer with site settings */}
+      <Footer 
+        profileName={profileData.name}
+        footerText={siteSettings.footerText}
+        bioText={siteSettings.bioText}
+        logoUrl={siteSettings.logoUrl}
+      />
+    </div>
   );
 } 

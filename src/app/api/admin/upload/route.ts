@@ -1,81 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import { uploadImage } from '@/lib/services/upload-service';
+import { writeFile } from 'fs/promises';
+import path from 'path';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { v4 as uuidv4 } from 'uuid';
 
-// Maximum file size for uploads (5MB)
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 /**
  * Handle image uploads for the rich text editor
  */
 export async function POST(request: NextRequest) {
+  // Check authentication
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
   try {
-    // Check authentication
-    const session = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    
-    if (!session || session.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    
-    // Parse the form data
     const formData = await request.formData();
-    const file = formData.get('file') as File;
-    
-    // Check if file exists
+    const file = formData.get('file') as File | null;
+    const type = formData.get('type') as string | null;
+
     if (!file) {
       return NextResponse.json(
-        { success: false, error: 'No file provided' },
+        { error: 'No file uploaded' },
         { status: 400 }
       );
     }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const filename = file.name.replace(/\s+/g, '-').toLowerCase();
+    const ext = path.extname(filename);
+    const uniqueFilename = `${uuidv4()}${ext}`;
     
-    // Check file size
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: `File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB. Maximum size: ${MAX_FILE_SIZE / 1024 / 1024}MB` 
-        },
-        { status: 400 }
-      );
+    // Determine the directory based on the upload type
+    let uploadDir = '';
+    if (type === 'logo') {
+      uploadDir = path.join(process.cwd(), 'public', 'images');
+    } else if (type === 'project') {
+      uploadDir = path.join(process.cwd(), 'public', 'images', 'projects');
+    } else if (type === 'profile') {
+      uploadDir = path.join(process.cwd(), 'public', 'images', 'profiles');
+    } else {
+      uploadDir = path.join(process.cwd(), 'public', 'uploads', 'images');
     }
     
-    // Convert file to buffer
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    // Create the file path
+    const filePath = path.join(uploadDir, uniqueFilename);
     
-    // Upload the image
-    const result = await uploadImage(
-      fileBuffer,
-      file.name,
-      file.type
-    );
+    // Write the file to the filesystem
+    await writeFile(filePath, buffer);
     
-    if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      );
+    // Construct the URL path
+    let urlPath = '';
+    if (type === 'logo') {
+      urlPath = `/images/${uniqueFilename}`;
+    } else if (type === 'project') {
+      urlPath = `/images/projects/${uniqueFilename}`;
+    } else if (type === 'profile') {
+      urlPath = `/images/profiles/${uniqueFilename}`;
+    } else {
+      urlPath = `/uploads/images/${uniqueFilename}`;
     }
     
-    // Return success with the image URL
-    return NextResponse.json(
-      { 
-        success: true, 
-        url: result.url,
-        fileName: result.fileName,
-        fileSize: result.fileSize
-      },
-      { status: 200 }
-    );
-    
+    return NextResponse.json({ 
+      success: true,
+      filename: uniqueFilename,
+      path: urlPath
+    });
   } catch (error) {
-    console.error('Error uploading image:', error);
-    
+    console.error('Error uploading file:', error);
     return NextResponse.json(
-      { success: false, error: 'An unexpected error occurred' },
+      { error: 'Failed to upload file' },
       { status: 500 }
     );
   }

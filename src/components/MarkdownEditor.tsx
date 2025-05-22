@@ -63,7 +63,7 @@ export default function MarkdownEditor({
             />
           </Tab.Panel>
           <Tab.Panel>
-            <div className="min-h-[250px] p-4 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 overflow-y-auto">
+            <div className="min-h-[250px] p-4 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-white overflow-y-auto">
               {value ? (
                 <MarkdownContent content={{ compiledSource: value }} />
               ) : (

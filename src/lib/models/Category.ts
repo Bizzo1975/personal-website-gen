@@ -49,7 +49,9 @@ const CategorySchema = new Schema<CategoryDocument>(
   }
 );
 
-// Create or use existing model
-const Category = mongoose.models.Category || mongoose.model<CategoryDocument>('Category', CategorySchema);
+// Fix for "mongoose.models is undefined" error
+const Category = (mongoose.models && mongoose.models.Category) 
+  ? mongoose.models.Category 
+  : mongoose.model<CategoryDocument>('Category', CategorySchema);
 
 export default Category;

@@ -16,6 +16,33 @@ export interface ProjectData {
   updatedAt: Date;
 }
 
+// Helper to provide robust image paths with fallbacks
+export function getImagePath(imagePath: string | undefined): string {
+  if (!imagePath) return '/images/projects/placeholder.jpg';
+  
+  // For static image paths, always return the direct path
+  if (imagePath.startsWith('/')) {
+    // Clean up any potential double slashes
+    const cleanPath = imagePath.replace(/\/+/g, '/');
+    
+    // Add a development cache-busting parameter if in a local image path
+    if (process.env.NODE_ENV === 'development') {
+      return `${cleanPath}`;
+    }
+    
+    return cleanPath;
+  }
+  
+  // For external images, validate URL and return as is
+  try {
+    new URL(imagePath);
+    return imagePath;
+  } catch (e) {
+    console.warn(`Invalid image URL: ${imagePath}, using placeholder instead`);
+    return '/images/projects/placeholder.jpg';
+  }
+}
+
 // Mock data for development when MongoDB is not available
 const mockProjects: ProjectData[] = [
   {
@@ -89,6 +116,12 @@ export async function getProjects(query: ProjectQuery = {}): Promise<ProjectData
       return b.updatedAt.getTime() - a.updatedAt.getTime();
     });
     
+    // Process image paths to ensure they're robust
+    filteredProjects = filteredProjects.map(project => ({
+      ...project,
+      image: getImagePath(project.image)
+    }));
+    
     // Apply pagination
     return filteredProjects.slice(skip, skip + limit);
   }
@@ -115,7 +148,7 @@ export async function getProjects(query: ProjectQuery = {}): Promise<ProjectData
       title: project.title,
       slug: project.slug,
       description: project.description,
-      image: project.image,
+      image: getImagePath(project.image),
       technologies: project.technologies,
       liveDemo: project.liveDemo,
       sourceCode: project.sourceCode,
@@ -125,7 +158,11 @@ export async function getProjects(query: ProjectQuery = {}): Promise<ProjectData
     }));
   } catch (error) {
     console.error('Error fetching projects:', error);
-    return mockProjects; // Return mock projects as fallback
+    // Return mock projects as fallback with processed image paths
+    return mockProjects.map(project => ({
+      ...project,
+      image: getImagePath(project.image)
+    }));
   }
 }
 
@@ -133,7 +170,13 @@ export async function getProjectBySlug(slug: string): Promise<ProjectData | null
   // Use mock data if MongoDB is not available
   if (useMockData()) {
     const project = mockProjects.find(p => p.slug === slug);
-    return project || null;
+    if (!project) return null;
+    
+    // Ensure the image path is robust
+    return {
+      ...project,
+      image: getImagePath(project.image)
+    };
   }
   
   // Otherwise, use MongoDB
@@ -148,7 +191,7 @@ export async function getProjectBySlug(slug: string): Promise<ProjectData | null
       title: project.title,
       slug: project.slug,
       description: project.description,
-      image: project.image,
+      image: getImagePath(project.image),
       technologies: project.technologies,
       liveDemo: project.liveDemo,
       sourceCode: project.sourceCode,
@@ -161,6 +204,11 @@ export async function getProjectBySlug(slug: string): Promise<ProjectData | null
     
     // Fallback to mock data
     const project = mockProjects.find(p => p.slug === slug);
-    return project || null;
+    if (!project) return null;
+    
+    return {
+      ...project,
+      image: getImagePath(project.image)
+    };
   }
 } 

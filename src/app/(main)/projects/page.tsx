@@ -1,6 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { getProjects } from '@/lib/services/project-service';
+import { getPageBySlug } from '@/lib/services/page-service';
 import ProjectsClientPage from './projects-client-page';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,5 +18,8 @@ export default async function ProjectsPage() {
     sort: { updatedAt: -1 }
   });
   
-  return <ProjectsClientPage projects={projects} />;
+  // Fetch page data for the projects page
+  const pageData = await getPageBySlug('projects');
+  
+  return <ProjectsClientPage projects={projects} pageData={pageData} />;
 }

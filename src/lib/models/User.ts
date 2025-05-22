@@ -26,7 +26,10 @@ const UserSchema = new Schema({
   },
 });
 
-// Check if the model exists before creating it
-const User = mongoose.models.User || mongoose.model('User', UserSchema);
+// Fix for "mongoose.models is undefined" error
+// Check if mongoose.models exists before trying to access it
+const User = (mongoose.models && mongoose.models.User) 
+  ? mongoose.models.User 
+  : mongoose.model('User', UserSchema);
 
 export default User; 

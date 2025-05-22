@@ -9,6 +9,8 @@ export interface PageData {
   slug: string;
   content: string;
   metaDescription: string;
+  headerTitle: string;
+  headerSubtitle: string;
   updatedAt: Date;
 }
 
@@ -22,6 +24,8 @@ const convertToPageData = (doc: any): PageData | null => {
     slug: doc.slug,
     content: doc.content,
     metaDescription: doc.metaDescription,
+    headerTitle: doc.headerTitle || '',
+    headerSubtitle: doc.headerSubtitle || '',
     updatedAt: doc.updatedAt,
   };
 };
@@ -47,6 +51,8 @@ I build responsive, accessible, and performant web applications using React, Nex
 Feel free to explore my projects and blog posts, or get in touch via the contact page.
     `,
     metaDescription: 'Personal website and portfolio of a full-stack developer',
+    headerTitle: 'Welcome to My Portfolio',
+    headerSubtitle: 'Explore my projects, skills, and experience as a developer',
     updatedAt: new Date(),
   },
   {
@@ -75,6 +81,8 @@ I started programming in college and quickly fell in love with web development. 
 - Bachelor's in Computer Science, University of Technology (2018)
     `,
     metaDescription: 'Learn more about my background, skills, and experience as a developer',
+    headerTitle: 'About Me',
+    headerSubtitle: 'Learn more about my background, experience, and the technologies I work with.',
     updatedAt: new Date(),
   }
 ];
@@ -117,6 +125,8 @@ export async function getPageBySlug(slug: string): Promise<PageData | null> {
     
     // Use mock data if MongoDB is not available
     if (useMockData()) {
+      // Always ensure mock data is initialized
+      initMockPages();
       const mockPagesList = getMockPages();
       const page = mockPagesList.find(p => p.slug === pageSlug);
       console.log(`📖 Getting page by slug: ${pageSlug}`, page ? 'Found' : 'Not found');
@@ -129,6 +139,9 @@ export async function getPageBySlug(slug: string): Promise<PageData | null> {
     return convertToPageData(page);
   } catch (error) {
     console.error('Error fetching page by slug:', error);
+    
+    // Always initialize mock data in error cases
+    initMockPages();
     
     // Fallback to mock data on error
     if (slug === 'home' || slug === 'about') {
@@ -165,6 +178,8 @@ export async function getAllPages(): Promise<PageData[]> {
   try {
     // Use mock data if MongoDB is not available
     if (useMockData()) {
+      // Always ensure mock data is initialized
+      initMockPages();
       const mockPagesList = getMockPages();
       console.log(`📚 Getting all pages:`, mockPagesList.length, 'pages');
       return [...mockPagesList];
@@ -176,6 +191,8 @@ export async function getAllPages(): Promise<PageData[]> {
     return pages.map(page => convertToPageData(page)).filter(Boolean) as PageData[];
   } catch (error) {
     console.error('Error fetching all pages:', error);
+    // Always initialize mock data in error cases
+    initMockPages();
     return getMockPages(); // Return mock pages as fallback
   }
 }

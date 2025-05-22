@@ -6,6 +6,8 @@ interface PageDocument extends Document {
   slug: string;
   content: string;
   metaDescription: string;
+  headerTitle: string;
+  headerSubtitle: string;
   updatedAt: Date;
 }
 
@@ -28,6 +30,14 @@ const PageSchema = new Schema<PageDocument>({
     required: true,
   },
   metaDescription: {
+    type: String,
+    default: '',
+  },
+  headerTitle: {
+    type: String,
+    default: '', // Will default to the title if not set
+  },
+  headerSubtitle: {
     type: String,
     default: '',
   },

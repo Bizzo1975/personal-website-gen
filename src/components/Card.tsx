@@ -5,7 +5,7 @@ import React from 'react';
 type CardProps = {
   children: React.ReactNode;
   className?: string;
-  variant?: 'default' | 'elevated' | 'bordered';
+  variant?: 'default' | 'elevated' | 'bordered' | 'glass';
   interactive?: boolean;
   onClick?: () => void;
   ariaLabel?: string;
@@ -19,16 +19,17 @@ const Card: React.FC<CardProps> = ({
   onClick,
   ariaLabel,
 }) => {
-  const baseClasses = 'bg-white dark:bg-slate-900 rounded-lg overflow-hidden';
+  const baseClasses = 'rounded-xl overflow-hidden transition-all duration-200';
   
   const variantClasses = {
-    default: 'shadow-tech',
-    elevated: 'shadow-tech-lg',
-    bordered: 'border border-slate-200 dark:border-slate-800',
+    default: 'bg-gray-200 dark:bg-gray-800 shadow-sm border border-gray-300 dark:border-gray-700',
+    elevated: 'bg-gray-200 dark:bg-gray-800 shadow-xl border border-gray-300 dark:border-gray-700',
+    bordered: 'bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700',
+    glass: 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-white/20 dark:border-slate-700/30 shadow-sm',
   };
   
   const interactiveClasses = interactive 
-    ? 'transition-all duration-300 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-primary-500 outline-none cursor-pointer' 
+    ? 'hover:shadow-md hover:translate-y-[-2px] focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 outline-none cursor-pointer' 
     : '';
   
   const classes = `${baseClasses} ${variantClasses[variant]} ${interactiveClasses} ${className}`;
@@ -57,9 +58,10 @@ const Card: React.FC<CardProps> = ({
 export const CardHeader: React.FC<{
   children: React.ReactNode;
   className?: string;
-}> = ({ children, className = '' }) => {
+  withDivider?: boolean;
+}> = ({ children, className = '', withDivider = true }) => {
   return (
-    <div className={`px-6 py-4 border-b border-slate-200 dark:border-slate-800 ${className}`}>
+    <div className={`px-6 py-5 ${withDivider ? 'border-b border-gray-300 dark:border-gray-700' : ''} ${className}`}>
       {children}
     </div>
   );
@@ -70,7 +72,7 @@ export const CardBody: React.FC<{
   className?: string;
 }> = ({ children, className = '' }) => {
   return (
-    <div className={`px-6 py-4 ${className}`}>
+    <div className={`px-6 py-5 ${className}`}>
       {children}
     </div>
   );
@@ -79,9 +81,10 @@ export const CardBody: React.FC<{
 export const CardFooter: React.FC<{
   children: React.ReactNode;
   className?: string;
-}> = ({ children, className = '' }) => {
+  withDivider?: boolean;
+}> = ({ children, className = '', withDivider = true }) => {
   return (
-    <div className={`px-6 py-4 border-t border-slate-200 dark:border-slate-800 ${className}`}>
+    <div className={`px-6 py-4 ${withDivider ? 'border-t border-gray-300 dark:border-gray-700' : ''} ${className}`}>
       {children}
     </div>
   );

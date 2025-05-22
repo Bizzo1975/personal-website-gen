@@ -21,7 +21,7 @@ const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
           ref={ref}
           className={`w-full px-4 py-2 border border-slate-300 dark:border-slate-600 
                     rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 
-                    bg-white dark:bg-slate-800 text-slate-900 dark:text-white ${className} ${
+                    bg-white dark:bg-white text-slate-900 dark:text-slate-800 ${className} ${
             error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
           }`}
           {...props}

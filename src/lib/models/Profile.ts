@@ -37,4 +37,8 @@ const ProfileSchema = new Schema({
   },
 });
 
-export default mongoose.models.Profile || mongoose.model('Profile', ProfileSchema); 
+// Fix for "mongoose.models is undefined" error
+// Check if mongoose.models exists before trying to access it
+export default (mongoose.models && mongoose.models.Profile) 
+  ? mongoose.models.Profile 
+  : mongoose.model('Profile', ProfileSchema); 

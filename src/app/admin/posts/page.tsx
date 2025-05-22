@@ -94,11 +94,13 @@ export default function AdminPostsPage() {
         </AdminFilterBar>
 
         {filteredPosts.length === 0 ? (
-          <div className="text-center py-10 bg-white dark:bg-slate-800 rounded-lg shadow">
-            <p className="text-slate-500 dark:text-slate-400">
-              No posts found. Create a new post to get started.
-            </p>
-          </div>
+          <Card variant="default">
+            <CardBody className="text-center py-10">
+              <p className="text-slate-500 dark:text-slate-400">
+                No posts found. Create a new post to get started.
+              </p>
+            </CardBody>
+          </Card>
         ) : (
           <div className="space-y-4">
             {filteredPosts.map((post) => (
