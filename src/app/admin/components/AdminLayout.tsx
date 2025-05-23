@@ -44,22 +44,20 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     // Dashboard
     { href: '/admin/dashboard', label: 'Dashboard', icon: <BiHomeAlt className="w-5 h-5" /> },
     
-    // Content Management
+    // Content Management - Main Pages
     { href: '/admin/pages/home', label: 'Home Page', icon: <BiHomeAlt className="w-5 h-5" /> },
     { href: '/admin/pages/about', label: 'About Me', icon: <BiUser className="w-5 h-5" /> },
-    { href: '/admin/contact', label: 'Contact', icon: <BiEnvelope className="w-5 h-5" /> },
-    { href: '/admin/posts', label: 'Posts', icon: <BiNews className="w-5 h-5" /> },
     { href: '/admin/projects', label: 'Projects', icon: <BiCodeBlock className="w-5 h-5" /> },
-    
-    // Access Management
-    { href: '/admin/access-requests', label: 'Access Requests', icon: <BiUser className="w-5 h-5" /> },
-    
-    // Slideshow Management
-    { href: '/admin/slideshow', label: 'Slideshow', icon: <BiImage className="w-5 h-5" /> },
+    { href: '/admin/posts', label: 'Posts', icon: <BiNews className="w-5 h-5" /> },
+    { href: '/admin/contact', label: 'Contact', icon: <BiEnvelope className="w-5 h-5" /> },
     
     // Settings
     { href: '/admin/settings/profile', label: 'Profile Settings', icon: <BiUserCircle className="w-5 h-5" /> },
     { href: '/admin/settings/site', label: 'Site Settings', icon: <BiCog className="w-5 h-5" /> },
+    
+    // Additional Management
+    { href: '/admin/slideshow', label: 'Slideshow', icon: <BiImage className="w-5 h-5" /> },
+    { href: '/admin/access-requests', label: 'Access Requests', icon: <BiUser className="w-5 h-5" /> },
   ];
   
   const isActive = (path: string) => {
@@ -83,8 +81,8 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
           <nav className="p-4 flex-grow overflow-y-auto">
             <ul className="space-y-1">
               {navItems.map((item, index) => {
-                // Add visual separation before access management, slideshow and settings sections
-                const showSeparator = index === 6 || index === 8 || index === 10; // Before Access Management, Slideshow, and Settings
+                // Add visual separation before Settings and Additional Management sections
+                const showSeparator = index === 6 || index === 8; // Before Settings and Additional Management
                 
                 return (
                   <React.Fragment key={item.href}>

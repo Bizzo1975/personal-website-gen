@@ -126,8 +126,8 @@ export default function AdminPagesPage() {
                   <Link 
                     href={page.slug === 'home' ? `/admin/pages/home` : 
                           page.slug === 'about' ? `/admin/pages/about` : 
-                          page.slug === 'projects' ? `/admin/pages/projects` : 
-                          page.slug === 'blog' ? `/admin/pages/blog` :
+                          page.slug === 'projects' ? `/admin/projects` : 
+                          page.slug === 'blog' ? `/admin/posts` :
                           page.slug === 'contact' ? `/admin/pages/contact` :
                           `/admin/pages/${page._id}`}
                     className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded text-sm font-medium mr-2"

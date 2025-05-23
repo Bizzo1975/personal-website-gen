@@ -23,7 +23,7 @@ A modern, responsive personal website built with Next.js, TypeScript, and Tailwi
 - **Content Management**: MDX for blog posts
 - **Database**: MongoDB with Mongoose
 - **Authentication**: NextAuth.js
-- **Testing**: Jest for unit tests
+- **Testing**: Jest for unit tests, Cypress for E2E tests
 - **CI/CD**: GitHub Actions
 - **Deployment**: Vercel (primary) / Netlify (alternative)
 
@@ -73,31 +73,35 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Project Structure
 
 ```
-/src
-  /app - Next.js app router pages
-    /[slug] - Dynamic page routes
-    /about - About page
-    /admin - Admin dashboard
-      /dashboard - Admin overview
-      /login - Authentication
-      /pages - Page editor
-      /posts - Blog post management
-      /projects - Project management
-      /settings - Site settings
-    /api - API endpoints
-      /auth - Authentication routes
-      /pages - Page data API
-      /rss - RSS feed generator
-    /blog - Blog pages
-    /contact - Contact form
-    /projects - Projects showcase
-  /components - Reusable UI components
-  /lib - Utility functions
-    /models - MongoDB schemas
-    /services - Data service layer
-  /styles - Global styles
-  /types - TypeScript type definitions
-  /__tests__ - Unit and integration tests
+/
+├── docs/                    # Project documentation
+│   ├── MONGODB_SETUP.md
+│   ├── NEXTAUTH_SETUP.md
+│   ├── PROJECT_PLAN.md
+│   ├── TROUBLESHOOTING.md
+│   └── ...
+├── testing/                 # All testing files and configurations
+│   ├── cypress/            # E2E tests
+│   ├── unit/               # Unit tests
+│   ├── jest.config.js
+│   └── cypress.config.ts
+├── scripts/                 # Utility scripts
+│   ├── setup/
+│   ├── maintenance/
+│   └── ...
+├── src/                     # Source code
+│   ├── app/                # Next.js app router pages
+│   │   ├── (main)/         # Public pages
+│   │   ├── admin/          # Admin dashboard
+│   │   └── api/            # API endpoints
+│   ├── components/         # Reusable UI components
+│   ├── lib/                # Utility functions and services
+│   │   ├── models/         # MongoDB schemas
+│   │   └── services/       # Data service layer
+│   ├── styles/             # Global styles
+│   └── types/              # TypeScript type definitions
+├── public/                  # Static assets
+└── ...config files
 ```
 
 ## Development
@@ -105,21 +109,33 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 Here are the main npm scripts available:
 
 ```bash
-# Start development server
-npm run dev
+# Development
+npm run dev                  # Start development server
+npm run build               # Build for production
+npm run start               # Start production server
+npm run lint                # Run linting
 
-# Build for production
-npm run build
+# Testing
+npm run test                # Run unit tests
+npm run test:watch          # Run tests in watch mode
+npm run test:coverage       # Run tests with coverage
+npm run cypress             # Open Cypress GUI
+npm run test:e2e            # Run E2E tests
 
-# Start production server
-npm run start
-
-# Run linting
-npm run lint
-
-# Run tests
-npm test
+# Utilities
+npm run lighthouse          # Run Lighthouse audit
+npm run accessibility       # Run accessibility checks
 ```
+
+## Testing
+
+The project includes comprehensive testing setup:
+
+- **Unit Tests**: Jest with React Testing Library in `testing/unit/`
+- **E2E Tests**: Cypress tests in `testing/cypress/`
+- **Utility Scripts**: Testing and debugging scripts in `testing/`
+
+See [testing/README.md](testing/README.md) for detailed testing documentation.
 
 ## Deployment
 
@@ -139,12 +155,13 @@ Alternatively, you can deploy manually:
 
 ## Documentation
 
-Additional documentation is available in the following files:
-- [MongoDB Setup](MONGODB_SETUP.md)
-- [NextAuth Setup](NEXTAUTH_SETUP.md)
-- [Admin Pages Troubleshooting](ADMIN_PAGES_TROUBLESHOOTING.md)
-- [General Troubleshooting](TROUBLESHOOTING.md)
-- [Animations and Accessibility](ANIMATIONS_AND_ACCESSIBILITY.md)
+Additional documentation is available in the [docs/](docs/) directory:
+- [MongoDB Setup](docs/MONGODB_SETUP.md)
+- [NextAuth Setup](docs/NEXTAUTH_SETUP.md)
+- [Project Plan](docs/PROJECT_PLAN.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Admin Pages Troubleshooting](docs/ADMIN_PAGES_TROUBLESHOOTING.md)
+- [Animations and Accessibility](docs/ANIMATIONS_AND_ACCESSIBILITY.md)
 
 ## License
 
