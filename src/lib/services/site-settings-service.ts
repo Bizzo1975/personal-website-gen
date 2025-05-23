@@ -9,7 +9,7 @@ export interface SiteSettings {
   logoUrl: string;
   logoText: string;
   footerText: string;
-  bioText?: string;
+  bioText: string;
   navbarStyle: string;
   navbarLinks: NavbarLink[];
 }

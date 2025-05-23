@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface FallbackImageProps {
   src: string;
@@ -30,6 +30,7 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
   const [imgSrc, setImgSrc] = useState<string>(src);
   const [hasError, setHasError] = useState<boolean>(false);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const linkRef = useRef<HTMLLinkElement | null>(null);
   
   // Use plain src without cache-busting to improve stability
   const processedSrc = imgSrc;
@@ -58,15 +59,34 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
     if (typeof window !== 'undefined' && !hasError) {
       // For priority images, create a high priority image preload
       if (priority) {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'image';
-        link.href = processedSrc;
-        document.head.appendChild(link);
+        const linkId = `preload-${processedSrc.replace(/[^a-zA-Z0-9]/g, '-')}`;
+        
+        // Check if link already exists
+        let link = document.head.querySelector(`link#${linkId}`) as HTMLLinkElement;
+        
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = processedSrc;
+          link.id = linkId;
+          document.head.appendChild(link);
+          linkRef.current = link;
+        }
         
         // Clean up
         return () => {
-          document.head.removeChild(link);
+          if (linkRef.current) {
+            try {
+              // Only remove if it's still in the DOM
+              if (linkRef.current.parentNode === document.head) {
+                document.head.removeChild(linkRef.current);
+              }
+            } catch (e) {
+              console.warn('Error removing preload link:', e);
+            }
+            linkRef.current = null;
+          }
         };
       }
       

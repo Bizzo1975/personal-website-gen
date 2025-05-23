@@ -10,7 +10,7 @@ interface FooterProps {
   profileName?: string;
   footerText?: string;
   logoUrl?: string;
-  bioText?: string;
+  bioText: string;
 }
 
 const Footer: React.FC<FooterProps> = ({ 
@@ -130,11 +130,11 @@ const Footer: React.FC<FooterProps> = ({
           </p>
           {isAdmin && isEditingFooter ? (
             <div className="text-sm mt-2 sm:mt-0 flex items-center">
-              <input
-                type="text"
+              <textarea
                 value={editedFooterText}
                 onChange={(e) => setEditedFooterText(e.target.value)}
                 className="px-2 py-1 border rounded-md text-sm dark:bg-slate-800 dark:border-slate-700"
+                rows={2}
               />
               <button 
                 onClick={handleFooterTextSave}

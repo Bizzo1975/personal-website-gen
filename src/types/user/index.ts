@@ -15,7 +15,6 @@ export enum UserRole {
 }
 
 export interface UserProfile {
-  bio?: string;
   location?: string;
   website?: string;
   twitterHandle?: string;

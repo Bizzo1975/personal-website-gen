@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Card, { CardBody } from '@/components/Card';
 import Button from '@/components/Button';
 import Badge from '@/components/Badge';
+import { useRouter } from 'next/navigation';
 
 interface PageData {
   _id: string;
@@ -22,6 +23,7 @@ export default function AdminPagesPage() {
   const [pages, setPages] = useState<PageData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchPages = async () => {
@@ -95,12 +97,14 @@ export default function AdminPagesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Pages</h1>
-          <p className="text-gray-600 dark:text-gray-300">Manage your website pages</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <h1 className="text-2xl font-bold">Pages Management</h1>
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-4 sm:mt-0">
+          <Button onClick={() => router.push('/admin/pages/new')}>
+            <span className="mr-2">+</span>
+            Create New Page
+          </Button>
         </div>
-        <Button href="/admin/pages/new">Add New Page</Button>
       </div>
 
       <div className="grid gap-6 grid-cols-1">
@@ -120,12 +124,17 @@ export default function AdminPagesPage() {
                 </div>
                 <div className="flex items-center mt-4 md:mt-0">
                   <Link 
-                    href={`/admin/pages/${page._id}`}
+                    href={page.slug === 'home' ? `/admin/pages/home` : 
+                          page.slug === 'about' ? `/admin/pages/about` : 
+                          page.slug === 'projects' ? `/admin/pages/projects` : 
+                          page.slug === 'blog' ? `/admin/pages/blog` :
+                          page.slug === 'contact' ? `/admin/pages/contact` :
+                          `/admin/pages/${page._id}`}
                     className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded text-sm font-medium mr-2"
                   >
                     Edit
                   </Link>
-                  {['home', 'about', 'contact'].includes(page.slug) ? (
+                  {['home', 'about', 'contact', 'blog', 'projects'].includes(page.slug) ? (
                     <button
                       disabled
                       className="bg-gray-100 text-gray-400 cursor-not-allowed px-3 py-1 rounded text-sm font-medium"

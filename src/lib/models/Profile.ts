@@ -13,10 +13,6 @@ const ProfileSchema = new Schema({
     type: [String],
     default: [],
   },
-  bio: {
-    type: String,
-    default: '',
-  },
   location: {
     type: String,
     default: '',

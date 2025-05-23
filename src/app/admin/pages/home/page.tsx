@@ -21,6 +21,7 @@ interface PageData {
   slug: string;
   content: string;
   metaDescription: string;
+  heroHeading: string;
   updatedAt: Date;
 }
 
@@ -32,6 +33,7 @@ export default function AdminHomePageEditor() {
     slug: 'home',
     content: '',
     metaDescription: '',
+    heroHeading: '',
   });
   
   const [loading, setLoading] = useState(true);
@@ -192,6 +194,16 @@ export default function AdminHomePageEditor() {
             value={pageData.metaDescription || ''}
             onChange={handleInputChange}
             helpText="Brief description for search engines (recommended: 150-160 characters)"
+          />
+          
+          <AdminInput
+            id="heroHeading"
+            name="heroHeading"
+            label="Hero Heading"
+            value={pageData.heroHeading || ''}
+            onChange={handleInputChange}
+            helpText="The main heading displayed in the hero section of the homepage"
+            required
           />
 
           <div className="space-y-1">

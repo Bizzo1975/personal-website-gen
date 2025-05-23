@@ -17,6 +17,7 @@ export default function SiteSettingsPage() {
     logoUrl: '/images/wizard-icon.svg',
     logoText: 'John Doe',
     footerText: 'Built with Next.js and Tailwind CSS',
+    bioText: 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.',
     navbarStyle: 'default',
     navbarLinks: []
   });
@@ -205,15 +206,43 @@ export default function SiteSettingsPage() {
                   required
                 />
                 
-                <AdminInput
-                  id="footerText"
-                  label="Footer Text"
-                  name="footerText"
-                  value={settings.footerText}
-                  onChange={handleInputChange}
-                  placeholder="Enter the text to display in the footer"
-                  required
-                />
+                <div className="mb-4">
+                  <label htmlFor="footerText" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Footer Text
+                  </label>
+                  <textarea
+                    id="footerText"
+                    name="footerText"
+                    value={settings.footerText}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-md resize-y bg-white dark:bg-slate-800"
+                    placeholder="Enter the text to display in the footer. This can be a longer paragraph describing your site, copyright info, etc."
+                    required
+                  />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    This text appears in the footer of every page. You can include a brief description or copyright information.
+                  </p>
+                </div>
+                
+                <div className="mb-4">
+                  <label htmlFor="bioText" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Bio Text
+                  </label>
+                  <textarea
+                    id="bioText"
+                    name="bioText"
+                    value={settings.bioText}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-md resize-y bg-white dark:bg-slate-800"
+                    placeholder="Enter your bio or about text to display in the footer. This should be a brief professional description."
+                    required
+                  />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    This bio appears in the footer and describes you or your business. Keep it concise but informative.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

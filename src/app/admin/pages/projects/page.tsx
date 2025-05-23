@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import AdminLayout from '../../components/AdminLayout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
-import Link from 'next/link';
 
 // Import SimpleMDE editor
 import dynamic from 'next/dynamic';
@@ -24,16 +23,16 @@ interface PageData {
   updatedAt: Date;
 }
 
-export default function AdminAboutPageEditor() {
+export default function AdminProjectsPageEditor() {
   const router = useRouter();
   const [pageData, setPageData] = useState<Partial<PageData>>({
-    name: 'About Page',
-    title: 'About Me',
-    slug: 'about',
+    name: 'Projects Page',
+    title: 'My Projects',
+    slug: 'projects',
     content: '',
     metaDescription: '',
-    headerTitle: 'About Me',
-    headerSubtitle: 'Learn more about my background, skills, and experience in web development.',
+    headerTitle: 'Projects & Portfolio',
+    headerSubtitle: 'Explore my latest work and personal projects. Each project represents my passion for creating elegant solutions to complex problems.',
   });
   
   const [loading, setLoading] = useState(true);
@@ -42,16 +41,16 @@ export default function AdminAboutPageEditor() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   
   useEffect(() => {
-    const fetchAboutPage = async () => {
+    const fetchProjectsPage = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        // Fetch the specific about page to ensure we get the latest data
-        const response = await fetch('/api/pages?slug=about');
+        // Fetch the specific projects page to ensure we get the latest data
+        const response = await fetch('/api/pages?slug=projects');
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch about page: ${response.status}`);
+          throw new Error(`Failed to fetch projects page: ${response.status}`);
         }
         
         const data = await response.json();
@@ -60,40 +59,27 @@ export default function AdminAboutPageEditor() {
           // Set all the page data at once to ensure consistency
           setPageData({
             _id: data.page._id,
-            name: data.page.name || 'About Page',
-            title: data.page.title || 'About Me',
-            slug: 'about',
+            name: data.page.name || 'Projects Page',
+            title: data.page.title || 'My Projects',
+            slug: 'projects',
             content: data.page.content || '',
             metaDescription: data.page.metaDescription || '',
-            headerTitle: data.page.headerTitle || 'About Me',
-            headerSubtitle: data.page.headerSubtitle || 'Learn more about my background, skills, and experience in web development.'
+            headerTitle: data.page.headerTitle || 'Projects & Portfolio',
+            headerSubtitle: data.page.headerSubtitle || 'Explore my latest work and personal projects. Each project represents my passion for creating elegant solutions to complex problems.'
           });
         } else {
-          // Attempt to fetch using the general pages endpoint as fallback
-          const allPagesResponse = await fetch('/api/pages');
-          
-          if (!allPagesResponse.ok) {
-            throw new Error(`Failed to fetch pages: ${allPagesResponse.status}`);
-          }
-          
-          const allPages = await allPagesResponse.json();
-          const aboutPage = allPages.find((page: PageData) => page.slug === 'about');
-          
-          if (aboutPage) {
-            setPageData(aboutPage);
-          } else {
-            console.log('About page not found, will create a new one on save');
-          }
+          // If page doesn't exist, keep the default values
+          console.log('Projects page not found, will create a new one on save');
         }
       } catch (err) {
-        console.error('Error fetching about page:', err);
-        setError('Failed to load about page. Please check console for details.');
+        console.error('Error fetching projects page:', err);
+        setError('Failed to load projects page. Please check console for details.');
       } finally {
         setLoading(false);
       }
     };
     
-    fetchAboutPage();
+    fetchProjectsPage();
   }, []);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -148,18 +134,18 @@ export default function AdminAboutPageEditor() {
       }
       
       const result = await response.json();
-      console.log('About page updated successfully:', result);
+      console.log('Projects page updated successfully:', result);
       setSaving(false);
       setSaveSuccess(true);
       
-      // Revalidate the about page
-      await fetch(`/api/revalidate?path=/about`, { method: 'POST' });
+      // Revalidate the projects page
+      await fetch(`/api/revalidate?path=/projects`, { method: 'POST' });
       
       setTimeout(() => {
         router.push('/admin/pages');
       }, 1500);
     } catch (err: any) {
-      console.error('Error saving about page:', err);
+      console.error('Error saving projects page:', err);
       setError(err.message || 'Failed to save page');
       setSaving(false);
     }
@@ -167,17 +153,17 @@ export default function AdminAboutPageEditor() {
   
   if (loading) {
     return (
-      <AdminLayout title="About Page Editor">
+      <AdminLayout title="Projects Page Editor">
         <div className="text-center py-10">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent"></div>
-          <p className="mt-4">Loading About Page Editor...</p>
+          <p className="mt-4">Loading Projects Page Editor...</p>
         </div>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Edit About Page">
+    <AdminLayout title="Edit Projects Page">
       <div className="space-y-6">
         {error && (
           <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
@@ -187,7 +173,7 @@ export default function AdminAboutPageEditor() {
         
         {saveSuccess && (
           <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded">
-            About page saved successfully! Redirecting...
+            Projects page saved successfully! Redirecting...
           </div>
         )}
         
@@ -201,7 +187,7 @@ export default function AdminAboutPageEditor() {
                 type="text"
                 id="name"
                 name="name"
-                value={pageData.name || 'About Page'}
+                value={pageData.name || 'Projects Page'}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                 required
@@ -216,7 +202,7 @@ export default function AdminAboutPageEditor() {
                 type="text"
                 id="title"
                 name="title"
-                value={pageData.title || 'About Me'}
+                value={pageData.title || 'My Projects'}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                 required
@@ -249,7 +235,7 @@ export default function AdminAboutPageEditor() {
                   type="text"
                   id="headerTitle"
                   name="headerTitle"
-                  value={pageData.headerTitle || 'About Me'}
+                  value={pageData.headerTitle || 'Projects & Portfolio'}
                   onChange={handleInputChange}
                   className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                   placeholder="Main heading displayed at the top of the page"
@@ -263,7 +249,7 @@ export default function AdminAboutPageEditor() {
                 <textarea
                   id="headerSubtitle"
                   name="headerSubtitle"
-                  value={pageData.headerSubtitle || 'Learn more about my background, skills, and experience in web development.'}
+                  value={pageData.headerSubtitle || 'Explore my latest work and personal projects. Each project represents my passion for creating elegant solutions to complex problems.'}
                   onChange={handleInputChange}
                   rows={2}
                   className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
@@ -285,7 +271,7 @@ export default function AdminAboutPageEditor() {
                 }}
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                This content will be displayed on the about page. You can use Markdown formatting to structure your content.
+                This content will appear on the projects page. Use it to introduce your projects or provide additional information.
               </p>
             </div>
 

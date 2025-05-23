@@ -20,7 +20,6 @@ interface ProfileData {
   name: string;
   imageUrl: string;
   skills: string[];
-  bio?: string;
   location?: string;
   email?: string;
   socialLinks?: SocialLinks;
@@ -35,7 +34,6 @@ export default function ProfilePage() {
     name: '',
     imageUrl: '',
     skills: [],
-    bio: '',
     location: '',
     email: '',
     socialLinks: {
@@ -380,16 +378,6 @@ export default function ProfilePage() {
                 value={profileData.location || ''}
                 onChange={handleInputChange}
                 placeholder="e.g., San Francisco, CA"
-              />
-              
-              <AdminTextarea
-                id="bio"
-                name="bio"
-                label="Bio"
-                value={profileData.bio || ''}
-                onChange={handleInputChange}
-                rows={4}
-                placeholder="A short description about yourself"
               />
               
               <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">

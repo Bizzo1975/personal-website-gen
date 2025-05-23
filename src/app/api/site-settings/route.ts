@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import dbConnect from '@/lib/db';
-import SiteSettings from '@/lib/models/SiteSettings';
+import { authOptions } from '../auth/[...nextauth]/route';
+import { SiteSettings } from '@/lib/services/site-settings-service';
 
-// Default site settings
-const defaultSettings = {
+// Mock data store for site settings (will be replaced with actual database in production)
+let mockSiteSettings: SiteSettings = {
+  id: 'site-settings-1',
   logoUrl: '/images/wizard-icon.svg',
   logoText: 'John Doe',
   footerText: 'Built with Next.js and Tailwind CSS',
@@ -20,61 +20,11 @@ const defaultSettings = {
   ]
 };
 
-// Mock data storage key for Node.js global object
-const MOCK_SETTINGS_KEY = 'mockSiteSettings';
-
-// Helper function to determine if we should use mock data
-const useMockData = () => {
-  return !process.env.MONGODB_URI || process.env.NODE_ENV === 'development';
-};
-
-// Function to initialize mock data
-const initMockSettings = () => {
-  if (!(global as any)[MOCK_SETTINGS_KEY]) {
-    console.log('📋 Initializing mock site settings');
-    (global as any)[MOCK_SETTINGS_KEY] = { ...defaultSettings, id: 'mock-settings-id' };
-  }
-  return (global as any)[MOCK_SETTINGS_KEY];
-};
-
-// Function to get mock settings
-const getMockSettings = () => {
-  return initMockSettings();
-};
-
-// Function to save mock settings
-const saveMockSettings = (settings: any) => {
-  console.log('💾 Saving mock site settings');
-  (global as any)[MOCK_SETTINGS_KEY] = settings;
-  return settings;
-};
-
 export async function GET() {
   try {
-    // For development without MongoDB
-    if (useMockData()) {
-      const mockSettings = getMockSettings();
-      console.log('📖 Getting mock site settings');
-      return NextResponse.json(mockSettings);
-    }
-
-    await dbConnect();
-    let settings = await SiteSettings.findOne({});
-    
-    // Create default settings if none exists
-    if (!settings) {
-      settings = await SiteSettings.create(defaultSettings);
-    }
-    
-    return NextResponse.json({
-      id: settings._id.toString(),
-      logoUrl: settings.logoUrl,
-      logoText: settings.logoText,
-      footerText: settings.footerText,
-      bioText: settings.bioText,
-      navbarStyle: settings.navbarStyle,
-      navbarLinks: settings.navbarLinks
-    });
+    // In a real implementation, this would fetch from the database
+    // For now, we'll use the mock data
+    return NextResponse.json(mockSiteSettings);
   } catch (error) {
     console.error('Error fetching site settings:', error);
     return NextResponse.json(
@@ -84,58 +34,37 @@ export async function GET() {
   }
 }
 
-export async function PUT(req: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    if (!session) {
+    
+    if (!session || session.user.role !== 'admin') {
       return NextResponse.json(
-        { error: 'Not authenticated' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-
-    const data = await req.json();
     
-    // For development without MongoDB
-    if (useMockData()) {
-      const mockSettings = getMockSettings();
-      const updatedSettings = { ...mockSettings, ...data };
-      saveMockSettings(updatedSettings);
-      console.log('✅ Mock site settings updated successfully');
-      return NextResponse.json(updatedSettings);
-    }
-
-    await dbConnect();
+    // Parse the request body
+    const updatedSettings = await request.json();
     
-    // Find existing settings or create new ones
-    let settings = await SiteSettings.findOne({});
-    
-    if (settings) {
-      // Update existing settings
-      settings = await SiteSettings.findByIdAndUpdate(
-        settings._id,
-        { ...data, updatedAt: new Date() },
-        { new: true }
+    // Validate required fields
+    if (!updatedSettings.logoText) {
+      return NextResponse.json(
+        { error: 'Logo text is required' },
+        { status: 400 }
       );
-    } else {
-      // Create new settings
-      settings = await SiteSettings.create({
-        ...defaultSettings,
-        ...data,
-        updatedAt: new Date()
-      });
     }
     
-    return NextResponse.json({
-      id: settings._id.toString(),
-      logoUrl: settings.logoUrl,
-      logoText: settings.logoText,
-      footerText: settings.footerText,
-      bioText: settings.bioText,
-      navbarStyle: settings.navbarStyle,
-      navbarLinks: settings.navbarLinks
-    });
+    // In a real implementation, this would update the database
+    // For now, we'll update the mock data
+    mockSiteSettings = {
+      ...mockSiteSettings,
+      ...updatedSettings
+    };
+    
+    return NextResponse.json(mockSiteSettings);
   } catch (error) {
     console.error('Error updating site settings:', error);
     return NextResponse.json(

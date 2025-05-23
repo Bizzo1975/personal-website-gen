@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { PostData } from '@/lib/services/post-service';
+import { PageData } from '@/lib/services/page-service';
 import HeaderSection from '@/components/HeaderSection';
 import FallbackImage from '@/components/FallbackImage';
 
@@ -18,9 +19,10 @@ interface ExtendedPost extends Omit<PostData, 'author'> {
 
 interface BlogContentProps {
   posts: PostData[];
+  pageData?: PageData | null;
 }
 
-export default function BlogContent({ posts = [] }: BlogContentProps) {
+export default function BlogContent({ posts = [], pageData }: BlogContentProps) {
   // Default blog posts with our UI-specific fields
   const defaultPosts: ExtendedPost[] = [
     {
@@ -122,8 +124,8 @@ export default function BlogContent({ posts = [] }: BlogContentProps) {
     <div className="space-y-8">
       {/* Header Section */}
       <HeaderSection 
-        title="Blog & Articles"
-        subtitle="Thoughts, tutorials, and insights on web development, design, and technology."
+        title={pageData?.headerTitle || "Blog & Articles"}
+        subtitle={pageData?.headerSubtitle || "Thoughts, tutorials, and insights on web development, design, and technology."}
         showSlideshow={true}
         className="bg-gradient-secondary"
         compact={true}

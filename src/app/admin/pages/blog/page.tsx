@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminLayout from '../../components/AdminLayout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
-import Link from 'next/link';
+import { AdminInput, AdminTextarea } from '../../components/AdminFormField';
 
 // Import SimpleMDE editor
 import dynamic from 'next/dynamic';
@@ -24,16 +24,16 @@ interface PageData {
   updatedAt: Date;
 }
 
-export default function AdminAboutPageEditor() {
+export default function AdminBlogPageEditor() {
   const router = useRouter();
   const [pageData, setPageData] = useState<Partial<PageData>>({
-    name: 'About Page',
-    title: 'About Me',
-    slug: 'about',
+    name: 'Blog Page',
+    title: 'Blog',
+    slug: 'blog',
     content: '',
     metaDescription: '',
-    headerTitle: 'About Me',
-    headerSubtitle: 'Learn more about my background, skills, and experience in web development.',
+    headerTitle: '',
+    headerSubtitle: '',
   });
   
   const [loading, setLoading] = useState(true);
@@ -42,16 +42,16 @@ export default function AdminAboutPageEditor() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   
   useEffect(() => {
-    const fetchAboutPage = async () => {
+    const fetchBlogPage = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        // Fetch the specific about page to ensure we get the latest data
-        const response = await fetch('/api/pages?slug=about');
+        // Fetch the specific blog page to ensure we get the latest data
+        const response = await fetch('/api/pages?slug=blog');
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch about page: ${response.status}`);
+          throw new Error(`Failed to fetch blog page: ${response.status}`);
         }
         
         const data = await response.json();
@@ -60,42 +60,29 @@ export default function AdminAboutPageEditor() {
           // Set all the page data at once to ensure consistency
           setPageData({
             _id: data.page._id,
-            name: data.page.name || 'About Page',
-            title: data.page.title || 'About Me',
-            slug: 'about',
+            name: data.page.name || 'Blog Page',
+            title: data.page.title || 'Blog',
+            slug: 'blog',
             content: data.page.content || '',
             metaDescription: data.page.metaDescription || '',
-            headerTitle: data.page.headerTitle || 'About Me',
-            headerSubtitle: data.page.headerSubtitle || 'Learn more about my background, skills, and experience in web development.'
+            headerTitle: data.page.headerTitle || 'Blog & Articles',
+            headerSubtitle: data.page.headerSubtitle || 'Thoughts, tutorials, and insights on web development, design, and technology.'
           });
         } else {
-          // Attempt to fetch using the general pages endpoint as fallback
-          const allPagesResponse = await fetch('/api/pages');
-          
-          if (!allPagesResponse.ok) {
-            throw new Error(`Failed to fetch pages: ${allPagesResponse.status}`);
-          }
-          
-          const allPages = await allPagesResponse.json();
-          const aboutPage = allPages.find((page: PageData) => page.slug === 'about');
-          
-          if (aboutPage) {
-            setPageData(aboutPage);
-          } else {
-            console.log('About page not found, will create a new one on save');
-          }
+          // If page doesn't exist, keep the default values
+          console.log('Blog page not found, will create a new one on save');
         }
       } catch (err) {
-        console.error('Error fetching about page:', err);
-        setError('Failed to load about page. Please check console for details.');
+        console.error('Error fetching blog page:', err);
+        setError('Failed to load blog page. Please check console for details.');
       } finally {
         setLoading(false);
       }
     };
     
-    fetchAboutPage();
+    fetchBlogPage();
   }, []);
-  
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setPageData({
@@ -148,18 +135,18 @@ export default function AdminAboutPageEditor() {
       }
       
       const result = await response.json();
-      console.log('About page updated successfully:', result);
+      console.log('Blog page updated successfully:', result);
       setSaving(false);
       setSaveSuccess(true);
       
-      // Revalidate the about page
-      await fetch(`/api/revalidate?path=/about`, { method: 'POST' });
+      // Revalidate the blog page
+      await fetch(`/api/revalidate?path=/blog`, { method: 'POST' });
       
       setTimeout(() => {
         router.push('/admin/pages');
       }, 1500);
     } catch (err: any) {
-      console.error('Error saving about page:', err);
+      console.error('Error saving blog page:', err);
       setError(err.message || 'Failed to save page');
       setSaving(false);
     }
@@ -167,17 +154,17 @@ export default function AdminAboutPageEditor() {
   
   if (loading) {
     return (
-      <AdminLayout title="About Page Editor">
+      <AdminLayout title="Blog Page Editor">
         <div className="text-center py-10">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent"></div>
-          <p className="mt-4">Loading About Page Editor...</p>
+          <p className="mt-4">Loading Blog Page Editor...</p>
         </div>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Edit About Page">
+    <AdminLayout title="Edit Blog Page">
       <div className="space-y-6">
         {error && (
           <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
@@ -187,7 +174,7 @@ export default function AdminAboutPageEditor() {
         
         {saveSuccess && (
           <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded">
-            About page saved successfully! Redirecting...
+            Blog page saved successfully! Redirecting...
           </div>
         )}
         
@@ -201,7 +188,7 @@ export default function AdminAboutPageEditor() {
                 type="text"
                 id="name"
                 name="name"
-                value={pageData.name || 'About Page'}
+                value={pageData.name || 'Blog Page'}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                 required
@@ -216,7 +203,7 @@ export default function AdminAboutPageEditor() {
                 type="text"
                 id="title"
                 name="title"
-                value={pageData.title || 'About Me'}
+                value={pageData.title || 'Blog'}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                 required
@@ -238,38 +225,27 @@ export default function AdminAboutPageEditor() {
               />
             </div>
             
-            <div className="border-t pt-6 border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Page Header</h3>
+            <div className="border-t pt-6 border-slate-200 dark:border-slate-700 mt-6 mb-6">
+              <h3 className="text-lg font-medium mb-4">Page Header</h3>
               
-              <div className="mb-4">
-                <label htmlFor="headerTitle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Header Title
-                </label>
-                <input
-                  type="text"
-                  id="headerTitle"
-                  name="headerTitle"
-                  value={pageData.headerTitle || 'About Me'}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  placeholder="Main heading displayed at the top of the page"
-                />
-              </div>
+              <AdminInput
+                id="headerTitle"
+                name="headerTitle"
+                label="Header Title"
+                value={pageData.headerTitle || ''}
+                onChange={handleInputChange}
+                helpText="The main heading displayed at the top of the blog page"
+              />
               
-              <div>
-                <label htmlFor="headerSubtitle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Header Subtitle
-                </label>
-                <textarea
-                  id="headerSubtitle"
-                  name="headerSubtitle"
-                  value={pageData.headerSubtitle || 'Learn more about my background, skills, and experience in web development.'}
-                  onChange={handleInputChange}
-                  rows={2}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  placeholder="Subtitle displayed below the main heading"
-                />
-              </div>
+              <AdminTextarea
+                id="headerSubtitle"
+                name="headerSubtitle"
+                label="Header Subtitle"
+                value={pageData.headerSubtitle || ''}
+                onChange={handleInputChange}
+                helpText="The subtitle shown below the main heading"
+                rows={3}
+              />
             </div>
 
             <div>
@@ -285,7 +261,7 @@ export default function AdminAboutPageEditor() {
                 }}
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                This content will be displayed on the about page. You can use Markdown formatting to structure your content.
+                This content will appear above the blog posts list. Use it to introduce your blog or provide information about your writing.
               </p>
             </div>
 

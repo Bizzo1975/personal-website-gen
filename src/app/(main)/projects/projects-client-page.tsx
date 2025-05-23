@@ -31,20 +31,22 @@ export default function ProjectsClientPage({ projects, pageData }: ProjectsClien
     
   // Format page data for HeaderSection
   const headerData = pageData ? {
-    headerTitle: pageData.headerTitle,
-    headerSubtitle: pageData.headerSubtitle
-  } : undefined;
+    headerTitle: pageData.headerTitle || "Projects & Portfolio",
+    headerSubtitle: pageData.headerSubtitle || "Explore my latest work and personal projects. Each project represents my passion for creating elegant solutions to complex problems."
+  } : {
+    headerTitle: "Projects & Portfolio",
+    headerSubtitle: "Explore my latest work and personal projects. Each project represents my passion for creating elegant solutions to complex problems."
+  };
 
   return (
     <>
       {/* Header Section */}
       <HeaderSection 
-        title="Projects & Portfolio"
-        subtitle="Explore my latest work and personal projects. Each project represents my passion for creating elegant solutions to complex problems."
+        title={headerData.headerTitle}
+        subtitle={headerData.headerSubtitle}
         showSlideshow={true}
         className="bg-gradient-secondary"
         compact={true}
-        pageData={headerData}
       />
       
       {/* Projects Section */}

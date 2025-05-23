@@ -36,6 +36,7 @@ Have a question or want to work together? Feel free to get in touch with me usin
     <ContactContent 
       content={mdxSource}
       profile={profileData}
+      pageData={page}
     />
   );
 } 

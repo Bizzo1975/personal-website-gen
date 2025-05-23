@@ -1,5 +1,6 @@
 import React from 'react';
 import { getPosts } from '@/lib/services/post-service';
+import { getPageBySlug } from '@/lib/services/page-service';
 import BlogContent from './blog-content';
 
 export const metadata = {
@@ -13,6 +14,9 @@ export default async function BlogPage() {
   // Get blog posts from the database
   const posts = await getPosts({ limit: 20 });
   
+  // Get blog page data from the database
+  const pageData = await getPageBySlug('blog');
+  
   if (posts.length > 0) {
     console.log(`📝 Retrieved ${posts.length} blog posts`);
   } else {
@@ -20,7 +24,7 @@ export default async function BlogPage() {
   }
   
   // Render the page
-  return <BlogContent posts={posts} />;
+  return <BlogContent posts={posts} pageData={pageData} />;
 }
 
  

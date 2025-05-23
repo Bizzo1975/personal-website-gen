@@ -5,13 +5,15 @@ import { MDXRemoteSerializeResult } from 'next-mdx-remote';
 import { ProfileData } from '@/lib/services/profile-service';
 import MarkdownContent from '@/components/MarkdownContent';
 import HeaderSection from '@/components/HeaderSection';
+import { PageData } from '@/lib/services/page-service';
 
 interface ContactContentProps {
   content: MDXRemoteSerializeResult;
   profile: ProfileData;
+  pageData?: PageData | null;
 }
 
-export default function ContactContent({ content, profile }: ContactContentProps) {
+export default function ContactContent({ content, profile, pageData }: ContactContentProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -90,12 +92,21 @@ export default function ContactContent({ content, profile }: ContactContentProps
     }
   };
   
+  // Format page data for HeaderSection
+  const headerData = pageData ? {
+    headerTitle: pageData.headerTitle || "Contact Me",
+    headerSubtitle: pageData.headerSubtitle || "Have a question or want to work together? Get in touch with me using the form below or through any of my social channels."
+  } : {
+    headerTitle: "Contact Me",
+    headerSubtitle: "Have a question or want to work together? Get in touch with me using the form below or through any of my social channels."
+  };
+  
   return (
     <div className="space-y-8">
       {/* Header Section */}
       <HeaderSection 
-        title="Contact Me"
-        subtitle="Have a question or want to work together? Get in touch with me using the form below or through any of my social channels."
+        title={headerData.headerTitle}
+        subtitle={headerData.headerSubtitle}
         showSlideshow={true}
         className="bg-gradient-secondary"
         compact={true}

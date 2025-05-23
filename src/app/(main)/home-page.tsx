@@ -28,31 +28,33 @@ interface HomePageProps {
     tags: string[];
     slug: string;
   }[];
+  heroHeading?: string;
 }
 
-export default function HomePage({ content, projects = [], blogPosts = [] }: HomePageProps) {
+export default function HomePage({ content, projects = [], blogPosts = [], heroHeading = "Building the Modern Web" }: HomePageProps) {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch profile data from API
   useEffect(() => {
-    const fetchProfileData = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/profile');
-        if (response.ok) {
-          const data = await response.json();
+        // Fetch profile data
+        const profileResponse = await fetch('/api/profile');
+        if (profileResponse.ok) {
+          const data = await profileResponse.json();
           setProfileData(data);
         } else {
           console.error('Failed to fetch profile data');
         }
       } catch (error) {
-        console.error('Error fetching profile data:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfileData();
+    fetchData();
   }, []);
 
   // Default skills to use if profile data is not available
@@ -124,7 +126,7 @@ export default function HomePage({ content, projects = [], blogPosts = [] }: Hom
           <div className="grid md:grid-cols-12 gap-12 items-start py-16 md:py-24">
             <div className="md:col-span-7">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-balance">
-                <span className="block text-white opacity-90">Building the Modern Web</span>
+                <span className="block text-white opacity-90">{heroHeading}</span>
               </h1>
               <div className="prose prose-lg dark:prose-invert text-white/90 mb-8">
                 <MarkdownContent content={content} />

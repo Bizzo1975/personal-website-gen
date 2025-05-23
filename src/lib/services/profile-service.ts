@@ -5,7 +5,6 @@ export interface ProfileData {
   name: string;
   imageUrl: string;
   skills: string[];
-  bio?: string;
   location?: string;
   email?: string;
   socialLinks?: {
@@ -72,7 +71,6 @@ export async function getProfileData(): Promise<ProfileData> {
       name: profile.name,
       imageUrl: profile.imageUrl,
       skills: profile.skills,
-      bio: profile.bio,
       location: profile.location,
       email: profile.email,
       socialLinks: profile.socialLinks

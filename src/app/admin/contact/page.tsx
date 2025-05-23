@@ -23,6 +23,8 @@ interface ContactPageData {
   content: string;
   metaDescription: string;
   updatedAt: Date;
+  headerTitle: string;
+  headerSubtitle: string;
 }
 
 export default function AdminContactPage() {
@@ -35,6 +37,8 @@ export default function AdminContactPage() {
     slug: 'contact',
     content: '',
     metaDescription: 'Get in touch with me',
+    headerTitle: 'Get in Touch',
+    headerSubtitle: 'Have a question or want to work together? Send me a message!'
   });
   
   // State for the profile data
@@ -72,11 +76,9 @@ export default function AdminContactPage() {
         }
         
         const pagesData = await pageResponse.json();
-        // Check if contact page exists
-        const contactPage = pagesData.find((page: any) => page.slug === 'contact');
-        
-        if (contactPage) {
-          setPageData(contactPage);
+        // Check if contact page exists - API returns { page: {...} }
+        if (pagesData && pagesData.page) {
+          setPageData(pagesData.page);
         }
         
         // Fetch profile data
@@ -229,6 +231,30 @@ export default function AdminContactPage() {
             onChange={handleInputChange}
             helpText="Brief description for search engines (recommended: 150-160 characters)"
           />
+          
+          <div className="border-t pt-6 border-slate-200 dark:border-slate-700 mt-6 mb-6">
+            <h3 className="text-lg font-medium mb-4">Page Header</h3>
+            
+            <AdminInput
+              id="headerTitle"
+              name="headerTitle"
+              label="Header Title"
+              value={pageData.headerTitle || ''}
+              onChange={handleInputChange}
+              helpText="The main heading displayed at the top of the contact page"
+              required
+            />
+            
+            <AdminTextarea
+              id="headerSubtitle"
+              name="headerSubtitle"
+              label="Header Subtitle"
+              value={pageData.headerSubtitle || ''}
+              onChange={handleInputChange}
+              helpText="The subtitle displayed below the main heading"
+              rows={2}
+            />
+          </div>
           
           <div className="space-y-1">
             <label htmlFor="content" className="block text-sm font-medium text-slate-700 dark:text-slate-300">

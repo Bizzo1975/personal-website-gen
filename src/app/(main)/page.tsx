@@ -47,5 +47,6 @@ export default async function Page() {
     content={mdxSource}
     projects={projects}
     blogPosts={blogPosts}
+    heroHeading={page.heroHeading || "Building the Modern Web"}
   />;
 } 

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import AdminLayout from '../../components/AdminLayout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
-import Link from 'next/link';
 
 // Import SimpleMDE editor
 import dynamic from 'next/dynamic';
@@ -24,16 +23,16 @@ interface PageData {
   updatedAt: Date;
 }
 
-export default function AdminAboutPageEditor() {
+export default function AdminContactPageEditor() {
   const router = useRouter();
   const [pageData, setPageData] = useState<Partial<PageData>>({
-    name: 'About Page',
-    title: 'About Me',
-    slug: 'about',
+    name: 'Contact Page',
+    title: 'Contact Me',
+    slug: 'contact',
     content: '',
-    metaDescription: '',
-    headerTitle: 'About Me',
-    headerSubtitle: 'Learn more about my background, skills, and experience in web development.',
+    metaDescription: 'Contact me for work opportunities, collaborations, or questions.',
+    headerTitle: 'Contact Me',
+    headerSubtitle: 'Have a question or want to work together? Get in touch with me using the form below or through any of my social channels.',
   });
   
   const [loading, setLoading] = useState(true);
@@ -41,59 +40,86 @@ export default function AdminAboutPageEditor() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   
+  // Debug: Log pageData changes
   useEffect(() => {
-    const fetchAboutPage = async () => {
+    console.log('📊 [Contact Admin] pageData state changed:', {
+      name: pageData.name,
+      title: pageData.title,
+      metaDescription: pageData.metaDescription,
+      headerTitle: pageData.headerTitle,
+      headerSubtitle: pageData.headerSubtitle?.substring(0, 50) + '...',
+      _id: pageData._id
+    });
+  }, [pageData]);
+  
+  useEffect(() => {
+    console.log('🔄 [Contact Admin] useEffect triggered');
+    console.log('🔄 [Contact Admin] Initial pageData state:', pageData);
+    
+    const fetchContactPage = async () => {
+      console.log('🔍 [Contact Admin] Starting fetch...');
       setLoading(true);
       setError(null);
       
       try {
-        // Fetch the specific about page to ensure we get the latest data
-        const response = await fetch('/api/pages?slug=about');
+        // Simple fetch like the projects page
+        console.log('📡 [Contact Admin] Fetching /api/pages?slug=contact');
+        const response = await fetch('/api/pages?slug=contact');
+        
+        console.log('📊 [Contact Admin] Response status:', response.status);
+        console.log('📊 [Contact Admin] Response OK:', response.ok);
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch about page: ${response.status}`);
+          console.error('❌ [Contact Admin] Response not OK:', response.status);
+          throw new Error(`Failed to fetch contact page: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('📋 [Contact Admin] Raw API response:', data);
         
         if (data && data.page) {
-          // Set all the page data at once to ensure consistency
-          setPageData({
-            _id: data.page._id,
-            name: data.page.name || 'About Page',
-            title: data.page.title || 'About Me',
-            slug: 'about',
-            content: data.page.content || '',
-            metaDescription: data.page.metaDescription || '',
-            headerTitle: data.page.headerTitle || 'About Me',
-            headerSubtitle: data.page.headerSubtitle || 'Learn more about my background, skills, and experience in web development.'
+          console.log('✅ [Contact Admin] Page data found in response');
+          console.log('📄 [Contact Admin] Page details:', {
+            id: data.page._id,
+            name: data.page.name,
+            title: data.page.title,
+            metaDescription: data.page.metaDescription,
+            headerTitle: data.page.headerTitle,
+            headerSubtitle: data.page.headerSubtitle?.substring(0, 50) + '...'
           });
+          
+          // Set all the page data at once like projects page
+          const newPageData = {
+            _id: data.page._id,
+            name: data.page.name || 'Contact Page',
+            title: data.page.title || 'Contact Me',
+            slug: 'contact',
+            content: data.page.content || '',
+            metaDescription: data.page.metaDescription || 'Contact me for work opportunities, collaborations, or questions.',
+            headerTitle: data.page.headerTitle || 'Contact Me',
+            headerSubtitle: data.page.headerSubtitle || 'Have a question or want to work together? Get in touch with me using the form below or through any of my social channels.'
+          };
+          
+          console.log('🔧 [Contact Admin] Setting new pageData:', newPageData);
+          setPageData(newPageData);
+          console.log('✅ [Contact Admin] Page data set successfully');
         } else {
-          // Attempt to fetch using the general pages endpoint as fallback
-          const allPagesResponse = await fetch('/api/pages');
-          
-          if (!allPagesResponse.ok) {
-            throw new Error(`Failed to fetch pages: ${allPagesResponse.status}`);
-          }
-          
-          const allPages = await allPagesResponse.json();
-          const aboutPage = allPages.find((page: PageData) => page.slug === 'about');
-          
-          if (aboutPage) {
-            setPageData(aboutPage);
-          } else {
-            console.log('About page not found, will create a new one on save');
-          }
+          // If page doesn't exist, keep the default values
+          console.log('⚠️ [Contact Admin] No page data in response, keeping defaults');
+          console.log('Contact page not found, will create a new one on save');
         }
       } catch (err) {
-        console.error('Error fetching about page:', err);
-        setError('Failed to load about page. Please check console for details.');
+        console.error('❌ [Contact Admin] Fetch error:', err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error('❌ [Contact Admin] Error details:', errorMessage);
+        setError('Failed to load contact page. Please check console for details.');
       } finally {
+        console.log('🏁 [Contact Admin] Fetch completed, setting loading to false');
         setLoading(false);
       }
     };
     
-    fetchAboutPage();
+    fetchContactPage();
   }, []);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -121,7 +147,7 @@ export default function AdminAboutPageEditor() {
       let response;
       
       if (pageData._id) {
-        // Update existing page
+        // Update existing page - simplified like projects page
         response = await fetch(`/api/pages/${pageData._id}`, {
           method: 'PUT',
           headers: {
@@ -148,18 +174,18 @@ export default function AdminAboutPageEditor() {
       }
       
       const result = await response.json();
-      console.log('About page updated successfully:', result);
+      console.log('Contact page updated successfully:', result);
       setSaving(false);
       setSaveSuccess(true);
       
-      // Revalidate the about page
-      await fetch(`/api/revalidate?path=/about`, { method: 'POST' });
+      // Revalidate the contact page
+      await fetch(`/api/revalidate?path=/contact`, { method: 'POST' });
       
       setTimeout(() => {
         router.push('/admin/pages');
       }, 1500);
     } catch (err: any) {
-      console.error('Error saving about page:', err);
+      console.error('Error saving contact page:', err);
       setError(err.message || 'Failed to save page');
       setSaving(false);
     }
@@ -167,17 +193,17 @@ export default function AdminAboutPageEditor() {
   
   if (loading) {
     return (
-      <AdminLayout title="About Page Editor">
+      <AdminLayout title="Contact Page Editor">
         <div className="text-center py-10">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent"></div>
-          <p className="mt-4">Loading About Page Editor...</p>
+          <p className="mt-4">Loading Contact Page Editor...</p>
         </div>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Edit About Page">
+    <AdminLayout title="Edit Contact Page">
       <div className="space-y-6">
         {error && (
           <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
@@ -187,7 +213,7 @@ export default function AdminAboutPageEditor() {
         
         {saveSuccess && (
           <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded">
-            About page saved successfully! Redirecting...
+            Contact page saved successfully! Redirecting...
           </div>
         )}
         
@@ -201,7 +227,7 @@ export default function AdminAboutPageEditor() {
                 type="text"
                 id="name"
                 name="name"
-                value={pageData.name || 'About Page'}
+                value={pageData.name || 'Contact Page'}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                 required
@@ -216,7 +242,7 @@ export default function AdminAboutPageEditor() {
                 type="text"
                 id="title"
                 name="title"
-                value={pageData.title || 'About Me'}
+                value={pageData.title || 'Contact Me'}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
                 required
@@ -249,11 +275,15 @@ export default function AdminAboutPageEditor() {
                   type="text"
                   id="headerTitle"
                   name="headerTitle"
-                  value={pageData.headerTitle || 'About Me'}
+                  value={pageData.headerTitle || 'Contact Me'}
                   onChange={handleInputChange}
                   className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  placeholder="Main heading displayed at the top of the page"
+                  placeholder="Contact Me"
+                  required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Main heading displayed at the top of the contact page
+                </p>
               </div>
               
               <div>
@@ -263,18 +293,22 @@ export default function AdminAboutPageEditor() {
                 <textarea
                   id="headerSubtitle"
                   name="headerSubtitle"
-                  value={pageData.headerSubtitle || 'Learn more about my background, skills, and experience in web development.'}
+                  value={pageData.headerSubtitle || ''}
                   onChange={handleInputChange}
-                  rows={2}
+                  rows={3}
                   className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  placeholder="Subtitle displayed below the main heading"
+                  placeholder="Have a question or want to work together? Get in touch with me using the form below or through any of my social channels."
+                  required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Subtitle text displayed below the main heading
+                </p>
               </div>
             </div>
 
             <div>
               <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Content (Markdown)
+                Page Content (Markdown)
               </label>
               <SimpleMDE
                 value={pageData.content || ''}
@@ -282,14 +316,15 @@ export default function AdminAboutPageEditor() {
                 options={{
                   spellChecker: false,
                   status: false,
+                  placeholder: "Enter the main content for the contact page..."
                 }}
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                This content will be displayed on the about page. You can use Markdown formatting to structure your content.
+              <p className="text-xs text-gray-500 mt-1">
+                Content displayed in the main body of the contact page
               </p>
             </div>
 
-            <div className="flex justify-end gap-4">
+            <div className="flex justify-end gap-4 border-t pt-6">
               <Button 
                 variant="outline" 
                 type="button" 
@@ -297,8 +332,9 @@ export default function AdminAboutPageEditor() {
               >
                 Cancel
               </Button>
+              
               <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? 'Saving...' : 'Save Contact Page'}
               </Button>
             </div>
           </form>

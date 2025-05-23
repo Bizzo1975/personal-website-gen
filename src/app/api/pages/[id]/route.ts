@@ -3,13 +3,16 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getPageById, updatePage, deletePage } from '@/lib/services/page-service';
 
-// GET: Fetch a single page by ID
+// GET: Fetch a specific page by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const page = await getPageById(params.id);
+    const id = params.id;
+    console.log(`🔍 API: Getting page by ID: ${id}`);
+    
+    const page = await getPageById(id);
     
     if (!page) {
       return NextResponse.json(
@@ -18,7 +21,7 @@ export async function GET(
       );
     }
     
-    return NextResponse.json(page);
+    return NextResponse.json({ page });
   } catch (error) {
     console.error('Error in GET /api/pages/[id]:', error);
     return NextResponse.json(
@@ -28,7 +31,7 @@ export async function GET(
   }
 }
 
-// PUT: Update a page
+// PUT: Update an existing page
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -44,46 +47,68 @@ export async function PUT(
       );
     }
     
-    const body = await request.json();
-    const { name, title, slug, content, metaDescription } = body;
+    const id = params.id;
+    console.log(`✏️ API: Updating page with ID: ${id}`);
     
-    // Validate required fields
-    if (!name || !title || !content) {
-      return NextResponse.json(
-        { error: 'Missing required fields' }, 
-        { status: 400 }
-      );
-    }
-    
-    // Don't allow changing the slug for essential pages (home and about)
-    const currentPage = await getPageById(params.id);
-    if (!currentPage) {
+    // First check if the page exists
+    const existingPage = await getPageById(id);
+    if (!existingPage) {
       return NextResponse.json(
         { error: 'Page not found' }, 
         { status: 404 }
       );
     }
+
+    // Get the request body
+    const body = await request.json();
+    console.log('📄 Request body for update:', JSON.stringify({
+      id, 
+      title: body.title,
+      headerTitle: body.headerTitle,
+      headerSubtitle: body.headerSubtitle?.substring(0, 30) + '...'
+    }));
     
-    const isEssentialPage = ['home', 'about'].includes(currentPage.slug);
-    const updatedSlug = isEssentialPage ? currentPage.slug : slug;
+    // For essential pages, keep the slug the same
+    const isEssentialPage = ['home', 'about', 'blog', 'projects', 'contact'].includes(existingPage.slug);
+    
+    // Fields that can be updated
+    const updateData: any = {
+      name: body.name,
+      title: body.title,
+      content: body.content,
+      metaDescription: body.metaDescription || existingPage.metaDescription,
+      headerTitle: body.headerTitle || body.title || existingPage.headerTitle,
+      headerSubtitle: body.headerSubtitle || existingPage.headerSubtitle,
+      heroHeading: body.heroHeading || existingPage.heroHeading
+    };
+    
+    // Only update slug if it's not an essential page and slug is provided
+    if (!isEssentialPage && body.slug) {
+      updateData.slug = body.slug;
+    }
+    
+    // Special handling for contact page to ensure header fields are always set
+    if (existingPage.slug === 'contact') {
+      console.log('💡 Special handling for contact page');
+      if (!updateData.headerTitle) {
+        updateData.headerTitle = 'Contact Me';
+      }
+      if (!updateData.headerSubtitle) {
+        updateData.headerSubtitle = 'Have a question or want to work together? Get in touch with me using the form below or through any of my social channels.';
+      }
+    }
     
     // Update the page
-    const updatedPage = await updatePage(params.id, {
-      name,
-      title,
-      slug: updatedSlug,
-      content,
-      metaDescription: metaDescription || '',
-    });
+    const updatedPage = await updatePage(id, updateData);
     
     if (!updatedPage) {
-      console.error(`Failed to update page ${params.id}. Check server logs for details.`);
       return NextResponse.json(
-        { error: 'Failed to update page. This could be because the page was not found or there was a database error.' }, 
+        { error: 'Failed to update page' }, 
         { status: 500 }
       );
     }
     
+    console.log(`✅ Page updated successfully: ${id}`);
     return NextResponse.json({ 
       message: 'Page updated successfully',
       page: updatedPage 
@@ -113,24 +138,27 @@ export async function DELETE(
       );
     }
     
-    // Check if it's an essential page (don't allow deletion)
-    const page = await getPageById(params.id);
-    if (!page) {
+    const id = params.id;
+    console.log(`🗑️ API: Deleting page with ID: ${id}`);
+    
+    // Check if page exists before deletion
+    const existingPage = await getPageById(id);
+    if (!existingPage) {
       return NextResponse.json(
         { error: 'Page not found' }, 
         { status: 404 }
       );
     }
     
-    if (['home', 'about'].includes(page.slug)) {
+    // Don't allow deletion of essential pages
+    if (['home', 'about', 'blog', 'projects', 'contact'].includes(existingPage.slug)) {
       return NextResponse.json(
-        { error: 'Cannot delete essential pages' }, 
-        { status: 403 }
+        { error: 'Cannot delete essential page' }, 
+        { status: 400 }
       );
     }
     
-    // Delete the page
-    const success = await deletePage(params.id);
+    const success = await deletePage(id);
     
     if (!success) {
       return NextResponse.json(

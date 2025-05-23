@@ -75,7 +75,6 @@ export async function GET() {
       name: profile.name,
       imageUrl: profile.imageUrl,
       skills: profile.skills,
-      bio: profile.bio,
       location: profile.location,
       email: profile.email,
       socialLinks: profile.socialLinks
@@ -137,7 +136,6 @@ export async function PUT(req: NextRequest) {
       name: profile.name,
       imageUrl: profile.imageUrl,
       skills: profile.skills,
-      bio: profile.bio,
       location: profile.location,
       email: profile.email,
       socialLinks: profile.socialLinks

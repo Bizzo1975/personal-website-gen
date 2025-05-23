@@ -1,6 +1,8 @@
 import dbConnect, { isMockMode } from '@/lib/db';
 import Page from '@/lib/models/Page';
 import { Document } from 'mongoose';
+import fs from 'fs';
+import path from 'path';
 
 export interface PageData {
   _id: string;
@@ -11,6 +13,7 @@ export interface PageData {
   metaDescription: string;
   headerTitle: string;
   headerSubtitle: string;
+  heroHeading: string;
   updatedAt: Date;
 }
 
@@ -26,12 +29,34 @@ const convertToPageData = (doc: any): PageData | null => {
     metaDescription: doc.metaDescription,
     headerTitle: doc.headerTitle || '',
     headerSubtitle: doc.headerSubtitle || '',
+    heroHeading: doc.heroHeading || 'Building the Modern Web',
     updatedAt: doc.updatedAt,
   };
 };
 
-// Mock data for development when MongoDB is not available
-let mockPages: PageData[] = [
+// Try to load mock data from JSON file
+const loadMockPagesFromFile = (): PageData[] | null => {
+  try {
+    const filePath = path.join(process.cwd(), 'src', 'lib', 'mockData', 'pages.json');
+    if (fs.existsSync(filePath)) {
+      console.log('📂 Loading mock pages from file:', filePath);
+      const data = fs.readFileSync(filePath, 'utf8');
+      const pages = JSON.parse(data);
+      
+      // Convert string dates to Date objects
+      return pages.map((page: any) => ({
+        ...page,
+        updatedAt: new Date(page.updatedAt)
+      }));
+    }
+  } catch (err) {
+    console.error('Error loading mock pages from file:', err);
+  }
+  return null;
+};
+
+// Mock data for development when MongoDB is not available or file loading fails
+const defaultMockPages: PageData[] = [
   {
     _id: '1',
     name: 'Home',
@@ -53,6 +78,7 @@ Feel free to explore my projects and blog posts, or get in touch via the contact
     metaDescription: 'Personal website and portfolio of a full-stack developer',
     headerTitle: 'Welcome to My Portfolio',
     headerSubtitle: 'Explore my projects, skills, and experience as a developer',
+    heroHeading: 'Building the Modern Web',
     updatedAt: new Date(),
   },
   {
@@ -83,6 +109,67 @@ I started programming in college and quickly fell in love with web development. 
     metaDescription: 'Learn more about my background, skills, and experience as a developer',
     headerTitle: 'About Me',
     headerSubtitle: 'Learn more about my background, experience, and the technologies I work with.',
+    heroHeading: '',
+    updatedAt: new Date(),
+  },
+  {
+    _id: '3',
+    name: 'Blog Page',
+    title: 'Blog',
+    slug: 'blog',
+    content: `
+# My Blog
+
+Welcome to my blog, where I share my thoughts and experiences on web development, programming, and technology.
+
+## Latest Articles
+
+Check out my latest articles below. I regularly post about technologies I'm working with and lessons I've learned along the way.
+    `,
+    metaDescription: 'Read my latest articles and thoughts on web development, design, and technology.',
+    headerTitle: 'Blog & Articles',
+    headerSubtitle: 'Thoughts, tutorials, and insights on web development, design, and technology.',
+    heroHeading: '',
+    updatedAt: new Date(),
+  },
+  {
+    _id: '4',
+    name: 'Projects Page',
+    title: 'My Projects',
+    slug: 'projects',
+    content: `
+# My Projects
+
+Here are some of the key projects I've worked on. Each represents my approach to problem-solving and my technical skills.
+
+## What I've Built
+
+These projects span various domains and technologies, showcasing my versatility and expertise as a developer.
+    `,
+    metaDescription: 'Explore my portfolio of web development and programming projects.',
+    headerTitle: 'Projects & Portfolio',
+    headerSubtitle: 'Explore my latest work and personal projects. Each project represents my passion for creating elegant solutions to complex problems.',
+    heroHeading: '',
+    updatedAt: new Date(),
+  },
+  {
+    _id: '5',
+    name: 'Contact Page',
+    title: 'Contact Me',
+    slug: 'contact',
+    content: `
+# Get in Touch
+
+I'm always open to discussing new projects, opportunities, or collaborations.
+
+## Contact Information
+
+Feel free to reach out through the form below or via my social media channels.
+    `,
+    metaDescription: 'Contact me for work opportunities, collaborations, or questions.',
+    headerTitle: 'Contact Me',
+    headerSubtitle: 'Have a question or want to work together? Get in touch with me using the form below or through any of my social channels.',
+    heroHeading: '',
     updatedAt: new Date(),
   }
 ];
@@ -95,7 +182,17 @@ const initMockPages = () => {
   // Check if we have already stored mock pages in the global object
   if (!(global as any)[MOCK_PAGES_KEY]) {
     console.log('📋 Initializing mock pages data');
-    (global as any)[MOCK_PAGES_KEY] = mockPages;
+    
+    // Try to load from file first
+    const filePages = loadMockPagesFromFile();
+    if (filePages) {
+      console.log('📋 Using mock pages from file:', filePages.length, 'pages');
+      (global as any)[MOCK_PAGES_KEY] = filePages;
+    } else {
+      // Fall back to default mock data
+      console.log('📋 Using default mock pages');
+      (global as any)[MOCK_PAGES_KEY] = defaultMockPages;
+    }
   }
   return (global as any)[MOCK_PAGES_KEY];
 };
@@ -130,13 +227,20 @@ export async function getPageBySlug(slug: string): Promise<PageData | null> {
       const mockPagesList = getMockPages();
       const page = mockPagesList.find(p => p.slug === pageSlug);
       console.log(`📖 Getting page by slug: ${pageSlug}`, page ? 'Found' : 'Not found');
+      
       return page || null;
     }
     
     // Otherwise, use MongoDB
     await dbConnect();
     const page = await Page.findOne({ slug: pageSlug });
-    return convertToPageData(page);
+    
+    if (!page) {
+      return null;
+    }
+    
+    const convertedPage = convertToPageData(page);
+    return convertedPage;
   } catch (error) {
     console.error('Error fetching page by slug:', error);
     

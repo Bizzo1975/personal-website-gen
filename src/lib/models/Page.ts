@@ -8,6 +8,7 @@ interface PageDocument extends Document {
   metaDescription: string;
   headerTitle: string;
   headerSubtitle: string;
+  heroHeading: string;
   updatedAt: Date;
 }
 
@@ -40,6 +41,10 @@ const PageSchema = new Schema<PageDocument>({
   headerSubtitle: {
     type: String,
     default: '',
+  },
+  heroHeading: {
+    type: String,
+    default: 'Building the Modern Web',
   },
   updatedAt: {
     type: Date,
