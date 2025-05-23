@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
       uploadDir = path.join(process.cwd(), 'public', 'images', 'projects');
     } else if (type === 'profile') {
       uploadDir = path.join(process.cwd(), 'public', 'images', 'profiles');
+    } else if (type === 'slideshow') {
+      uploadDir = path.join(process.cwd(), 'public', 'images', 'slideshow');
     } else {
       uploadDir = path.join(process.cwd(), 'public', 'uploads', 'images');
     }
@@ -64,6 +66,8 @@ export async function POST(request: NextRequest) {
       urlPath = `/images/projects/${uniqueFilename}`;
     } else if (type === 'profile') {
       urlPath = `/images/profiles/${uniqueFilename}`;
+    } else if (type === 'slideshow') {
+      urlPath = `/images/slideshow/${uniqueFilename}`;
     } else {
       urlPath = `/uploads/images/${uniqueFilename}`;
     }
