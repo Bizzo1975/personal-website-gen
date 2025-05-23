@@ -51,6 +51,9 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     { href: '/admin/posts', label: 'Posts', icon: <BiNews className="w-5 h-5" /> },
     { href: '/admin/projects', label: 'Projects', icon: <BiCodeBlock className="w-5 h-5" /> },
     
+    // Access Management
+    { href: '/admin/access-requests', label: 'Access Requests', icon: <BiUser className="w-5 h-5" /> },
+    
     // Slideshow Management
     { href: '/admin/slideshow', label: 'Slideshow', icon: <BiImage className="w-5 h-5" /> },
     
@@ -80,8 +83,8 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
           <nav className="p-4 flex-grow overflow-y-auto">
             <ul className="space-y-1">
               {navItems.map((item, index) => {
-                // Add visual separation before slideshow and settings sections
-                const showSeparator = index === 5 || index === 7; // Before Slideshow and Settings
+                // Add visual separation before access management, slideshow and settings sections
+                const showSeparator = index === 6 || index === 8 || index === 10; // Before Access Management, Slideshow, and Settings
                 
                 return (
                   <React.Fragment key={item.href}>

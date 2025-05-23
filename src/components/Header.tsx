@@ -80,10 +80,10 @@ const Header: React.FC<HeaderProps> = ({ profileName = 'John Doe' }) => {
                     Login
                   </Link>
                   <Link 
-                    href="/admin/signup" 
+                    href="/contact" 
                     className="bg-primary-600 dark:bg-primary-500 text-white py-2 px-4 rounded hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors"
                   >
-                    Signup
+                    Register
                   </Link>
                 </>
               )}
@@ -196,11 +196,11 @@ const Header: React.FC<HeaderProps> = ({ profileName = 'John Doe' }) => {
                   </li>
                   <li>
                     <Link 
-                      href="/admin/signup" 
+                      href="/contact" 
                       className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-500 transition-colors font-medium block"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Signup
+                      Register
                     </Link>
                   </li>
                 </>

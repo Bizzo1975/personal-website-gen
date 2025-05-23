@@ -1,32 +1,24 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { MDXRemoteSerializeResult } from 'next-mdx-remote';
-import { ProfileData } from '@/lib/services/profile-service';
-import MarkdownContent from '@/components/MarkdownContent';
+import React, { useMemo } from 'react';
+import { MDXRemote } from 'next-mdx-remote';
 import HeaderSection from '@/components/HeaderSection';
-import { PageData } from '@/lib/services/page-service';
+import { ProfileData } from '@/lib/services/profile-service';
+import { MDXRemoteSerializeResult } from 'next-mdx-remote';
+import EnhancedContactForm from '@/components/EnhancedContactForm';
+
+interface ContactPageData {
+  headerTitle?: string;
+  headerSubtitle?: string;
+}
 
 interface ContactContentProps {
   content: MDXRemoteSerializeResult;
   profile: ProfileData;
-  pageData?: PageData | null;
+  pageData?: ContactPageData | null;
 }
 
 export default function ContactContent({ content, profile, pageData }: ContactContentProps) {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
-  });
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitResult, setSubmitResult] = useState<{
-    success?: boolean;
-    message?: string;
-  }>({});
-  
   // Create a version of the content without the "Contact Me" heading
   const filteredContent = useMemo(() => {
     if (!content || !content.compiledSource) return content;
@@ -46,52 +38,6 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
     return contentClone;
   }, [content]);
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [id]: value
-    }));
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitResult({});
-    
-    // In a real application, you would send this data to your API
-    // For this demo, we'll just simulate a successful submission
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Log the form data for demonstration
-      console.log('Form submitted:', formData);
-      
-      // Show success message
-      setSubmitResult({
-        success: true,
-        message: 'Your message has been sent! I will get back to you soon.'
-      });
-      
-      // Reset form fields
-      setFormData({
-        name: '',
-        email: '',
-        subject: '',
-        message: ''
-      });
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      setSubmitResult({
-        success: false,
-        message: 'Sorry, there was an error sending your message. Please try again.'
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
   // Format page data for HeaderSection
   const headerData = pageData ? {
     headerTitle: pageData.headerTitle || "Contact Me",
@@ -104,7 +50,7 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
   return (
     <div className="space-y-8">
       {/* Header Section */}
-      <HeaderSection 
+      <HeaderSection
         title={headerData.headerTitle}
         subtitle={headerData.headerSubtitle}
         showSlideshow={true}
@@ -112,107 +58,91 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
         compact={true}
       />
       
-      {/* Contact Section */}
+      {/* Main Content */}
       <section className="section-modern">
         <div className="container-modern">
-          <div className="grid md:grid-cols-12 gap-12">
-            {/* Contact Info */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+            
+            {/* Contact Information - Left Column */}
             <div className="md:col-span-5">
-              <div className="prose prose-lg dark:prose-invert mb-8">
-                <MarkdownContent content={filteredContent} />
-              </div>
-              
-              <div className="space-y-6">
+              <div className="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm h-fit">
+                <h2 className="text-2xl font-bold mb-6">Let's Connect</h2>
+                
+                {/* Dynamic content from CMS */}
+                {filteredContent && (
+                  <div className="prose prose-slate dark:prose-invert max-w-none mb-6">
+                    <MDXRemote {...filteredContent} />
+                  </div>
+                )}
+                
+                {/* Contact Details */}
                 <div className="space-y-4">
-                  {profile.email && (
-                    <div className="flex items-center gap-3">
-                      <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-lg">Email</h3>
-                        <a href={`mailto:${profile.email}`} className="text-blue-600 dark:text-blue-400 hover:underline">
-                          {profile.email}
-                        </a>
-                      </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
                     </div>
-                  )}
+                    <div>
+                      <p className="font-medium">Email</p>
+                      <p className="text-gray-600 dark:text-gray-400">{profile.email || 'contact@example.com'}</p>
+                    </div>
+                  </div>
                   
                   {profile.location && (
-                    <div className="flex items-center gap-3">
-                      <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                       </div>
                       <div>
-                        <h3 className="font-medium text-lg">Location</h3>
-                        <p className="text-slate-700 dark:text-slate-300">{profile.location}</p>
+                        <p className="font-medium">Location</p>
+                        <p className="text-gray-600 dark:text-gray-400">{profile.location}</p>
                       </div>
                     </div>
                   )}
                 </div>
                 
                 {/* Social Links */}
-                {profile.socialLinks && Object.values(profile.socialLinks).some(link => link) && (
+                {(profile.socialLinks && Object.keys(profile.socialLinks).length > 0) && (
                   <div className="mt-8">
-                    <h3 className="text-lg font-medium mb-4">Connect With Me</h3>
-                    <div className="flex flex-wrap gap-3">
+                    <h3 className="text-lg font-semibold mb-4">Follow Me</h3>
+                    <div className="flex space-x-4">
                       {profile.socialLinks.github && (
                         <a 
-                          href={profile.socialLinks.github}
+                          href={profile.socialLinks.github} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          aria-label="GitHub"
-                          className="bg-slate-100 dark:bg-slate-800 p-3 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                          className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                         >
-                          <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.167 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.341-3.369-1.341-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.839c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z" />
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
                           </svg>
                         </a>
                       )}
-                      
-                      {profile.socialLinks.twitter && (
-                        <a 
-                          href={profile.socialLinks.twitter}
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          aria-label="Twitter"
-                          className="bg-slate-100 dark:bg-slate-800 p-3 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                        >
-                          <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
-                          </svg>
-                        </a>
-                      )}
-                      
                       {profile.socialLinks.linkedin && (
                         <a 
-                          href={profile.socialLinks.linkedin}
+                          href={profile.socialLinks.linkedin} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          aria-label="LinkedIn"
-                          className="bg-slate-100 dark:bg-slate-800 p-3 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                          className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                         >
-                          <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                           </svg>
                         </a>
                       )}
-                      
-                      {profile.socialLinks.website && (
+                      {profile.socialLinks.twitter && (
                         <a 
-                          href={profile.socialLinks.website}
+                          href={profile.socialLinks.twitter} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          aria-label="Website"
-                          className="bg-slate-100 dark:bg-slate-800 p-3 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                          className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                         >
-                          <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
                           </svg>
                         </a>
                       )}
@@ -222,94 +152,16 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
               </div>
             </div>
             
-            {/* Contact Form */}
+            {/* Contact Form - Right Column */}
             <div className="md:col-span-7">
               <div className="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm">
-                <h2 className="text-2xl font-bold mb-6">Send Me a Message</h2>
+                <h2 className="text-2xl font-bold mb-6">Send Me a Message or Request Access</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  Use the form below to either send a general message or request access to register on the platform. 
+                  For access requests, please select the appropriate access level and provide details about your intended use.
+                </p>
                 
-                {submitResult.message && (
-                  <div className={`p-4 mb-6 rounded-lg ${
-                    submitResult.success 
-                      ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800' 
-                      : 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
-                  }`}>
-                    {submitResult.message}
-                  </div>
-                )}
-                
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <label htmlFor="name" className="block mb-2 font-medium">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Your name"
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="email" className="block mb-2 font-medium">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Your email"
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="subject" className="block mb-2 font-medium">
-                      Subject
-                    </label>
-                    <input
-                      type="text"
-                      id="subject"
-                      value={formData.subject}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Subject"
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="message" className="block mb-2 font-medium">
-                      Message
-                    </label>
-                    <textarea
-                      id="message"
-                      value={formData.message}
-                      onChange={handleChange}
-                      rows={5}
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Your message"
-                      required
-                      disabled={isSubmitting}
-                    ></textarea>
-                  </div>
-                  
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-70"
-                  >
-                    {isSubmitting ? 'Sending...' : 'Send Message'}
-                  </button>
-                </form>
+                <EnhancedContactForm />
               </div>
             </div>
           </div>

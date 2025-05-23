@@ -162,10 +162,10 @@ const ModernNavbar: React.FC<ModernNavbarProps> = ({ siteSettings }) => {
                     Login
                   </Link>
                   <Link
-                    href="/admin/signup"
+                    href="/contact"
                     className="px-4 py-2 text-sm font-medium rounded-full bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white transition-colors"
                   >
-                    Signup
+                    Register
                   </Link>
                 </div>
               )}
@@ -264,11 +264,11 @@ const ModernNavbar: React.FC<ModernNavbarProps> = ({ siteSettings }) => {
                   </li>
                   <li>
                     <Link
-                      href="/admin/signup"
+                      href="/contact"
                       className="block px-4 py-2 rounded-lg text-sm font-medium bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Signup
+                      Register
                     </Link>
                   </li>
                 </>
