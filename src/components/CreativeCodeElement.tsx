@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 
 interface CreativeCodeElementProps {
   className?: string;
@@ -284,24 +283,13 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
       />
       
       {/* Animated border effect */}
-      <motion.div
-        className="absolute inset-0 rounded-lg pointer-events-none"
+      <div
+        className="absolute inset-0 rounded-lg pointer-events-none animate-pulse"
         style={{
-          border: '2px solid transparent',
+          border: '2px solid rgba(59, 130, 246, 0.3)',
           backgroundClip: 'padding-box',
-          zIndex: 10
-        }}
-        animate={{
-          boxShadow: [
-            '0 0 0 rgba(59, 130, 246, 0)',
-            '0 0 8px rgba(59, 130, 246, 0.6)',
-            '0 0 0 rgba(59, 130, 246, 0)'
-          ]
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut"
+          zIndex: 10,
+          boxShadow: '0 0 8px rgba(59, 130, 246, 0.4)'
         }}
       />
     </div>

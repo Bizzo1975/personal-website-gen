@@ -5,7 +5,6 @@ import { serializeMarkdown } from '@/lib/mdx';
 import { getProjects, ProjectData } from '@/lib/services/project-service';
 import { getPosts, PostData } from '@/lib/services/post-service';
 import HomePage from './home-page';
-import MarkdownContent from '@/components/MarkdownContent';
 
 export async function generateMetadata(): Promise<Metadata> {
   const page = await getPageBySlug('home');
@@ -30,9 +29,10 @@ export default async function Page() {
     mdxSource = await serializeMarkdown(page.content);
   } catch (error) {
     console.error('Error serializing markdown:', error);
-    // Create a fallback MDX source
+    // Create a fallback MDX source with proper imports
     mdxSource = {
       compiledSource: `
+        const React = arguments[0];
         function _createMdxContent() {
           return React.createElement('div', null, 
             React.createElement('h1', null, 'Welcome to My Portfolio'),
@@ -46,6 +46,7 @@ export default async function Page() {
         return { default: MDXContent };
       `,
       frontmatter: {},
+      scope: {}
     };
   }
 

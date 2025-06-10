@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { MDXRemoteSerializeResult } from 'next-mdx-remote';
 import MarkdownContent from '@/components/MarkdownContent';
 import FallbackImage from '@/components/FallbackImage';
-import HeaderSection from '@/components/HeaderSection';
+// import HeaderSection from '@/components/HeaderSection';
 import { ProfileData } from '@/lib/services/profile-service';
 import { PageData } from '@/lib/services/page-service';
 
@@ -44,14 +44,16 @@ export default function AboutContent({ content, profile, pageData }: AboutConten
   return (
     <div className="space-y-8">
       {/* Header Section */}
-      <HeaderSection 
-        title="About Me"
-        subtitle="Learn more about my background, experience, and the technologies I work with."
-        showSlideshow={true}
-        className="bg-gradient-secondary"
-        compact={true}
-        pageData={headerData}
-      />
+      <div className="relative bg-gradient-secondary">
+        <div className="container-modern relative z-10 py-6 md:py-8">
+          <div className="bg-gradient-to-r from-slate-900/90 to-slate-800/80 backdrop-blur-sm p-6 rounded-3xl shadow-lg max-w-3xl">
+            <h1 className="text-3xl md:text-4xl font-bold mb-4 text-white">About Me</h1>
+            <p className="text-xl text-white/80 mb-4">
+              Learn more about my background, experience, and the technologies I work with.
+            </p>
+          </div>
+        </div>
+      </div>
       
       {/* Main Content */}
       <section className="section-modern">

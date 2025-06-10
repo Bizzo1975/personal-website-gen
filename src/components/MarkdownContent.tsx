@@ -3,7 +3,7 @@
 import React from 'react';
 import { MDXRemote } from 'next-mdx-remote';
 import Link from 'next/link';
-import OptimizedImage from '@/components/OptimizedImage';
+import FallbackImage from '@/components/FallbackImage';
 
 // Define the components to be used in MDX
 const components = {
@@ -23,42 +23,20 @@ const components = {
       </a>
     );
   },
-  // Enhanced image component with OptimizedImage
+  // Enhanced image component with FallbackImage
   img: ({ src, alt, ...props }: any) => {
     if (!src) return null;
     
-    // For external images
-    if (src.startsWith('http')) {
-      return (
-        <div className="relative w-full h-64 md:h-96 my-8 overflow-hidden rounded-lg">
-          <OptimizedImage 
-            src={src} 
-            alt={alt || ''} 
-            fill 
-            style={{ objectFit: 'cover' }}
-            placeholderType="blur"
-            fallbackSrc="/images/placeholder-image.png"
-            quality={80}
-            sizes="(max-width: 768px) 100vw, 800px"
-            className="transition-transform hover:scale-105 duration-300"
-          />
-        </div>
-      );
-    }
-    
-    // For local images
     return (
       <div className="relative w-full h-64 md:h-96 my-8 overflow-hidden rounded-lg">
-        <OptimizedImage 
+        <FallbackImage 
           src={src} 
           alt={alt || ''} 
-          fill
-          style={{ objectFit: 'cover' }}
-          placeholderType="blur"
+          width="100%"
+          height="100%"
+          className="w-full h-full transition-transform hover:scale-105 duration-300"
+          objectFit="cover"
           fallbackSrc="/images/placeholder-image.png"
-          quality={85}
-          sizes="(max-width: 768px) 100vw, 800px"
-          className="transition-transform hover:scale-105 duration-300"
           {...props}
         />
       </div>

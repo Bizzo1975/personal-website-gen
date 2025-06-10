@@ -1,12 +1,11 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Personal Website Startup Script (Windows) - Enhanced with Full Seeding
-REM This script handles all initialization and startup tasks for the personal website project
+REM Personal Website Startup Script (Windows)
+REM This script handles all initialization and startup tasks
 
 echo =====================================================
 echo   Personal Website Startup Script (Windows)
-echo   Enhanced with Full Database Seeding
 echo =====================================================
 
 REM Parse command line arguments
