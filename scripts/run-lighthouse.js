@@ -20,7 +20,7 @@ const path = require('path');
 const util = require('util');
 
 const execPromise = util.promisify(exec);
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://localhost:3007';
 const REPORTS_DIR = path.join(__dirname, '../lighthouse-reports');
 
 // Pages to test

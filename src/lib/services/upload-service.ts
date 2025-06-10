@@ -7,6 +7,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs/promises';
+import { config, pathUtils } from '@/lib/config';
 
 // Supported image types
 const SUPPORTED_IMAGE_TYPES = [
@@ -18,13 +19,13 @@ const SUPPORTED_IMAGE_TYPES = [
 ];
 
 // Maximum file size (5MB)
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE = config.uploads.maxFileSize;
 
-// Upload directories
-const UPLOAD_ROOT = path.join(process.cwd(), 'public/uploads');
+// Upload directories - using Windows-compatible paths
+const UPLOAD_ROOT = pathUtils.resolve(pathUtils.join(process.cwd(), 'public', 'uploads'));
 const UPLOAD_DIRS = {
-  images: path.join(UPLOAD_ROOT, 'images'),
-  documents: path.join(UPLOAD_ROOT, 'documents')
+  images: pathUtils.resolve(pathUtils.join(UPLOAD_ROOT, 'images')),
+  documents: pathUtils.resolve(pathUtils.join(UPLOAD_ROOT, 'documents'))
 };
 
 interface UploadResult {
@@ -39,25 +40,13 @@ interface UploadResult {
 /**
  * Ensure upload directories exist
  */
-export async function ensureUploadDirs(): Promise<void> {
+async function ensureUploadDirs(): Promise<void> {
   try {
-    // Check if root upload directory exists
-    try {
-      await fs.access(UPLOAD_ROOT);
-    } catch {
-      await fs.mkdir(UPLOAD_ROOT, { recursive: true });
-    }
-    
-    // Check and create each subdirectory
     for (const dir of Object.values(UPLOAD_DIRS)) {
-      try {
-        await fs.access(dir);
-      } catch {
-        await fs.mkdir(dir, { recursive: true });
-      }
+      await fs.mkdir(dir, { recursive: true });
     }
   } catch (error) {
-    console.error('Error ensuring upload directories:', error);
+    console.error('Error creating upload directories:', error);
     throw new Error('Failed to create upload directories');
   }
 }
@@ -76,10 +65,10 @@ export async function uploadImage(
   mimeType: string
 ): Promise<UploadResult> {
   // Validate file type
-  if (!SUPPORTED_IMAGE_TYPES.includes(mimeType)) {
+  if (!config.uploads.allowedImageTypes.includes(mimeType)) {
     return {
       success: false,
-      error: `Unsupported image type: ${mimeType}. Supported types: ${SUPPORTED_IMAGE_TYPES.join(', ')}`
+      error: `Unsupported image type: ${mimeType}. Supported types: ${config.uploads.allowedImageTypes.join(', ')}`
     };
   }
   
@@ -98,12 +87,12 @@ export async function uploadImage(
     // Generate a unique filename
     const fileExt = path.extname(fileName);
     const uniqueFileName = `${uuidv4()}${fileExt}`;
-    const filePath = path.join(UPLOAD_DIRS.images, uniqueFileName);
+    const filePath = pathUtils.resolve(pathUtils.join(UPLOAD_DIRS.images, uniqueFileName));
     
     // Write file to disk
     await fs.writeFile(filePath, file);
     
-    // Return the URL (relative to the public directory)
+    // Return the URL (relative to the public directory) - always use forward slashes for URLs
     return {
       success: true,
       url: `/uploads/images/${uniqueFileName}`,
@@ -132,7 +121,9 @@ export async function deleteUploadedFile(fileUrl: string): Promise<boolean> {
       return false;
     }
     
-    const filePath = path.join(process.cwd(), 'public', fileUrl);
+    // Convert URL path to file system path
+    const relativePath = fileUrl.replace(/^\/uploads\//, '');
+    const filePath = pathUtils.resolve(pathUtils.join(UPLOAD_ROOT, relativePath));
     
     // Check if file exists
     try {

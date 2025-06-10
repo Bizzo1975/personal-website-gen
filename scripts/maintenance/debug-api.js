@@ -2,7 +2,7 @@
 const fetch = require('node-fetch');
 
 // Configuration
-const API_BASE_URL = 'http://localhost:3000/api'; // Adjust port if needed
+const API_BASE_URL = 'http://localhost:3007/api'; // Updated port from 3000 to 3007
 const DEBUG = true;
 
 // Helper function to log with timestamp

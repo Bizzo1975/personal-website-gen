@@ -50,7 +50,7 @@ const mockProjects: ProjectData[] = [
     title: 'E-Commerce Platform',
     slug: 'ecommerce-platform',
     description: 'A full-featured online store with payment integration, user authentication, and admin dashboard.',
-    image: '/images/projects/ecommerce-platform.jpg',
+    image: '/images/projects/ecommerce-platform.svg',
     technologies: ['React', 'Node.js', 'MongoDB', 'Stripe'],
     liveDemo: 'https://example-ecommerce.com',
     sourceCode: 'https://github.com/johndoe/ecommerce-platform',
@@ -63,7 +63,7 @@ const mockProjects: ProjectData[] = [
     title: 'Task Management App',
     slug: 'task-management-app',
     description: 'A productivity tool for managing tasks, projects, and team collaboration with real-time updates.',
-    image: '/images/projects/task-management.jpg',
+    image: '/images/projects/task-management.svg',
     technologies: ['Next.js', 'TypeScript', 'Prisma', 'PostgreSQL'],
     liveDemo: 'https://taskmaster-app.com',
     sourceCode: 'https://github.com/johndoe/task-management',
@@ -76,13 +76,26 @@ const mockProjects: ProjectData[] = [
     title: 'AI Image Generator',
     slug: 'ai-image-generator',
     description: 'An application that generates images from text descriptions using AI models and APIs.',
-    image: '/images/projects/ai-image-generator.jpg',
+    image: '/images/projects/ai-image-generator.svg',
     technologies: ['Python', 'TensorFlow', 'FastAPI', 'React'],
     liveDemo: 'https://ai-imagine.com',
     sourceCode: 'https://github.com/johndoe/ai-image-gen',
     featured: true,
     createdAt: new Date('2023-05-15'),
     updatedAt: new Date('2023-06-01')
+  },
+  {
+    id: '4',
+    title: 'Weather Dashboard',
+    slug: 'weather-dashboard',
+    description: 'A responsive weather application with detailed forecasts and interactive charts.',
+    image: '/images/projects/weather-dashboard.svg',
+    technologies: ['JavaScript', 'React', 'Weather API', 'Chart.js'],
+    liveDemo: 'https://weather-dashboard.com',
+    sourceCode: 'https://github.com/johndoe/weather-dashboard',
+    featured: false,
+    createdAt: new Date('2023-07-10'),
+    updatedAt: new Date('2023-08-15')
   }
 ];
 

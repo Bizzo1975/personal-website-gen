@@ -1,23 +1,24 @@
 import { getPosts } from '@/lib/services/post-service';
 import { NextResponse } from 'next/server';
+import { config } from '@/lib/config';
 
 export async function GET() {
-  // Fetch the latest posts for the feed
-  const posts = await getPosts({ 
-    published: true, 
-    limit: 20,
-    sort: { date: -1 } 
-  });
-
-  // Generate the base site URL from environment or use fallback
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  
-  // Basic site information
-  const siteName = 'My Personal Website';
-  const siteDescription = 'A blog about web development, technology, and personal projects';
-  
-  // Build the RSS XML
-  const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
+  try {
+    const posts = await getPosts({ 
+      published: true, 
+      limit: 20,
+      sort: { date: -1 } 
+    });
+    
+    // Use config for site URL with fallback
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || config.urls.frontend;
+    
+    // Basic site information
+    const siteName = 'My Personal Website';
+    const siteDescription = 'A blog about web development, technology, and personal projects';
+    
+    // Build the RSS XML
+    const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>${siteName}</title>
@@ -38,11 +39,14 @@ export async function GET() {
   </channel>
 </rss>`;
 
-  // Return the XML with the appropriate content type
-  return new NextResponse(rssXml, {
-    headers: {
-      'Content-Type': 'application/xml',
-      'Cache-Control': 'public, max-age=3600, s-maxage=21600' // Cache for 1 hour on client, 6 hours on CDN
-    }
-  });
+    return new Response(rssXml, {
+      headers: {
+        'Content-Type': 'application/xml',
+        'Cache-Control': 's-maxage=86400, stale-while-revalidate',
+      },
+    });
+  } catch (error) {
+    console.error('Error generating RSS feed:', error);
+    return new Response('Error generating RSS feed', { status: 500 });
+  }
 } 

@@ -12,7 +12,7 @@ const chalk = require('chalk');
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://localhost:3007';
 const REPORTS_DIR = path.join(__dirname, '../accessibility-reports');
 
 // Routes to test

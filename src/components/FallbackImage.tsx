@@ -43,10 +43,12 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
   }, [src]);
   
   const handleError = () => {
-    if (!hasError) {
-      console.warn(`Image failed to load: ${imgSrc}`);
+    if (!hasError && imgSrc !== fallbackSrc) {
+      console.warn(`Image failed to load: ${imgSrc}, falling back to: ${fallbackSrc}`);
       setImgSrc(fallbackSrc);
       setHasError(true);
+    } else if (hasError) {
+      console.error(`Fallback image also failed to load: ${fallbackSrc}`);
     }
   };
   

@@ -27,69 +27,73 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
   const defaultPosts: ExtendedPost[] = [
     {
       id: '1',
-      title: 'Getting Started with Next.js',
-      slug: 'getting-started-with-nextjs',
-      excerpt: 'Learn how to build modern websites with Next.js, from setup to deployment.',
+      title: 'Getting Started with Next.js and TypeScript',
+      slug: 'getting-started-with-nextjs-typescript',
+      excerpt: 'Learn how to build modern websites with Next.js and TypeScript, from setup to deployment.',
       date: '2023-01-15',
       content: '',
       readTime: 5,
-      tags: ['Next.js', 'Tutorial'],
+      tags: ['Next.js', 'TypeScript'],
       author: {
         name: 'John Doe',
         image: '/images/placeholder.jpg'
       },
-      coverImage: '/images/slideshow/coding-1.jpg',
+      coverImage: '/images/blog/nextjs-typescript.svg',
+      featuredImage: '/images/blog/nextjs-typescript.svg',
       published: true,
       updatedAt: new Date('2023-01-15')
     },
     {
       id: '2',
-      title: '10 Tailwind CSS Tips for Better Designs',
-      slug: 'tailwind-css-tips',
-      excerpt: 'Improve your UI design skills with these practical Tailwind CSS techniques.',
+      title: 'Why I Switched to Tailwind CSS',
+      slug: 'why-i-switched-to-tailwind-css',
+      excerpt: 'Discover why Tailwind CSS has revolutionized my development workflow and how it can improve your styling approach.',
       date: '2023-02-03',
       content: '',
       readTime: 4,
-      tags: ['CSS', 'Design'],
+      tags: ['CSS', 'Tailwind'],
       author: {
         name: 'John Doe',
         image: '/images/placeholder.jpg'
       },
-      coverImage: '/images/slideshow/coding-2.jpg',
+      coverImage: '/images/blog/tailwind-css.svg',
+      featuredImage: '/images/blog/tailwind-css.svg',
       published: true,
       updatedAt: new Date('2023-02-03')
     },
     {
       id: '3',
-      title: 'Understanding TypeScript Generics',
-      slug: 'understanding-typescript-generics',
-      excerpt: 'Master TypeScript generics to write more flexible and reusable code.',
+      title: 'React Best Practices for 2024',
+      slug: 'react-best-practices-2024',
+      excerpt: 'Learn the latest React best practices, performance optimizations, and clean code techniques for modern development.',
       date: '2023-03-20',
       content: '',
       readTime: 6,
-      tags: ['TypeScript', 'Tutorial'],
+      tags: ['React', 'Best Practices'],
       author: {
         name: 'John Doe',
         image: '/images/placeholder.jpg'
       },
-      coverImage: '/images/slideshow/coding-3.jpg',
+      coverImage: '/images/blog/react-best-practices.svg',
+      featuredImage: '/images/blog/react-best-practices.svg',
       published: true,
       updatedAt: new Date('2023-03-20')
     },
     {
       id: '4',
-      title: 'The Future of Web Development',
-      slug: 'future-of-web-development',
-      excerpt: 'Exploring upcoming trends and technologies that will shape the future of web development.',
+      title: 'Modern Web Development Techniques',
+      slug: 'modern-web-development-techniques',
+      excerpt: 'Explore cutting-edge web development techniques, tools, and methodologies that are shaping the future of the web.',
       date: '2023-04-10',
       content: '',
       readTime: 7,
-      tags: ['Web Development', 'Trends'],
+      tags: ['Web Development', 'Modern'],
       author: {
         name: 'John Doe',
         image: '/images/placeholder.jpg'
       },
-      coverImage: '/images/slideshow/coding-4.jpg',
+      coverImage: '/images/blog/web-development.svg',
+      featuredImage: '/images/blog/web-development.svg',
       published: true,
       updatedAt: new Date('2023-04-10')
     }
@@ -98,12 +102,13 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
   // Use provided posts or default to our samples
   const displayedPosts = posts.length > 0 
     ? posts.map(post => {
-        // Choose a random slideshow image for posts without featured images
-        const randomImage = `/images/slideshow/coding-${Math.floor(Math.random() * 5) + 1}.jpg`;
+        // Use featuredImage if available, otherwise fallback to a slideshow image
+        const imageUrl = (post as any).featuredImage || `/images/slideshow/coding-${Math.floor(Math.random() * 5) + 1}.jpg`;
         
         return {
           ...post,
-          coverImage: randomImage,
+          coverImage: imageUrl,
+          featuredImage: imageUrl,
           author: typeof post.author === 'string' 
             ? { name: post.author, image: '/images/placeholder.jpg' }
             : post.author

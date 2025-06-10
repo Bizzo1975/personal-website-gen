@@ -30,7 +30,7 @@ const nextConfig = {
     // Always disable image optimization in development to prevent issues
     unoptimized: process.env.NODE_ENV === 'development',
   },
-  webpack(config) {
+  webpack(config, { dev }) {
     // Configures webpack to handle MDX files
     config.module.rules.push({
       test: /\.mdx?$/,
@@ -40,12 +40,40 @@ const nextConfig = {
         }
       ]
     });
+
+    // Windows and Docker compatibility settings
+    if (dev) {
+      // Enable polling for Windows development (fixes HMR issues in Docker/Windows)
+      if (process.env.NEXT_WEBPACK_USEPOLLING) {
+        config.watchOptions = {
+          poll: 500,
+          aggregateTimeout: 300,
+          ignored: /node_modules/,
+        };
+      }
+
+      // Additional Windows-specific optimizations
+      if (process.platform === 'win32' || process.env.WATCHPACK_POLLING) {
+        config.watchOptions = {
+          ...config.watchOptions,
+          poll: 1000,
+          aggregateTimeout: 300,
+          ignored: ['**/node_modules', '**/.git', '**/.next'],
+        };
+      }
+    }
     
     return config;
   },
   
   // Add this to ensure output is traced properly
   output: 'standalone',
+
+  // Experimental features for better performance on Windows
+  experimental: {
+    // Enable SWC minification for better performance
+    swcMinify: true,
+  },
 };
 
 module.exports = withBundleAnalyzer(nextConfig);

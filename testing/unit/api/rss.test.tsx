@@ -1,64 +1,121 @@
 import { GET } from '@/app/api/rss/route';
-import { getPosts } from '@/lib/services/post-service';
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
-// Mock the post service
+// Mock the dependencies
 jest.mock('@/lib/services/post-service', () => ({
-  getPosts: jest.fn(),
+  getAllPosts: jest.fn(),
 }));
 
-describe('RSS Feed API', () => {
+jest.mock('@/lib/services/site-service', () => ({
+  getSiteSettings: jest.fn(),
+}));
+
+describe('/api/rss Route Handler', () => {
+  const mockGetAllPosts = require('@/lib/services/post-service').getAllPosts;
+  const mockGetSiteSettings = require('@/lib/services/site-service').getSiteSettings;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Default mock implementations
+    mockGetSiteSettings.mockResolvedValue({
+      siteName: 'Test Site',
+      siteDescription: 'Test Description',
+      siteUrl: 'http://localhost:3006'
+    });
   });
 
-  it('should generate RSS XML with the correct content type', async () => {
-    // Mock the posts data
+  it('should generate RSS feed with posts', async () => {
     const mockPosts = [
       {
-        id: '1',
-        title: 'Test Post 1',
         slug: 'test-post-1',
-        date: '2023-10-15',
-        readTime: 5,
-        excerpt: 'This is a test post',
-        content: 'Test content',
-        tags: ['test', 'jest'],
-        author: 'Test Author',
-        published: true,
-        updatedAt: new Date()
+        title: 'Test Post 1',
+        excerpt: 'Test excerpt 1',
+        content: 'Test content 1',
+        publishedAt: '2023-01-01T00:00:00.000Z',
+        updatedAt: '2023-01-01T00:00:00.000Z'
+      },
+      {
+        slug: 'test-post-2', 
+        title: 'Test Post 2',
+        excerpt: 'Test excerpt 2',
+        content: 'Test content 2',
+        publishedAt: '2023-01-02T00:00:00.000Z',
+        updatedAt: '2023-01-02T00:00:00.000Z'
       }
     ];
 
-    // Setup the mock
-    (getPosts as jest.Mock).mockResolvedValue(mockPosts);
+    mockGetAllPosts.mockResolvedValue(mockPosts);
 
-    // Call the API route handler
-    const response = await GET();
+    const request = new NextRequest('http://localhost:3006/api/rss');
+    const response = await GET(request);
 
-    // Assert that getPosts was called with the correct parameters
-    expect(getPosts).toHaveBeenCalledWith({
-      published: true,
-      limit: 20,
-      sort: { date: -1 }
-    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/rss+xml; charset=utf-8');
 
-    // Check response headers
-    expect(response.headers.get('Content-Type')).toBe('application/xml');
-    expect(response.headers.get('Cache-Control')).toBe('public, max-age=3600, s-maxage=21600');
-
-    // Convert the response to text
     const text = await response.text();
-
-    // Check if the XML contains critical elements
     expect(text).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-    expect(text).toContain('<rss version="2.0"');
-    expect(text).toContain('<title>My Personal Website</title>');
-    
-    // Check if our mock post data is in the feed
+    expect(text).toContain('<rss version="2.0">');
+    expect(text).toContain('<title>Test Site</title>');
+    expect(text).toContain('<description>Test Description</description>');
+    expect(text).toContain('<link>http://localhost:3006</link>');
     expect(text).toContain('<title>Test Post 1</title>');
-    expect(text).toContain('<link>http://localhost:3000/blog/test-post-1</link>');
-    expect(text).toContain('<category>test</category>');
-    expect(text).toContain('<category>jest</category>');
+    expect(text).toContain('<link>http://localhost:3006/blog/test-post-1</link>');
+    expect(text).toContain('<title>Test Post 2</title>');
+    expect(text).toContain('<link>http://localhost:3006/blog/test-post-2</link>');
+  });
+
+  it('should generate RSS feed with no posts', async () => {
+    mockGetAllPosts.mockResolvedValue([]);
+
+    const request = new NextRequest('http://localhost:3006/api/rss');
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/rss+xml; charset=utf-8');
+
+    const text = await response.text();
+    expect(text).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+    expect(text).toContain('<rss version="2.0">');
+    expect(text).toContain('<title>Test Site</title>');
+    expect(text).toContain('<description>Test Description</description>');
+    expect(text).toContain('<link>http://localhost:3006</link>');
+    expect(text).not.toContain('<item>');
+  });
+
+  it('should handle errors gracefully', async () => {
+    mockGetAllPosts.mockRejectedValue(new Error('Database error'));
+
+    const request = new NextRequest('http://localhost:3006/api/rss');
+    
+    await expect(GET(request)).rejects.toThrow('Database error');
+  });
+
+  it('should use correct RSS format', async () => {
+    const mockPosts = [
+      {
+        slug: 'test-post',
+        title: 'Test Post',
+        excerpt: 'Test excerpt',
+        content: 'Test content',
+        publishedAt: '2023-01-01T00:00:00.000Z',
+        updatedAt: '2023-01-01T00:00:00.000Z'
+      }
+    ];
+
+    mockGetAllPosts.mockResolvedValue(mockPosts);
+
+    const request = new NextRequest('http://localhost:3006/api/rss');
+    const response = await GET(request);
+
+    const text = await response.text();
+    
+    // Check RSS structure
+    expect(text).toContain('<channel>');
+    expect(text).toContain('</channel>');
+    expect(text).toContain('<item>');
+    expect(text).toContain('</item>');
+    expect(text).toContain('<pubDate>');
+    expect(text).toContain('<guid>');
   });
 }); 

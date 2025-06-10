@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
   // Auth routes that should be publicly accessible
-  const isAuthRoute = path === '/admin/login' || path === '/admin/signup';
+  const isAuthRoute = path === '/admin/login' || path === '/admin/signup' || path === '/admin';
   const isApiAuthRoute = path.startsWith('/api/auth/');
   
   // Check if the request is for the admin section but not a public auth route

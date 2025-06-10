@@ -1,5 +1,11 @@
 import dbConnect, { isMockMode } from '@/lib/db';
-import Page from '@/lib/models/Page';
+// Safe import of Page model with error handling
+let Page: any = null;
+try {
+  Page = require('@/lib/models/Page').default;
+} catch (error) {
+  console.warn('Page model could not be imported, using mock mode:', error.message);
+}
 import { Document } from 'mongoose';
 import fs from 'fs';
 import path from 'path';
@@ -220,13 +226,13 @@ export async function getPageBySlug(slug: string): Promise<PageData | null> {
     // Handle the home page case - when slug is empty or 'home'
     const pageSlug = slug === '' ? 'home' : slug;
     
-    // Use mock data if MongoDB is not available
-    if (useMockData()) {
+    // Use mock data if MongoDB is not available or Page model is undefined
+    if (useMockData() || !Page) {
       // Always ensure mock data is initialized
       initMockPages();
       const mockPagesList = getMockPages();
       const page = mockPagesList.find(p => p.slug === pageSlug);
-      console.log(`📖 Getting page by slug: ${pageSlug}`, page ? 'Found' : 'Not found');
+      console.log(`📖 Getting page by slug (mock): ${pageSlug}`, page ? 'Found' : 'Not found');
       
       return page || null;
     }
@@ -248,23 +254,20 @@ export async function getPageBySlug(slug: string): Promise<PageData | null> {
     initMockPages();
     
     // Fallback to mock data on error
-    if (slug === 'home' || slug === 'about') {
-      const mockPagesList = getMockPages();
-      const page = mockPagesList.find(p => p.slug === slug);
-      return page || null;
-    }
-    
-    return null;
+    const mockPagesList = getMockPages();
+    const page = mockPagesList.find(p => p.slug === (slug === '' ? 'home' : slug));
+    console.log(`📖 Getting page by slug (fallback): ${slug}`, page ? 'Found' : 'Not found');
+    return page || null;
   }
 }
 
 export async function getPageById(id: string): Promise<PageData | null> {
   try {
-    // Use mock data if MongoDB is not available
-    if (useMockData()) {
+    // Use mock data if MongoDB is not available or Page model is undefined
+    if (useMockData() || !Page) {
       const mockPagesList = getMockPages();
       const page = mockPagesList.find(p => p._id === id);
-      console.log(`🔍 Getting page by ID: ${id}`, page ? 'Found' : 'Not found');
+      console.log(`🔍 Getting page by ID (mock): ${id}`, page ? 'Found' : 'Not found');
       return page || null;
     }
     
@@ -274,18 +277,22 @@ export async function getPageById(id: string): Promise<PageData | null> {
     return convertToPageData(page);
   } catch (error) {
     console.error('Error fetching page by ID:', error);
-    return null;
+    // Fallback to mock data
+    const mockPagesList = getMockPages();
+    const page = mockPagesList.find(p => p._id === id);
+    console.log(`🔍 Getting page by ID (fallback): ${id}`, page ? 'Found' : 'Not found');
+    return page || null;
   }
 }
 
 export async function getAllPages(): Promise<PageData[]> {
   try {
-    // Use mock data if MongoDB is not available
-    if (useMockData()) {
+    // Use mock data if MongoDB is not available or Page model is undefined
+    if (useMockData() || !Page) {
       // Always ensure mock data is initialized
       initMockPages();
       const mockPagesList = getMockPages();
-      console.log(`📚 Getting all pages:`, mockPagesList.length, 'pages');
+      console.log(`📚 Getting all pages (mock):`, mockPagesList.length, 'pages');
       return [...mockPagesList];
     }
     
@@ -297,14 +304,16 @@ export async function getAllPages(): Promise<PageData[]> {
     console.error('Error fetching all pages:', error);
     // Always initialize mock data in error cases
     initMockPages();
-    return getMockPages(); // Return mock pages as fallback
+    const mockPagesList = getMockPages();
+    console.log(`📚 Getting all pages (fallback):`, mockPagesList.length, 'pages');
+    return mockPagesList; // Return mock pages as fallback
   }
 }
 
 export async function createPage(pageData: Omit<PageData, '_id' | 'updatedAt'>): Promise<PageData | null> {
   try {
-    // Handle mock data creation in development
-    if (useMockData()) {
+    // Handle mock data creation in development or when Page model is not available
+    if (useMockData() || !Page) {
       console.log('📝 Using mock creation for new page:', pageData.slug);
       
       const mockPagesList = getMockPages();
@@ -348,8 +357,8 @@ export async function createPage(pageData: Omit<PageData, '_id' | 'updatedAt'>):
 
 export async function updatePage(id: string, pageData: Partial<PageData>): Promise<PageData | null> {
   try {
-    // Handle mock data updates in development
-    if (useMockData()) {
+    // Handle mock data updates in development or when Page model is not available
+    if (useMockData() || !Page) {
       console.log('✏️ Using mock update for page:', id);
       
       const mockPagesList = getMockPages();
@@ -402,8 +411,8 @@ export async function updatePage(id: string, pageData: Partial<PageData>): Promi
 
 export async function deletePage(id: string): Promise<boolean> {
   try {
-    // Handle mock data deletion in development
-    if (useMockData()) {
+    // Handle mock data deletion in development or when Page model is not available
+    if (useMockData() || !Page) {
       console.log('🗑️ Using mock deletion for page:', id);
       
       const mockPagesList = getMockPages();
@@ -446,10 +455,11 @@ export async function getPageIdBySlug(slug: string): Promise<string | null> {
     // Handle the home page case - when slug is empty or 'home'
     const pageSlug = slug === '' ? 'home' : slug;
     
-    // Use mock data if MongoDB is not available
-    if (useMockData()) {
+    // Use mock data if MongoDB is not available or Page model is undefined
+    if (useMockData() || !Page) {
       const mockPagesList = getMockPages();
       const page = mockPagesList.find(p => p.slug === pageSlug);
+      console.log(`🔍 Getting page ID by slug (mock): ${pageSlug}`, page ? 'Found' : 'Not found');
       return page?._id || null;
     }
     
@@ -459,6 +469,10 @@ export async function getPageIdBySlug(slug: string): Promise<string | null> {
     return page?._id ? page._id.toString() : null;
   } catch (error) {
     console.error('Error fetching page ID by slug:', error);
-    return null;
+    // Fallback to mock data
+    const mockPagesList = getMockPages();
+    const page = mockPagesList.find(p => p.slug === (slug === '' ? 'home' : slug));
+    console.log(`🔍 Getting page ID by slug (fallback): ${slug}`, page ? 'Found' : 'Not found');
+    return page?._id || null;
   }
 }

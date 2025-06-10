@@ -6,7 +6,7 @@ import { MDXRemoteSerializeResult } from 'next-mdx-remote';
 import MarkdownContent from '@/components/MarkdownContent';
 import FallbackImage from '@/components/FallbackImage';
 import BackgroundSlideshow from '@/components/BackgroundSlideshow';
-import { CreativeCodeElement } from '@/components';
+// import { CreativeCodeElement } from '@/components';
 import { ProfileData } from '@/lib/services/profile-service';
 
 interface HomePageProps {
@@ -71,15 +71,15 @@ export default function HomePage({ content, projects = [], blogPosts = [], heroH
       description: 'A full-featured online store with payment integration, user authentication, and admin dashboard.',
       technologies: ['React', 'Node.js', 'MongoDB'],
       slug: '/projects/ecommerce-platform',
-      image: '/images/projects/ecommerce-platform.jpg'
+      image: '/images/projects/ecommerce-platform.svg'
     },
     {
       id: '2',
       title: 'Task Management App',
       description: 'A productivity tool for managing tasks, projects, and team collaboration with real-time updates.',
-      technologies: ['Next.js', 'tRPC', 'Prisma'],
+      technologies: ['Next.js', 'TypeScript', 'Prisma'],
       slug: '/projects/task-management-app',
-      image: '/images/projects/task-management.jpg'
+      image: '/images/projects/task-management.svg'
     },
     {
       id: '3',
@@ -87,7 +87,7 @@ export default function HomePage({ content, projects = [], blogPosts = [], heroH
       description: 'An application that generates images from text descriptions using AI models and APIs.',
       technologies: ['Python', 'TensorFlow', 'FastAPI'],
       slug: '/projects/ai-image-generator',
-      image: '/images/projects/ai-image-generator.jpg'
+      image: '/images/projects/ai-image-generator.svg'
     }
   ];
 
@@ -143,8 +143,18 @@ export default function HomePage({ content, projects = [], blogPosts = [], heroH
             <div className="md:col-span-5 relative z-10">
               <div className="flex flex-col gap-16 items-center">
                 {/* Creative code animation element */}
-                <div>
-                  <CreativeCodeElement width={400} height={250} className="w-full transform rotate-3 hover:rotate-0 transition-transform duration-500" />
+                <div className="glass-card p-6 rounded-2xl rotate-3 hover:rotate-0 transition-transform duration-500 bg-slate-800/90 dark:bg-slate-900/90" style={{ width: '400px', height: '250px' }}>
+                  <div className="text-white mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mb-1 text-blue-400">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+                    </svg>
+                    <h3 className="text-xl font-semibold text-white">Web Development</h3>
+                  </div>
+                  <div className="text-slate-300 text-sm space-y-2">
+                    <p>Building modern, responsive web applications</p>
+                    <p>Full-stack development with cutting-edge technologies</p>
+                    <p>Performance optimization and best practices</p>
+                  </div>
                 </div>
                 
                 <div className="glass-card p-6 rounded-2xl rotate-2 hover:rotate-0 transition-transform duration-500 bg-slate-800/90 dark:bg-slate-900/90" style={{ width: '400px', height: '250px' }}>
