@@ -6,7 +6,7 @@ import { MDXRemoteSerializeResult } from 'next-mdx-remote';
 import MarkdownContent from '@/components/MarkdownContent';
 import FallbackImage from '@/components/FallbackImage';
 import BackgroundSlideshow from '@/components/BackgroundSlideshow';
-import { CreativeCodeElement } from '@/components';
+import CreativeCodeElement from '@/components/CreativeCodeElement';
 import { ProfileData } from '@/lib/services/profile-service';
 
 interface HomePageProps {
@@ -120,7 +120,7 @@ export default function HomePage({ content, projects = [], blogPosts = [], heroH
       {/* Hero Section */}
       <section className="section-hero text-white relative">
         {/* Slideshow background */}
-        <BackgroundSlideshow opacity={0.5} overlayOpacity={0.2} />
+        <BackgroundSlideshow opacity={0.4} overlayOpacity={0.3} />
         
         <div className="container-modern relative z-10">
           <div className="grid md:grid-cols-12 gap-12 items-start py-16 md:py-24">
@@ -143,15 +143,15 @@ export default function HomePage({ content, projects = [], blogPosts = [], heroH
             <div className="md:col-span-5 relative z-10">
               <div className="flex flex-col gap-16 items-center">
                 {/* Creative code animation element */}
-                <div className="glass-card p-6 rounded-2xl rotate-3 hover:rotate-0 transition-transform duration-500">
+                <div className="backdrop-blur-md rounded-2xl rotate-3 hover:rotate-0 transition-transform duration-500 border-0 outline-0" style={{ width: '400px', height: '250px' }}>
                   <CreativeCodeElement 
-                    className="rounded-lg"
+                    className="rounded-2xl border-0"
                     width={400}
                     height={250}
                   />
                 </div>
                 
-                <div className="glass-card p-6 rounded-2xl rotate-2 hover:rotate-0 transition-transform duration-500 bg-slate-800/90 dark:bg-slate-900/90" style={{ width: '400px', height: '250px' }}>
+                <div className="bg-slate-800/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg p-6 rounded-2xl rotate-2 hover:rotate-0 transition-transform duration-500" style={{ width: '400px', height: '250px' }}>
                   <div className="text-white mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mb-1 text-blue-400">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />

@@ -59,51 +59,17 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
   // Preload image to check if it exists before rendering
   useEffect(() => {
     if (typeof window !== 'undefined' && !hasError) {
-      // For priority images, create a high priority image preload
-      if (priority) {
-        const linkId = `preload-${processedSrc.replace(/[^a-zA-Z0-9]/g, '-')}`;
-        
-        // Check if link already exists
-        let link = document.head.querySelector(`link#${linkId}`) as HTMLLinkElement;
-        
-        if (!link) {
-          link = document.createElement('link');
-          link.rel = 'preload';
-          link.as = 'image';
-          link.href = processedSrc;
-          link.id = linkId;
-          document.head.appendChild(link);
-          linkRef.current = link;
-        }
-        
-        // Clean up
-        return () => {
-          if (linkRef.current) {
-            try {
-              // Only remove if it's still in the DOM
-              if (linkRef.current.parentNode === document.head) {
-                document.head.removeChild(linkRef.current);
-              }
-            } catch (e) {
-              console.warn('Error removing preload link:', e);
-            }
-            linkRef.current = null;
-          }
-        };
-      }
-      
-      // Standard image preload
+      // Simple image preload without DOM manipulation
       const img = new Image();
       img.src = processedSrc;
       img.onload = () => {
-        // Image loaded successfully
         setIsLoaded(true);
       };
       img.onerror = () => {
         handleError();
       };
     }
-  }, [processedSrc, hasError, priority]);
+  }, [processedSrc, hasError]);
   
   return (
     <>

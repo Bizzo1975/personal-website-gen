@@ -8,13 +8,13 @@ interface CreativeCodeElementProps {
   height?: number;
 }
 
-// Animation states
-enum AnimationState {
-  RANDOM_1 = 'random1', // First random rotation
-  HELLO = 'hello',     // Display "HELLO"
-  RANDOM_2 = 'random2', // Second random rotation
-  WORLD = 'world'      // Display "WORLD"
-}
+// Animation states - using string literals to avoid enum issues
+const ANIMATION_STATE = {
+  RANDOM_1: 'random1',
+  HELLO: 'hello', 
+  RANDOM_2: 'random2',
+  WORLD: 'world'
+};
 
 const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
   className = '',
@@ -23,7 +23,7 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
-  const animationStateRef = useRef<AnimationState>(AnimationState.RANDOM_1);
+  const animationStateRef = useRef<string>(ANIMATION_STATE.RANDOM_1);
   const stateChangeTimeRef = useRef<number>(Date.now());
   const currentWordRef = useRef<string>('');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
@@ -33,23 +33,28 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
     const checkDarkMode = () => {
       if (typeof window !== 'undefined') {
         // Check if browser supports matchMedia
-        if (window.matchMedia) {
-          const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-          setIsDarkMode(darkModeQuery.matches);
-          
-          // Add listener for theme changes
-          const handleThemeChange = (e: MediaQueryListEvent) => {
-            setIsDarkMode(e.matches);
-          };
-          
-          // Modern browsers
-          darkModeQuery.addEventListener('change', handleThemeChange);
-          
-          return () => {
-            darkModeQuery.removeEventListener('change', handleThemeChange);
-          };
-        } else {
-          // Fallback for browsers that don't support matchMedia
+        try {
+          if (window.matchMedia) {
+            const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            setIsDarkMode(darkModeQuery.matches);
+            
+            // Add listener for theme changes
+            const handleThemeChange = (e: MediaQueryListEvent) => {
+              setIsDarkMode(e.matches);
+            };
+            
+            // Modern browsers
+            darkModeQuery.addEventListener('change', handleThemeChange);
+            
+            return () => {
+              darkModeQuery.removeEventListener('change', handleThemeChange);
+            };
+          } else {
+            // Fallback for browsers that don't support matchMedia
+            setIsDarkMode(false);
+          }
+        } catch (error) {
+          console.warn('Dark mode detection failed:', error);
           setIsDarkMode(false);
         }
       }
@@ -64,7 +69,10 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.warn('Could not get 2D context from canvas');
+      return;
+    }
     
     // Set canvas dimensions
     canvas.width = width;
@@ -111,8 +119,8 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
     
     // Set interval to update characters every 500ms (only during RANDOM states)
     const charUpdateInterval = setInterval(() => {
-      if (animationStateRef.current === AnimationState.RANDOM_1 ||
-          animationStateRef.current === AnimationState.RANDOM_2) {
+      if (animationStateRef.current === ANIMATION_STATE.RANDOM_1 ||
+          animationStateRef.current === ANIMATION_STATE.RANDOM_2) {
         updateCircleChars();
       }
     }, 500);
@@ -124,9 +132,9 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
       
       // State transition logic based on time
       switch (animationStateRef.current) {
-        case AnimationState.RANDOM_1:
+        case ANIMATION_STATE.RANDOM_1:
           if (timeInState >= 5000) { // 5 seconds of random rotation
-            animationStateRef.current = AnimationState.HELLO;
+            animationStateRef.current = ANIMATION_STATE.HELLO;
             stateChangeTimeRef.current = now;
             
             // Generate randomized case version of "HELLO"
@@ -134,18 +142,18 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
           }
           break;
            
-        case AnimationState.HELLO:
+        case ANIMATION_STATE.HELLO:
           if (timeInState >= 2000) { // 2 seconds displaying HELLO
-            animationStateRef.current = AnimationState.RANDOM_2;
+            animationStateRef.current = ANIMATION_STATE.RANDOM_2;
             stateChangeTimeRef.current = now;
             currentWordRef.current = '';
             updateCircleChars();
           }
           break;
            
-        case AnimationState.RANDOM_2:
+        case ANIMATION_STATE.RANDOM_2:
           if (timeInState >= 5000) { // 5 seconds of random rotation
-            animationStateRef.current = AnimationState.WORLD;
+            animationStateRef.current = ANIMATION_STATE.WORLD;
             stateChangeTimeRef.current = now;
             
             // Generate randomized case version of "WORLD"
@@ -153,9 +161,9 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
           }
           break;
            
-        case AnimationState.WORLD:
+        case ANIMATION_STATE.WORLD:
           if (timeInState >= 2000) { // 2 seconds displaying WORLD
-            animationStateRef.current = AnimationState.RANDOM_1;
+            animationStateRef.current = ANIMATION_STATE.RANDOM_1;
             stateChangeTimeRef.current = now;
             currentWordRef.current = '';
             updateCircleChars();
@@ -215,8 +223,8 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
       // Draw rotating characters in random mode
       const radius = 50;
       
-      if (animationStateRef.current === AnimationState.HELLO || 
-          animationStateRef.current === AnimationState.WORLD) {
+      if (animationStateRef.current === ANIMATION_STATE.HELLO || 
+          animationStateRef.current === ANIMATION_STATE.WORLD) {
         // Display word in the center of the circle
         ctx.font = '24px monospace';
         ctx.fillStyle = '#a855f7'; // Bright purple
@@ -274,22 +282,13 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
     <div className={`relative ${className}`} style={{ width, height }}>
       <canvas
         ref={canvasRef}
-        className="rounded-lg shadow-lg"
+        className="rounded-2xl border-0"
         style={{ 
           width: '100%', 
           height: '100%',
-          background: backgroundColor
-        }}
-      />
-      
-      {/* Animated border effect */}
-      <div
-        className="absolute inset-0 rounded-lg pointer-events-none animate-pulse"
-        style={{
-          border: '2px solid rgba(59, 130, 246, 0.3)',
-          backgroundClip: 'padding-box',
-          zIndex: 10,
-          boxShadow: '0 0 8px rgba(59, 130, 246, 0.4)'
+          background: backgroundColor,
+          border: 'none',
+          outline: 'none'
         }}
       />
     </div>
