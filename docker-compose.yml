@@ -7,22 +7,15 @@ services:
       target: development
     container_name: personal-website-frontend
     ports:
-      - "3007:3007"
+      - "3006:3006"
     environment:
       - NODE_ENV=development
-      - FRONTEND_PORT=3007
-      - BACKEND_PORT=4007
-      - DATABASE_PORT=5437
-      - NEXTAUTH_URL=http://localhost:3007
-      - NEXTAUTH_URL_INTERNAL=http://frontend:3007
+      - FRONTEND_PORT=3006
+      - NEXTAUTH_URL=http://localhost:3006
+      - NEXTAUTH_URL_INTERNAL=http://frontend:3006
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - DATABASE_TYPE=postgresql
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5437
-      - POSTGRES_DB=personal_website
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=your-postgres-password
-      - DATABASE_URL=postgresql://postgres:your-postgres-password@postgres:5437/personal_website
+      - MONGODB_URI=${MONGODB_URI}
+      - DB_NAME=personal_website
       - MOCK_DATA=true
       # Windows & Docker compatibility
       - NEXT_WEBPACK_USEPOLLING=1
@@ -31,60 +24,9 @@ services:
       - .:/app
       - /app/node_modules
       - /app/.next
-    depends_on:
-      - postgres
     networks:
       - personal-website-network
     restart: unless-stopped
-
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: personal-website-db
-    ports:
-      - "5437:5432"
-    environment:
-      - POSTGRES_DB=personal_website
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=your-postgres-password
-      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    networks:
-      - personal-website-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d personal_website"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # pgAdmin for database management (optional)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: personal-website-pgadmin
-    ports:
-      - "8080:80"
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@example.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
-      - PGADMIN_CONFIG_SERVER_MODE=False
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    depends_on:
-      - postgres
-    networks:
-      - personal-website-network
-    restart: unless-stopped
-    profiles:
-      - tools
-
-volumes:
-  postgres_data:
-    driver: local
-  pgadmin_data:
-    driver: local
 
 networks:
   personal-website-network:

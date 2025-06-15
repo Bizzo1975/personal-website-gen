@@ -47,7 +47,7 @@ export default async function AboutPage() {
     <AboutContent 
       content={serializedContent}
       profile={profileData}
-      pageData={aboutPage}
+      pageData={aboutPage || undefined}
     />
   );
 } 

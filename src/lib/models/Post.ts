@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { ContentPermissions } from '@/types/content/permissions';
 
 export interface PostDocument extends Document {
   title: string;
@@ -13,8 +14,45 @@ export interface PostDocument extends Document {
   published: boolean;
   featuredImage?: string;
   seoDescription?: string;
+  permissions: ContentPermissions;
   updatedAt: Date;
 }
+
+// Permission Rule Schema
+const PermissionRuleSchema = new Schema({
+  id: { type: String, required: true },
+  name: { type: String, required: true },
+  description: { type: String, default: '' },
+  condition: {
+    type: { type: String, enum: ['role', 'user', 'date', 'custom'], required: true },
+    operator: { 
+      type: String, 
+      enum: ['equals', 'not_equals', 'in', 'not_in', 'before', 'after', 'between'], 
+      required: true 
+    },
+    value: { type: Schema.Types.Mixed, required: true },
+    field: { type: String }
+  },
+  action: { type: String, enum: ['allow', 'deny'], required: true },
+  priority: { type: Number, default: 0 }
+});
+
+// Content Permissions Schema
+const ContentPermissionsSchema = new Schema({
+  level: { 
+    type: String, 
+    enum: ['personal', 'professional', 'all'], 
+    default: 'all' 
+  },
+  allowedRoles: [{ 
+    type: String, 
+    enum: ['admin', 'editor', 'author', 'subscriber', 'guest'] 
+  }],
+  allowedUsers: [{ type: String }],
+  restrictedUsers: [{ type: String }],
+  requiresAuth: { type: Boolean, default: false },
+  customRules: [PermissionRuleSchema]
+});
 
 const PostSchema = new Schema<PostDocument>({
   title: {
@@ -66,6 +104,17 @@ const PostSchema = new Schema<PostDocument>({
     type: Boolean,
     default: false,
   },
+  permissions: {
+    type: ContentPermissionsSchema,
+    default: () => ({
+      level: 'all',
+      allowedRoles: ['admin', 'editor', 'author', 'subscriber', 'guest'],
+      allowedUsers: [],
+      restrictedUsers: [],
+      requiresAuth: false,
+      customRules: []
+    })
+  },
   updatedAt: {
     type: Date,
     default: Date.now,
@@ -77,6 +126,8 @@ PostSchema.index({ slug: 1 });
 PostSchema.index({ category: 1 });
 PostSchema.index({ tags: 1 });
 PostSchema.index({ published: 1, date: -1 });
+PostSchema.index({ 'permissions.level': 1 });
+PostSchema.index({ 'permissions.allowedRoles': 1 });
 
 // Hooks to update category post count
 PostSchema.pre('save', async function(next) {
@@ -101,6 +152,8 @@ PostSchema.pre('save', async function(next) {
 });
 
 // Fix for "mongoose.models is undefined" error
-export default (mongoose.models && mongoose.models.Post) 
-  ? mongoose.models.Post 
-  : mongoose.model<PostDocument>('Post', PostSchema); 
+const Post = (mongoose.models && mongoose.models.Post) 
+  ? mongoose.models.Post as mongoose.Model<PostDocument>
+  : mongoose.model<PostDocument>('Post', PostSchema);
+
+export default Post;

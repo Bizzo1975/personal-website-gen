@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface FallbackImageProps {
   src: string;
@@ -29,17 +29,11 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
 }) => {
   const [imgSrc, setImgSrc] = useState<string>(src);
   const [hasError, setHasError] = useState<boolean>(false);
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
-  const linkRef = useRef<HTMLLinkElement | null>(null);
-  
-  // Use plain src without cache-busting to improve stability
-  const processedSrc = imgSrc;
   
   useEffect(() => {
     // Reset when src changes
     setImgSrc(src);
     setHasError(false);
-    setIsLoaded(false);
   }, [src]);
   
   const handleError = () => {
@@ -52,45 +46,21 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
     }
   };
   
-  const handleLoad = () => {
-    setIsLoaded(true);
-  };
-  
-  // Preload image to check if it exists before rendering
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !hasError) {
-      // Simple image preload without DOM manipulation
-      const img = new Image();
-      img.src = processedSrc;
-      img.onload = () => {
-        setIsLoaded(true);
-      };
-      img.onerror = () => {
-        handleError();
-      };
-    }
-  }, [processedSrc, hasError]);
+  // Always render the same structure to avoid hydration mismatch
+  // Use the original src on first render to match server-side rendering
+  const displaySrc = typeof window === 'undefined' ? src : imgSrc;
   
   return (
-    <>
-      {!isLoaded && (
-        <div 
-          className={`${className} bg-slate-200 dark:bg-slate-700 animate-pulse`}
-          style={{ width, height }}
-        />
-      )}
-      <img
-        src={processedSrc}
-        alt={alt}
-        width={width}
-        height={height}
-        className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
-        onError={handleError}
-        onLoad={handleLoad}
-        style={{ objectFit }}
-        loading={priority ? 'eager' : 'lazy'}
-      />
-    </>
+    <img
+      src={displaySrc}
+      alt={alt}
+      width={width}
+      height={height}
+      className={`${className} transition-opacity duration-300`}
+      onError={handleError}
+      style={{ objectFit }}
+      loading={priority ? 'eager' : 'lazy'}
+    />
   );
 };
 

@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2015",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -21,17 +21,24 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["node", "jest", "@testing-library/jest-dom"],
-    // Allow using JSX in test TypeScript files
-    "allowImportingTsExtensions": true
+    "types": ["node", "jest", "@testing-library/jest-dom"]
   },
   "include": [
     "next-env.d.ts", 
-    "**/*.ts", 
-    "**/*.tsx", 
-    ".next/types/**/*.ts", 
-    "src/__tests__/**/*",
-    "src/__tests__/setup.ts"
+    "src/**/*.ts", 
+    "src/**/*.tsx", 
+    ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "testing/**/*",
+    "cypress/**/*",
+    "**/*.cy.ts",
+    "**/*.cy.tsx",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "src/__tests__/**/*"
+  ]
 } 

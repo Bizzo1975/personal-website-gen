@@ -238,8 +238,8 @@ export async function getPosts(query: PostQuery = {}): Promise<PostData[]> {
       .skip(skip)
       .limit(limit);
     
-    return posts.map(post => ({
-      id: post._id.toString(),
+    return posts.map((post: any) => ({
+      id: (post as any)._id.toString(),
       title: post.title,
       slug: post.slug,
       date: post.date.toISOString().split('T')[0], // Format as YYYY-MM-DD
@@ -273,7 +273,7 @@ export async function getPostBySlug(slug: string): Promise<PostData | null> {
     if (!post) return null;
     
     return {
-      id: post._id.toString(),
+      id: (post as any)._id.toString(),
       title: post.title,
       slug: post.slug,
       date: post.date.toISOString().split('T')[0],

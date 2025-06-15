@@ -2,31 +2,45 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getServerSession } from 'next-auth/next';
 
-// Import the mockProjects data (in a real app, this would be a database call)
-// Note: In a real application, this would be a database import
-// This is temporary for this demo
+// Mock projects data store (this should match the one in the main projects route)
 let mockProjects = [
   {
     id: '1',
     title: 'E-commerce Platform',
     slug: 'ecommerce-platform',
     description: 'A full-featured e-commerce platform built with Next.js.',
-    image: 'https://images.unsplash.com/photo-1557821552-17105176677c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80',
+    image: '/images/projects/ecommerce-platform.svg',
     technologies: ['Next.js', 'React', 'MongoDB', 'Stripe', 'Tailwind CSS'],
     liveDemo: 'https://example.com/ecommerce',
     sourceCode: 'https://github.com/johndoe/ecommerce',
     featured: true,
+    permissions: {
+      level: 'all',
+      allowedRoles: ['admin', 'editor', 'author', 'subscriber', 'guest'],
+      allowedUsers: [],
+      restrictedUsers: [],
+      requiresAuth: false,
+      customRules: []
+    }
   },
   {
     id: '2',
     title: 'Task Management App',
     slug: 'task-management-app',
     description: 'A productivity application for managing tasks and projects.',
-    image: 'https://images.unsplash.com/photo-1540350394557-8d14678e7f91?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80',
+    image: '/images/projects/task-management.svg',
     technologies: ['React', 'TypeScript', 'Redux', 'Firebase'],
     liveDemo: 'https://example.com/taskmanager',
     sourceCode: 'https://github.com/johndoe/taskmanager',
     featured: false,
+    permissions: {
+      level: 'professional',
+      allowedRoles: ['admin', 'editor', 'author'],
+      allowedUsers: ['client@example.com'],
+      restrictedUsers: [],
+      requiresAuth: true,
+      customRules: []
+    }
   },
   {
     id: '3',
@@ -52,16 +66,13 @@ let mockProjects = [
   },
 ];
 
-// GET /api/projects/[id] - Get a single project
+// GET /api/projects/[id] - Get a specific project
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
-    
-    // Find the project by ID
-    const project = mockProjects.find(p => p.id === id);
+    const project = mockProjects.find(p => p.id === params.id);
     
     if (!project) {
       return NextResponse.json(
@@ -69,8 +80,8 @@ export async function GET(
         { status: 404 }
       );
     }
-    
-    return NextResponse.json(project);
+
+    return NextResponse.json({ data: project });
   } catch (error) {
     console.error('Error fetching project:', error);
     return NextResponse.json(
@@ -80,7 +91,7 @@ export async function GET(
   }
 }
 
-// PUT /api/projects/[id] - Update a project
+// PUT /api/projects/[id] - Update a specific project
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
@@ -94,12 +105,9 @@ export async function PUT(
         { status: 401 }
       );
     }
-    
-    const { id } = params;
-    const updatedData = await request.json();
-    
-    // Find the project index
-    const projectIndex = mockProjects.findIndex(p => p.id === id);
+
+    const projectData = await request.json();
+    const projectIndex = mockProjects.findIndex(p => p.id === params.id);
     
     if (projectIndex === -1) {
       return NextResponse.json(
@@ -107,36 +115,40 @@ export async function PUT(
         { status: 404 }
       );
     }
-    
-    // Check if updating slug and if it already exists
-    if (
-      updatedData.slug && 
-      updatedData.slug !== mockProjects[projectIndex].slug &&
-      mockProjects.some(p => p.id !== id && p.slug === updatedData.slug)
-    ) {
+
+    // Validate required fields
+    if (!projectData.title || !projectData.slug || !projectData.description) {
+      return NextResponse.json(
+        { error: 'Missing required fields: title, slug, and description are required' },
+        { status: 400 }
+      );
+    }
+
+    // Check for duplicate slug (excluding current project)
+    const slugExists = mockProjects.some(project => project.slug === projectData.slug && project.id !== params.id);
+    if (slugExists) {
       return NextResponse.json(
         { error: 'A project with this slug already exists' },
         { status: 400 }
       );
     }
-    
+
     // Update the project
-    mockProjects[projectIndex] = {
+    const updatedProject = {
       ...mockProjects[projectIndex],
-      ...updatedData,
-      technologies: updatedData.technologies || mockProjects[projectIndex].technologies,
-      featured: updatedData.featured !== undefined 
-        ? Boolean(updatedData.featured) 
-        : mockProjects[projectIndex].featured,
+      ...projectData,
+      id: params.id, // Ensure ID doesn't change
       updatedAt: new Date().toISOString()
     };
-    
-    // Revalidate projects page
+
+    mockProjects[projectIndex] = updatedProject;
+
+    // Revalidate projects pages
     revalidatePath('/projects');
     revalidatePath('/admin/projects');
-    revalidatePath(`/projects/${mockProjects[projectIndex].slug}`);
-    
-    return NextResponse.json(mockProjects[projectIndex]);
+    revalidatePath(`/projects/${updatedProject.slug}`);
+
+    return NextResponse.json(updatedProject);
   } catch (error) {
     console.error('Error updating project:', error);
     return NextResponse.json(
@@ -146,7 +158,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/projects/[id] - Delete a project
+// DELETE /api/projects/[id] - Delete a specific project
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
@@ -160,11 +172,8 @@ export async function DELETE(
         { status: 401 }
       );
     }
-    
-    const { id } = params;
-    
-    // Find the project
-    const projectIndex = mockProjects.findIndex(p => p.id === id);
+
+    const projectIndex = mockProjects.findIndex(p => p.id === params.id);
     
     if (projectIndex === -1) {
       return NextResponse.json(
@@ -172,19 +181,15 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    
-    // Store slug for revalidation
-    const slug = mockProjects[projectIndex].slug;
-    
-    // Remove the project
-    mockProjects = mockProjects.filter(p => p.id !== id);
-    
-    // Revalidate projects page
+
+    const deletedProject = mockProjects[projectIndex];
+    mockProjects.splice(projectIndex, 1);
+
+    // Revalidate projects pages
     revalidatePath('/projects');
     revalidatePath('/admin/projects');
-    revalidatePath(`/projects/${slug}`);
-    
-    return NextResponse.json({ success: true });
+
+    return NextResponse.json({ message: 'Project deleted successfully', project: deletedProject });
   } catch (error) {
     console.error('Error deleting project:', error);
     return NextResponse.json(

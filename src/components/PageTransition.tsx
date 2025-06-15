@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+
+// Temporarily disable framer-motion to avoid import issues
+// import { motion, AnimatePresence } from 'framer-motion';
 
 interface PageTransitionProps {
   children: React.ReactNode;
@@ -33,23 +35,11 @@ const PageTransition: React.FC<PageTransitionProps> = ({
 }) => {
   const pathname = usePathname();
 
+  // Temporarily return children without animation to avoid framer-motion issues
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={pathname}
-        initial={pageVariants[mode].initial}
-        animate={pageVariants[mode].animate}
-        exit={pageVariants[mode].exit}
-        transition={{ 
-          type: 'tween', 
-          ease: 'easeInOut', 
-          duration: 0.4 
-        }}
-        className="w-full"
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <div className="w-full">
+      {children}
+    </div>
   );
 };
 

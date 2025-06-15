@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { MDXRemote } from 'next-mdx-remote';
+import React, { useMemo, useState, useEffect } from 'react';
 import HeaderSection from '@/components/HeaderSection';
 import { ProfileData } from '@/lib/services/profile-service';
 import { MDXRemoteSerializeResult } from 'next-mdx-remote';
@@ -19,6 +18,24 @@ interface ContactContentProps {
 }
 
 export default function ContactContent({ content, profile, pageData }: ContactContentProps) {
+  const [MDXRemote, setMDXRemote] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadMDXRemote = async () => {
+      try {
+        const { MDXRemote: MDXRemoteComponent } = await import('next-mdx-remote');
+        setMDXRemote(() => MDXRemoteComponent);
+      } catch (error) {
+        console.warn('Failed to load MDXRemote:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMDXRemote();
+  }, []);
+
   // Create a version of the content without the "Contact Me" heading
   const filteredContent = useMemo(() => {
     if (!content || !content.compiledSource) return content;
@@ -71,7 +88,18 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
                 {/* Dynamic content from CMS */}
                 {filteredContent && (
                   <div className="prose prose-slate dark:prose-invert max-w-none mb-6">
-                    <MDXRemote {...filteredContent} />
+                    {isLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                      </div>
+                    ) : MDXRemote ? (
+                      <MDXRemote {...filteredContent} />
+                    ) : (
+                      <div>
+                        <p>Have a question or want to work together? Feel free to get in touch with me using the contact form or through any of the channels below.</p>
+                      </div>
+                    )}
                   </div>
                 )}
                 

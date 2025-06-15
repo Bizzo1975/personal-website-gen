@@ -1,40 +1,47 @@
 'use client';
 
-import React, { forwardRef } from 'react';
+import React from 'react';
 
-interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
-  label: string;
-  error?: string;
-  wrapperClassName?: string;
+interface CheckboxProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  indeterminate?: boolean;
+  label?: string;
+  disabled?: boolean;
+  className?: string;
 }
 
-export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ label, error, wrapperClassName = 'mb-4', className = '', ...props }, ref) => {
-    return (
-      <div className={wrapperClassName}>
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            ref={ref}
-            className={`h-4 w-4 text-primary-600 border-slate-300 dark:border-slate-600 
-                      rounded focus:ring-2 focus:ring-primary-500 dark:bg-slate-800 ${className} ${
-              error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
-            }`}
-            {...props}
-          />
-          <label 
-            htmlFor={props.id || props.name} 
-            className="ml-2 block text-sm text-slate-700 dark:text-slate-300"
-          >
-            {label}
-          </label>
-        </div>
-        {error && (
-          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
-      </div>
-    );
-  }
-);
+export const Checkbox: React.FC<CheckboxProps> = ({
+  checked,
+  onChange,
+  indeterminate = false,
+  label,
+  disabled = false,
+  className = ''
+}) => {
+  const checkboxRef = React.useRef<HTMLInputElement>(null);
 
-Checkbox.displayName = 'Checkbox'; 
+  React.useEffect(() => {
+    if (checkboxRef.current) {
+      checkboxRef.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
+  return (
+    <label className={`flex items-center space-x-2 cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}>
+      <input
+        ref={checkboxRef}
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+      />
+      {label && (
+        <span className="text-sm text-gray-700 dark:text-gray-300">
+          {label}
+        </span>
+      )}
+    </label>
+  );
+}; 

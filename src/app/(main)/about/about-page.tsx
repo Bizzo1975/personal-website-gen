@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import OptimizedImage from '@/components/OptimizedImage';
-import { MDXRemote } from 'next-mdx-remote';
 
 interface AboutPageProps {
   content: any; // MDX serialized content
@@ -36,6 +35,23 @@ export default function AboutPage({
   } 
 }: AboutPageProps) {
   const [mdxError, setMdxError] = useState<string | null>(null);
+  const [MDXRemote, setMDXRemote] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadMDXRemote = async () => {
+      try {
+        const { MDXRemote: MDXRemoteComponent } = await import('next-mdx-remote');
+        setMDXRemote(() => MDXRemoteComponent);
+      } catch (error) {
+        console.warn('Failed to load MDXRemote:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMDXRemote();
+  }, []);
 
   useEffect(() => {
     // This will detect if the MDX content is not valid
@@ -157,10 +173,16 @@ export default function AboutPage({
             <div className="md:col-span-8 lg:col-span-9">
               {/* About Me Content */}
               <div className="prose prose-lg dark:prose-invert max-w-none mb-16">
-                {content ? (
+                {isLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+                  </div>
+                ) : content && MDXRemote ? (
                   <MDXRemote {...content} />
                 ) : (
-                  <p className="text-yellow-600 dark:text-yellow-400">Content is loading...</p>
+                  <p className="text-yellow-600 dark:text-yellow-400">Content could not be loaded.</p>
                 )}
               </div>
               

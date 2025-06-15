@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile } from 'fs/promises';
 import path from 'path';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth-config';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -93,3 +93,4 @@ export async function OPTIONS() {
     }
   });
 }
+

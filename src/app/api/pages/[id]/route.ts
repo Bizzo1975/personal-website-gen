@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authOptions } from '@/lib/auth-config';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getPageById, updatePage, deletePage } from '@/lib/services/page-service';
 
 // GET: Fetch a specific page by ID

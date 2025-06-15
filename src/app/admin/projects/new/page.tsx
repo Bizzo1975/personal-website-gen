@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation';
 import AdminLayout from '../../components/AdminLayout';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
-import Textarea from '@/components/Textarea';
+import TextArea from '@/components/TextArea';
 import { TagInput } from '@/components/TagInput';
 import { Checkbox } from '@/components/Checkbox';
 import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
+import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import { BiUpload, BiSave } from 'react-icons/bi';
+import { ContentPermissions } from '@/types/content/permissions';
+import { PermissionService } from '@/lib/services/permission-service';
 
 interface NewProjectFormData {
   title: string;
@@ -20,6 +23,7 @@ interface NewProjectFormData {
   image?: string;
   liveDemo?: string;
   sourceCode?: string;
+  permissions: ContentPermissions;
 }
 
 export default function NewProjectPage() {
@@ -36,7 +40,8 @@ export default function NewProjectPage() {
     featured: false,
     image: '',
     liveDemo: '',
-    sourceCode: ''
+    sourceCode: '',
+    permissions: PermissionService.getDefaultPermissions('all') // Default to public access
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -52,13 +57,12 @@ export default function NewProjectPage() {
     }
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: checked }));
-  };
-
   const handleTechnologiesChange = (technologies: string[]) => {
     setFormData(prev => ({ ...prev, technologies }));
+  };
+
+  const handlePermissionsChange = (permissions: ContentPermissions) => {
+    setFormData(prev => ({ ...prev, permissions }));
   };
 
   const handleImageUploadClick = () => {
@@ -153,7 +157,7 @@ export default function NewProjectPage() {
           </div>
         )}
         
-        <Card variant="default">
+        <Card>
           <form onSubmit={handleSubmit}>
             <CardHeader>
               <h2 className="text-lg font-medium">Project Information</h2>
@@ -181,7 +185,7 @@ export default function NewProjectPage() {
                 />
               </div>
               
-              <Textarea
+              <TextArea
                 label="Description"
                 name="description"
                 value={formData.description}
@@ -273,13 +277,21 @@ export default function NewProjectPage() {
                   />
                 </div>
               </div>
+
+              {/* Permissions Section */}
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+                <PermissionsEditor
+                  permissions={formData.permissions}
+                  onChange={handlePermissionsChange}
+                  contentType="project"
+                />
+              </div>
               
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
                 <Checkbox
                   label="Featured Project"
-                  name="featured"
                   checked={formData.featured}
-                  onChange={handleCheckboxChange}
+                  onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
                 />
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Featured projects will be highlighted on your portfolio page

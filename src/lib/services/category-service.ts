@@ -91,7 +91,7 @@ export async function getCategories(query: CategoryQuery = {}): Promise<Category
     
     const { limit = 100, skip = 0, sort = { name: 1 } } = query;
     
-    const categories = await Category.find()
+    const categories = await (Category as any).find()
       .sort(sort)
       .skip(skip)
       .limit(limit);
@@ -117,7 +117,7 @@ export async function getCategoryBySlug(slug: string): Promise<CategoryData | nu
   try {
     await dbConnect();
     
-    const category = await Category.findOne({ slug });
+    const category = await (Category as any).findOne({ slug });
     if (!category) return null;
     
     return formatCategoryData(category);
@@ -170,7 +170,7 @@ export async function createCategory(data: Omit<CategoryData, 'id' | 'createdAt'
 /**
  * Helper function to format category data from the database
  */
-function formatCategoryData(category: CategoryDocument): CategoryData {
+function formatCategoryData(category: any): CategoryData {
   return {
     id: category._id.toString(),
     name: category.name,

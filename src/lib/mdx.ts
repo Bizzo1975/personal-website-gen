@@ -1,11 +1,13 @@
 import { serialize } from 'next-mdx-remote/serialize';
+import { MDXRemoteSerializeResult } from 'next-mdx-remote';
 
-export async function serializeMarkdown(content: string) {
+export async function serializeMarkdown(content: string): Promise<MDXRemoteSerializeResult> {
   if (!content) {
     console.warn('Empty content passed to serializeMarkdown');
     return {
       compiledSource: 'export default function MDXContent() { return null; }',
       frontmatter: {},
+      scope: {},
     };
   }
   
@@ -26,6 +28,7 @@ export async function serializeMarkdown(content: string) {
     return {
       compiledSource: 'export default function MDXContent() { return React.createElement("div", { className: "text-red-500" }, "Error rendering content. Please check console for details."); }',
       frontmatter: {},
+      scope: {},
     };
   }
 } 

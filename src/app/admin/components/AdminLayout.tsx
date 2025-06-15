@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BiHomeAlt, BiFileBlank, BiNews, BiCodeBlock, BiCog, BiEnvelope, BiUser, BiPlus, BiImage, BiUserCircle } from 'react-icons/bi';
+import { BiHomeAlt, BiFile, BiNews, BiCodeBlock, BiCog, BiEnvelope, BiUser, BiPlus, BiImage, BiUserCircle, BiCalendarCheck, BiSelectMultiple, BiHistory, BiFolder, BiShield, BiUserPlus, BiPalette } from 'react-icons/bi';
 import Header from '@/components/Header';
 import { ProfileData } from '@/lib/services/profile-service';
 
@@ -51,13 +51,27 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     { href: '/admin/posts', label: 'Posts', icon: <BiNews className="w-5 h-5" /> },
     { href: '/admin/contact', label: 'Contact', icon: <BiEnvelope className="w-5 h-5" /> },
     
+    // Advanced Content Management
+    { href: '/admin/content-management', label: 'Content Management', icon: <BiFile className="w-5 h-5" /> },
+    { href: '/admin/content-scheduler', label: 'Content Scheduler', icon: <BiCalendarCheck className="w-5 h-5" /> },
+    { href: '/admin/bulk-operations', label: 'Bulk Operations', icon: <BiSelectMultiple className="w-5 h-5" /> },
+    { href: '/admin/content-versioning', label: 'Content Versioning', icon: <BiHistory className="w-5 h-5" /> },
+    { href: '/admin/media-library', label: 'Media Library', icon: <BiFolder className="w-5 h-5" /> },
+    
+    // Brand & Design Management
+    { href: '/admin/brand-management', label: 'Brand Management', icon: <BiPalette className="w-5 h-5" /> },
+    
+    // User Management
+    { href: '/admin/users', label: 'User Management', icon: <BiUser className="w-5 h-5" /> },
+    { href: '/admin/access-requests', label: 'Access Requests', icon: <BiUserPlus className="w-5 h-5" /> },
+    { href: '/admin/security', label: 'Security & 2FA', icon: <BiShield className="w-5 h-5" /> },
+    
     // Settings
     { href: '/admin/settings/profile', label: 'Profile Settings', icon: <BiUserCircle className="w-5 h-5" /> },
     { href: '/admin/settings/site', label: 'Site Settings', icon: <BiCog className="w-5 h-5" /> },
     
     // Additional Management
     { href: '/admin/slideshow', label: 'Slideshow', icon: <BiImage className="w-5 h-5" /> },
-    { href: '/admin/access-requests', label: 'Access Requests', icon: <BiUser className="w-5 h-5" /> },
   ];
   
   const isActive = (path: string) => {

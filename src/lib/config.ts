@@ -4,33 +4,21 @@
 export const config = {
   // Port Configuration
   ports: {
-    frontend: process.env.FRONTEND_PORT ? parseInt(process.env.FRONTEND_PORT) : 3007,
-    backend: process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 4007,
-    database: process.env.DATABASE_PORT ? parseInt(process.env.DATABASE_PORT) : 5437,
+    frontend: process.env.FRONTEND_PORT ? parseInt(process.env.FRONTEND_PORT) : 3006,
   },
   
   // Base URLs
   urls: {
-    frontend: process.env.FRONTEND_URL || `http://localhost:${process.env.FRONTEND_PORT || 3007}`,
-    backend: process.env.BACKEND_URL || `http://localhost:${process.env.BACKEND_PORT || 4007}`,
-    api: process.env.API_URL || `http://localhost:${process.env.FRONTEND_PORT || 3007}/api`,
+    frontend: process.env.FRONTEND_URL || `http://localhost:${process.env.FRONTEND_PORT || 3006}`,
+    api: process.env.API_URL || `http://localhost:${process.env.FRONTEND_PORT || 3006}/api`,
   },
   
-  // Database Configuration
+  // Database Configuration - MongoDB
   database: {
-    // Currently using MongoDB - if switching to PostgreSQL, update these
-    type: process.env.DATABASE_TYPE || 'mongodb',
+    type: 'mongodb',
     mongodb: {
       uri: process.env.MONGODB_URI,
       dbName: process.env.DB_NAME || 'personal_website',
-    },
-    postgresql: {
-      host: process.env.POSTGRES_HOST || 'localhost',
-      port: process.env.DATABASE_PORT ? parseInt(process.env.DATABASE_PORT) : 5437,
-      database: process.env.POSTGRES_DB || 'personal_website',
-      username: process.env.POSTGRES_USER || 'postgres',
-      password: process.env.POSTGRES_PASSWORD,
-      ssl: process.env.POSTGRES_SSL === 'true',
     },
   },
   
@@ -44,8 +32,8 @@ export const config = {
   // NextAuth Configuration
   auth: {
     secret: process.env.NEXTAUTH_SECRET,
-    url: process.env.NEXTAUTH_URL || `http://localhost:${process.env.FRONTEND_PORT || 3007}`,
-    urlInternal: process.env.NEXTAUTH_URL_INTERNAL || `http://localhost:${process.env.FRONTEND_PORT || 3007}`,
+    url: process.env.NEXTAUTH_URL || `http://localhost:${process.env.FRONTEND_PORT || 3006}`,
+    urlInternal: process.env.NEXTAUTH_URL_INTERNAL || `http://localhost:${process.env.FRONTEND_PORT || 3006}`,
   },
   
   // File Upload Configuration

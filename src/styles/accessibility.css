@@ -1,0 +1,420 @@
+/* Accessibility Enhancement Styles */
+
+/* High Contrast Mode */
+.high-contrast {
+  --primary-50: #000000;
+  --primary-100: #000000;
+  --primary-200: #000000;
+  --primary-300: #000000;
+  --primary-400: #ffffff;
+  --primary-500: #ffffff;
+  --primary-600: #ffffff;
+  --primary-700: #ffffff;
+  --primary-800: #ffffff;
+  --primary-900: #ffffff;
+  
+  --slate-50: #ffffff;
+  --slate-100: #ffffff;
+  --slate-200: #ffffff;
+  --slate-300: #ffffff;
+  --slate-400: #000000;
+  --slate-500: #000000;
+  --slate-600: #000000;
+  --slate-700: #000000;
+  --slate-800: #000000;
+  --slate-900: #000000;
+  
+  background: white !important;
+  color: black !important;
+}
+
+.high-contrast * {
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.high-contrast a,
+.high-contrast button {
+  color: black !important;
+  background: white !important;
+  border: 2px solid black !important;
+  text-decoration: underline !important;
+}
+
+.high-contrast a:hover,
+.high-contrast button:hover {
+  color: white !important;
+  background: black !important;
+}
+
+.high-contrast .bg-primary-600,
+.high-contrast .bg-primary-700,
+.high-contrast .bg-blue-600 {
+  background: black !important;
+  color: white !important;
+}
+
+.high-contrast .text-primary-600,
+.high-contrast .text-blue-600 {
+  color: black !important;
+}
+
+.high-contrast img {
+  filter: contrast(150%) brightness(110%);
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Enhanced Focus Indicators */
+.keyboard-navigation *:focus {
+  outline: 3px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+  border-radius: 4px;
+}
+
+.keyboard-navigation button:focus,
+.keyboard-navigation a:focus,
+.keyboard-navigation input:focus,
+.keyboard-navigation textarea:focus,
+.keyboard-navigation select:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* High contrast focus indicators */
+.high-contrast.keyboard-navigation *:focus {
+  outline: 3px solid black !important;
+  background: yellow !important;
+  color: black !important;
+}
+
+/* Skip to content link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #3b82f6;
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 1000;
+  transition: top 0.3s;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus within for better keyboard navigation */
+.focus-within:focus-within {
+  ring: 2px solid #3b82f6;
+  ring-offset: 2px;
+}
+
+/* Custom scrollbar for better visibility */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #64748b;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* High contrast scrollbar */
+.high-contrast ::-webkit-scrollbar-track {
+  background: white;
+  border: 1px solid black;
+}
+
+.high-contrast ::-webkit-scrollbar-thumb {
+  background: black;
+  border: 1px solid black;
+}
+
+/* Better link visibility */
+a {
+  text-decoration-skip-ink: auto;
+}
+
+a:focus {
+  outline-offset: 2px;
+}
+
+/* Enhanced button styles for accessibility */
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Better form field visibility */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+input:invalid,
+textarea:invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 1px #ef4444;
+}
+
+/* High contrast form fields */
+.high-contrast input,
+.high-contrast textarea,
+.high-contrast select {
+  border: 2px solid black !important;
+  background: white !important;
+  color: black !important;
+}
+
+.high-contrast input:focus,
+.high-contrast textarea:focus,
+.high-contrast select:focus {
+  background: yellow !important;
+  color: black !important;
+  outline: 3px solid black !important;
+}
+
+/* Loading states with better accessibility */
+.loading {
+  cursor: wait;
+}
+
+.loading::after {
+  content: "Loading...";
+  position: absolute;
+  left: -10000px; /* Screen reader only */
+}
+
+/* Better table accessibility */
+table {
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+}
+
+th, td {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+}
+
+.high-contrast th,
+.high-contrast td {
+  border: 2px solid black !important;
+}
+
+/* Enhanced error states */
+.error {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.high-contrast .error {
+  color: black !important;
+  background: white !important;
+  border: 3px solid black !important;
+}
+
+/* Better modal accessibility */
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.modal {
+  position: relative;
+}
+
+.modal:focus {
+  outline: none;
+}
+
+/* Improved notification accessibility */
+.notification[role="alert"] {
+  border-left: 4px solid #3b82f6;
+  padding-left: 16px;
+}
+
+.notification.error[role="alert"] {
+  border-left-color: #dc2626;
+}
+
+.notification.success[role="alert"] {
+  border-left-color: #16a34a;
+}
+
+.notification.warning[role="alert"] {
+  border-left-color: #d97706;
+}
+
+/* High contrast notifications */
+.high-contrast .notification[role="alert"] {
+  border: 3px solid black !important;
+  background: white !important;
+  color: black !important;
+}
+
+/* Better spacing for touch targets */
+@media (max-width: 768px) {
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    min-height: 44px; /* Minimum touch target size */
+    min-width: 44px;
+  }
+}
+
+/* Improve text contrast */
+.text-muted {
+  color: #6b7280;
+}
+
+.high-contrast .text-muted {
+  color: black !important;
+}
+
+/* Better progress indicators */
+.progress {
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  background: #3b82f6;
+  height: 8px;
+  transition: width 0.3s ease;
+}
+
+.high-contrast .progress {
+  background: white !important;
+  border: 2px solid black !important;
+}
+
+.high-contrast .progress-bar {
+  background: black !important;
+}
+
+/* Enhanced card accessibility */
+.card:focus-within {
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.high-contrast .card {
+  border: 2px solid black !important;
+  background: white !important;
+}
+
+/* Better heading hierarchy visibility */
+h1, h2, h3, h4, h5, h6 {
+  scroll-margin-top: 2rem;
+}
+
+/* Improved list accessibility */
+ul, ol {
+  padding-left: 1.5rem;
+}
+
+li {
+  margin-bottom: 0.25rem;
+}
+
+/* Enhanced navigation accessibility */
+nav a {
+  display: block;
+  padding: 0.5rem;
+}
+
+nav a:focus {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.high-contrast nav a:focus {
+  background: yellow !important;
+  color: black !important;
+}
+
+/* Better tooltip accessibility */
+.tooltip {
+  background: #1f2937;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.high-contrast .tooltip {
+  background: black !important;
+  color: white !important;
+  border: 2px solid white !important;
+}
+
+/* Improved code block accessibility */
+pre, code {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.high-contrast pre,
+.high-contrast code {
+  background: white !important;
+  color: black !important;
+  border: 2px solid black !important;
+} 

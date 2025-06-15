@@ -35,7 +35,8 @@ describe('Home Page', () => {
     
     // Check if theme changed (this is a simplified check)
     cy.get('html').should('have.attr', 'class').then((classes) => {
-      const hasThemeClass = classes.includes('dark') || classes.includes('light');
+      const classString = classes.toString();
+      const hasThemeClass = classString.includes('dark') || classString.includes('light');
       expect(hasThemeClass).to.be.true;
     });
   });

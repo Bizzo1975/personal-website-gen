@@ -1,21 +1,19 @@
-# Personal Website
+# Personal Website Generator
 
-A modern, responsive personal website built with Next.js, TypeScript, and Tailwind CSS. This website serves as a portfolio, blog, and project showcase with an admin dashboard that allows editing of all content.
+A modern, responsive personal website built with Next.js, TypeScript, and Tailwind CSS. This website serves as a portfolio, blog, and project showcase with a comprehensive admin system for content management.
 
 ## Features
 
-- 📱 Responsive design that works on all devices
-- 🚀 Fast performance with Next.js
-- 📝 Blog with MDX support and RSS feed
-- 💼 Project showcase with GitHub integration
-- 📄 Resume/CV page
-- 🌓 Dark/light mode support
-- 🔍 Search functionality
-- 🖼️ Optimized image loading
-- 🔒 Authentication with NextAuth
-- 📊 Admin dashboard
-- 🐳 Docker support with Windows compatibility
-- 🖥️ Cross-platform development (Windows, macOS, Linux)
+- **Modern Design**: Clean, responsive design with dark/light mode support
+- **Blog System**: Full-featured blog with MDX support, categories, and tags
+- **Project Showcase**: Portfolio section with project details and live demos
+- **Admin Dashboard**: Complete content management system
+- **Authentication**: Secure admin authentication with NextAuth.js
+- **SEO Optimized**: Built-in SEO optimization with meta tags and structured data
+- **Performance**: Optimized for Core Web Vitals and fast loading
+- **Accessibility**: WCAG compliant with proper semantic HTML
+- **Testing**: Comprehensive test suite with Jest and Cypress
+- **Docker Support**: Full containerization with Windows optimizations
 
 ## Tech Stack
 
@@ -23,7 +21,7 @@ A modern, responsive personal website built with Next.js, TypeScript, and Tailwi
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS with dark/light mode
 - **Content Management**: MDX for blog posts
-- **Database**: MongoDB with Mongoose (PostgreSQL support via Docker)
+- **Database**: MongoDB with Mongoose
 - **Authentication**: NextAuth.js
 - **Testing**: Jest for unit tests, Cypress for E2E tests
 - **Containerization**: Docker with Docker Compose
@@ -35,16 +33,13 @@ A modern, responsive personal website built with Next.js, TypeScript, and Tailwi
 The application uses the following ports:
 
 - **Frontend (Next.js)**: `3006`
-- **Backend API**: `4006` (if separate backend is added)
-- **PostgreSQL Database**: `5436`
-- **pgAdmin**: `8080` (optional, for database management)
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ 
-- MongoDB (for database functionality) OR Docker for PostgreSQL
+- MongoDB (for database functionality) OR use mock data mode for development
 - GitHub account (for project integration)
 - Docker Desktop (optional, for containerized development)
 
@@ -70,29 +65,49 @@ cp env.example .env.local
 ```
 
 4. Update the `.env.local` file with your credentials:
-   - MongoDB connection string OR PostgreSQL settings
+   - MongoDB connection string (or use mock data mode)
    - NextAuth secret
    - GitHub API keys (if using GitHub integration)
    - Site URL (http://localhost:3006)
 
 5. Start the development server:
 
-**Option 1: Native Development**
+**Quick Start (Recommended)**
 ```bash
+# Windows
+startup-all.bat
+
+# Linux/macOS
+./startup-all.sh
+```
+
+**Manual Options**
+```bash
+# Option 1: Native Development
 npm run dev
-```
 
-**Option 2: Docker Development (Recommended for Windows)**
-```bash
+# Option 2: Docker Development (Recommended for Windows)
 npm run dev:docker
-```
 
-**Option 3: Windows-specific**
-```bash
+# Option 3: Windows-specific
 npm run dev:windows
+
+# Option 4: Mock Data Development (no database required)
+npm run dev:mock
 ```
 
 Open [http://localhost:3006](http://localhost:3006) with your browser to see the result.
+
+### Startup Scripts
+
+The project includes comprehensive startup scripts that:
+- Verify environment setup
+- Install dependencies if needed
+- Run build tests to ensure compilation
+- Provide multiple development modes including testing suite
+- Handle cross-platform compatibility
+
+See [STARTUP_GUIDE.md](STARTUP_GUIDE.md) for detailed information about startup options.
 
 ## Windows Development
 
@@ -110,7 +125,7 @@ See [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md) for detailed Windows setup in
 The project includes full Docker support:
 
 ```bash
-# Start all services (frontend + database)
+# Start all services
 npm run dev:docker
 
 # Start in detached mode
@@ -134,7 +149,6 @@ npm run docker:shell
 ```
 /
 ├── docs/                    # Project documentation
-│   ├── MONGODB_SETUP.md
 │   ├── NEXTAUTH_SETUP.md
 │   ├── PROJECT_PLAN.md
 │   ├── TROUBLESHOOTING.md
@@ -147,8 +161,6 @@ npm run docker:shell
 │   └── cypress.config.ts
 ├── scripts/                 # Utility scripts
 │   ├── setup/
-│   ├── maintenance/
-│   ├── database/           # Database initialization scripts
 │   └── ...
 ├── src/                     # Source code
 │   ├── app/                # Next.js app router pages
@@ -217,27 +229,19 @@ This project uses GitHub Actions for CI/CD and can be deployed to Vercel or Netl
 
 1. Set up the following secrets in your GitHub repository:
    - `VERCEL_TOKEN`
-   - `VERCEL_ORG_ID`
-   - `VERCEL_PROJECT_ID`
+   - `MONGODB_URI`
+   - `NEXTAUTH_SECRET`
 
 2. Push to the main branch to trigger automatic deployment.
 
-Alternatively, you can deploy manually:
+## Contributing
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fyour-username%2Fpersonal-website)
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/your-username/personal-website)
-
-## Documentation
-
-Additional documentation is available in the [docs/](docs/) directory:
-- [MongoDB Setup](docs/MONGODB_SETUP.md)
-- [NextAuth Setup](docs/NEXTAUTH_SETUP.md)
-- [Project Plan](docs/PROJECT_PLAN.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Windows Setup Guide](docs/WINDOWS_SETUP.md)
-- [Admin Pages Troubleshooting](docs/ADMIN_PAGES_TROUBLESHOOTING.md)
-- [Animations and Accessibility](docs/ANIMATIONS_AND_ACCESSIBILITY.md)
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE). 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 

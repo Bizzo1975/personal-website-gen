@@ -1,13 +1,52 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ProjectData } from '@/lib/services/project-service';
 import { PageData } from '@/lib/services/page-service';
 import FallbackImage from '@/components/FallbackImage';
 import HeaderSection from '@/components/HeaderSection';
+import { 
+  CalendarIcon, 
+  ClockIcon, 
+  StarIcon,
+  UserIcon,
+  EyeIcon,
+  CodeBracketIcon,
+  GlobeAltIcon,
+  ChartBarIcon,
+  FunnelIcon,
+  TagIcon,
+  BuildingOfficeIcon,
+  AcademicCapIcon
+} from '@heroicons/react/24/outline';
+import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
-// Determine if we're in development mode
-const isDevelopment = process.env.NODE_ENV === 'development';
+// Enhanced project interface with additional fields
+interface EnhancedProject extends ProjectData {
+  category?: string;
+  status?: 'completed' | 'in-progress' | 'planned';
+  startDate?: string;
+  endDate?: string;
+  duration?: string;
+  client?: string;
+  teamSize?: number;
+  role?: string;
+  challenges?: string[];
+  results?: string[];
+  testimonial?: {
+    text: string;
+    author: string;
+    position: string;
+    company: string;
+    avatar?: string;
+  };
+  metrics?: {
+    users?: number;
+    performance?: string;
+    uptime?: string;
+    satisfaction?: number;
+  };
+}
 
 interface ProjectsClientPageProps {
   projects: ProjectData[];
@@ -16,18 +55,140 @@ interface ProjectsClientPageProps {
 
 export default function ProjectsClientPage({ projects, pageData }: ProjectsClientPageProps) {
   const [filter, setFilter] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
+  const [selectedProject, setSelectedProject] = useState<EnhancedProject | null>(null);
+
+  // Enhanced project data with mock additional fields
+  const enhancedProjects: EnhancedProject[] = useMemo(() => {
+    const mockEnhancements = [
+      {
+        category: 'E-commerce',
+        status: 'completed' as const,
+        startDate: '2023-08-01',
+        endDate: '2023-12-15',
+        duration: '4.5 months',
+        client: 'TechCorp Solutions',
+        teamSize: 4,
+        role: 'Full-Stack Developer & Team Lead',
+        challenges: ['Complex payment integration', 'Real-time inventory management', 'Mobile responsiveness'],
+        results: ['40% increase in conversion rate', '60% faster page load times', '99.9% uptime achieved'],
+        testimonial: {
+          text: "The team delivered an exceptional e-commerce platform that exceeded our expectations. The attention to detail and technical expertise was outstanding.",
+          author: "Sarah Johnson",
+          position: "CTO",
+          company: "TechCorp Solutions",
+          avatar: "/images/testimonials/sarah-johnson.jpg"
+        },
+        metrics: {
+          users: 15000,
+          performance: "95% faster",
+          uptime: "99.9%",
+          satisfaction: 4.8
+        },
+        featured: true
+      },
+      {
+        category: 'SaaS Platform',
+        status: 'completed' as const,
+        startDate: '2023-03-01',
+        endDate: '2023-07-30',
+        duration: '5 months',
+        client: 'StartupXYZ',
+        teamSize: 3,
+        role: 'Frontend Architect',
+        challenges: ['Scalable architecture design', 'Real-time collaboration features', 'Cross-browser compatibility'],
+        results: ['Reduced development time by 50%', 'Improved user engagement by 35%', 'Zero critical bugs in production'],
+        testimonial: {
+          text: "Working with this developer was a game-changer for our startup. The platform they built became the foundation of our success.",
+          author: "Mike Chen",
+          position: "Founder & CEO",
+          company: "StartupXYZ",
+          avatar: "/images/testimonials/mike-chen.jpg"
+        },
+        metrics: {
+          users: 8500,
+          performance: "80% faster",
+          uptime: "99.8%",
+          satisfaction: 4.9
+        },
+        featured: true
+      },
+      {
+        category: 'Portfolio Website',
+        status: 'completed' as const,
+        startDate: '2023-01-15',
+        endDate: '2023-02-28',
+        duration: '1.5 months',
+        client: 'Personal Project',
+        teamSize: 1,
+        role: 'Full-Stack Developer',
+        challenges: ['Modern design implementation', 'Performance optimization', 'SEO optimization'],
+        results: ['100% Lighthouse score', 'Featured on design showcases', 'Increased client inquiries by 200%'],
+        featured: false
+      },
+      {
+        category: 'Mobile App',
+        status: 'in-progress' as const,
+        startDate: '2024-01-01',
+        duration: '3 months (ongoing)',
+        client: 'HealthTech Inc.',
+        teamSize: 5,
+        role: 'React Native Developer',
+        challenges: ['Cross-platform compatibility', 'Offline functionality', 'Healthcare compliance'],
+        featured: false
+      },
+      {
+        category: 'Analytics Dashboard',
+        status: 'completed' as const,
+        startDate: '2022-10-01',
+        endDate: '2023-01-15',
+        duration: '3.5 months',
+        client: 'DataCorp',
+        teamSize: 2,
+        role: 'Frontend Developer',
+        challenges: ['Real-time data visualization', 'Performance with large datasets', 'Custom chart components'],
+        results: ['50% faster data processing', 'Improved decision-making speed', 'User satisfaction score: 4.7/5'],
+        metrics: {
+          users: 2500,
+          performance: "50% faster",
+          uptime: "99.5%",
+          satisfaction: 4.7
+        },
+        featured: false
+      }
+    ];
+
+    return projects.map((project, index) => ({
+      ...project,
+      ...mockEnhancements[index % mockEnhancements.length]
+    }));
+  }, [projects]);
   
-  // Extract all unique technologies from projects
+  // Extract all unique technologies and categories
   const allTechnologies = Array.from(
     new Set(
-      projects.flatMap(project => project.technologies)
+      enhancedProjects.flatMap(project => project.technologies)
     )
   ).sort();
+
+  const allCategories = Array.from(
+    new Set(
+      enhancedProjects.map(project => project.category).filter(Boolean)
+    )
+  ).sort();
+
+  const allStatuses = ['all', 'completed', 'in-progress', 'planned'];
   
-  // Filter projects based on selected technology
-  const filteredProjects = filter 
-    ? projects.filter(project => project.technologies.includes(filter))
-    : projects;
+  // Filter projects based on selected filters
+  const filteredProjects = enhancedProjects.filter(project => {
+    const matchesTech = !filter || project.technologies.includes(filter);
+    const matchesCategory = categoryFilter === 'all' || project.category === categoryFilter;
+    const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
+    
+    return matchesTech && matchesCategory && matchesStatus;
+  });
     
   // Format page data for HeaderSection
   const headerData = pageData ? {

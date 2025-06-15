@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion, MotionProps, Variant } from 'framer-motion';
+import { motion, MotionProps } from 'framer-motion';
 
 type AnimationType = 
   | 'fadeIn' 
@@ -28,9 +28,9 @@ interface AnimatedElementProps extends MotionProps {
 
 // Animation variant presets
 const animations: Record<AnimationType, {
-  initial: Variant;
-  animate: Variant;
-  exit?: Variant;
+  initial: any;
+  animate: any;
+  exit?: any;
 }> = {
   fadeIn: {
     initial: { opacity: 0 },
@@ -103,7 +103,7 @@ const AnimatedElement: React.FC<AnimatedElementProps> = ({
   };
 
   // Create motion component with specified element type
-  const MotionTag = motion[as as keyof typeof motion] || motion.div;
+  const MotionTag = motion.div;
 
   return (
     <MotionTag

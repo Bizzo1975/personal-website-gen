@@ -4,7 +4,7 @@ let Page: any = null;
 try {
   Page = require('@/lib/models/Page').default;
 } catch (error) {
-  console.warn('Page model could not be imported, using mock mode:', error.message);
+  console.warn('Page model could not be imported, using mock mode:', (error as Error).message);
 }
 import { Document } from 'mongoose';
 import fs from 'fs';
@@ -299,7 +299,7 @@ export async function getAllPages(): Promise<PageData[]> {
     // Otherwise, use MongoDB
     await dbConnect();
     const pages = await Page.find({}).sort({ updatedAt: -1 });
-    return pages.map(page => convertToPageData(page)).filter(Boolean) as PageData[];
+    return pages.map((page: any) => convertToPageData(page)).filter(Boolean) as PageData[];
   } catch (error) {
     console.error('Error fetching all pages:', error);
     // Always initialize mock data in error cases

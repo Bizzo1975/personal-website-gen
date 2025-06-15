@@ -1,4 +1,5 @@
 import { SortOrder } from 'mongoose';
+import { ContentPermissions } from './permissions';
 
 /**
  * Represents a project in the portfolio
@@ -20,6 +21,7 @@ export interface Project {
   status?: 'completed' | 'in-progress' | 'planned';
   client?: string;
   duration?: string;
+  permissions: ContentPermissions;
 }
 
 /**
@@ -35,6 +37,9 @@ export interface ProjectQuery {
   status?: string;
   searchTerm?: string;
   sort?: Record<string, SortOrder>;
+  permissionLevel?: 'personal' | 'professional' | 'all';
+  userRole?: string;
+  userId?: string;
 }
 
 /**
@@ -57,6 +62,26 @@ export interface ProjectDetailProps {
 }
 
 /**
+ * Project creation/update data
+ */
+export interface ProjectFormData {
+  title: string;
+  slug: string;
+  description: string;
+  image?: string;
+  technologies: string[];
+  liveDemo?: string;
+  sourceCode?: string;
+  featured: boolean;
+  details?: string;
+  category?: string;
+  status?: 'completed' | 'in-progress' | 'planned';
+  client?: string;
+  duration?: string;
+  permissions: ContentPermissions;
+}
+
+/**
  * Props for project filter components
  */
 export interface ProjectFilterProps {
@@ -75,4 +100,5 @@ export interface ProjectFilters {
   technology?: string;
   status?: string;
   searchTerm?: string;
+  permissionLevel?: 'personal' | 'professional' | 'all';
 }

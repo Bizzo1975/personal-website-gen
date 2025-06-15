@@ -43,7 +43,7 @@ export async function createUser(userData: {
   const { name, email, password } = userData;
   
   // Check if user already exists
-  const existingUser = await User.findOne({ email });
+  const existingUser = await (User as any).findOne({ email });
   if (existingUser) {
     throw new Error('User already exists');
   }
@@ -52,7 +52,7 @@ export async function createUser(userData: {
   const hashedPassword = await hash(password, 12);
   
   // Create user
-  const user = await User.create({
+  const user = await (User as any).create({
     name,
     email,
     password: hashedPassword,
@@ -72,7 +72,7 @@ export async function getUserByEmail(email: string) {
   
   // Real implementation
   await dbConnect();
-  const user = await User.findOne({ email });
+  const user = await (User as any).findOne({ email });
   return user;
 }
 

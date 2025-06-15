@@ -1,14 +1,13 @@
 'use client'
 import '@/styles/globals.css';
-;
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import Button from '@/components/Button';
 
-export default function AdminLoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -59,57 +58,65 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-[80vh]">
-      <Card variant="elevated" className="w-full max-w-md">
-        <CardHeader>
-          <h1 className="text-2xl font-bold text-center">Admin Login</h1>
-        </CardHeader>
-        <CardBody>
-          {error && (
-            <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4">
-              {error}
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-1">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            <p>Default admin credentials:</p>
-            <p className="font-mono bg-gray-100 dark:bg-gray-800 p-1 rounded mt-1">
-              Email: admin@example.com<br/>
-              Password: admin12345
-            </p>
+    <Card variant="elevated" className="w-full max-w-md">
+      <CardHeader>
+        <h1 className="text-2xl font-bold text-center">Admin Login</h1>
+      </CardHeader>
+      <CardBody>
+        {error && (
+          <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4">
+            {error}
           </div>
-        </CardBody>
-      </Card>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium mb-1">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium mb-1">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              required
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </Button>
+        </form>
+        <div className="mt-4 text-center text-sm">
+          <p>Default admin credentials:</p>
+          <p className="font-mono bg-gray-100 dark:bg-gray-800 p-1 rounded mt-1">
+            Email: admin@example.com<br/>
+            Password: admin12345
+          </p>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <div className="flex justify-center items-center min-h-[80vh]">
+      <Suspense fallback={<div>Loading...</div>}>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 } 

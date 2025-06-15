@@ -3,7 +3,7 @@ import { AccessRequestService, AccessRequestFormData } from '@/lib/models/access
 import { validateContactForm } from '@/lib/utils/form-validation';
 import { verifyRecaptchaToken, isRecaptchaValid } from '@/lib/utils/recaptcha-verify';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth-config';
 
 // Rate limiting for access request submissions
 const rateLimit = {

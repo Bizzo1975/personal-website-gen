@@ -8,7 +8,7 @@ import Card, { CardBody, CardHeader, CardFooter } from '@/components/Card';
 import Button from '@/components/Button';
 import Link from 'next/link';
 import Input from '@/components/Input';
-import Textarea from '@/components/Textarea';
+import TextArea from '@/components/TextArea';
 import { BiSave } from 'react-icons/bi';
 
 // Define the PageData interface directly instead of importing it
@@ -251,7 +251,7 @@ export default function EditPagePage({ params }: { params: { id: string } }) {
               wrapperClassName="mb-0 md:col-span-2"
             />
             
-            <Textarea
+            <TextArea
               label="Meta Description"
               id="metaDescription"
               name="metaDescription"
@@ -280,7 +280,7 @@ export default function EditPagePage({ params }: { params: { id: string } }) {
               wrapperClassName="mb-0"
             />
             
-            <Textarea
+            <TextArea
               label="Header Subtitle"
               id="headerSubtitle"
               name="headerSubtitle"

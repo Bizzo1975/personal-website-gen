@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth-config';
 import dbConnect from '@/lib/db';
 import Profile from '@/lib/models/Profile';
 import { ProfileData } from '@/lib/services/profile-service';
@@ -71,7 +71,7 @@ export async function GET() {
     }
     
     return NextResponse.json({
-      id: profile._id.toString(),
+      id: (profile._id as any).toString(),
       name: profile.name,
       imageUrl: profile.imageUrl,
       skills: profile.skills,
@@ -131,8 +131,15 @@ export async function PUT(req: NextRequest) {
       });
     }
     
+    if (!profile) {
+      return NextResponse.json(
+        { error: 'Failed to save profile' },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json({
-      id: profile._id.toString(),
+      id: (profile._id as any).toString(),
       name: profile.name,
       imageUrl: profile.imageUrl,
       skills: profile.skills,

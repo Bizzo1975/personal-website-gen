@@ -156,7 +156,7 @@ export async function getProjects(query: ProjectQuery = {}): Promise<ProjectData
       .skip(skip)
       .limit(limit);
     
-    return projects.map(project => ({
+    return projects.map((project: any) => ({
       id: project._id.toString(),
       title: project.title,
       slug: project.slug,
@@ -200,7 +200,7 @@ export async function getProjectBySlug(slug: string): Promise<ProjectData | null
     if (!project) return null;
     
     return {
-      id: project._id.toString(),
+      id: (project as any)._id.toString(),
       title: project.title,
       slug: project.slug,
       description: project.description,

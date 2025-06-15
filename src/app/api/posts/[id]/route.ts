@@ -2,91 +2,61 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getServerSession } from 'next-auth/next';
 
-// Import the mockPosts data (in a real app, this would be a database call)
-// Note: In a real application, this would be a database import
-// This is temporary for this demo
+// Mock posts data store (this should match the one in the main posts route)
 let mockPosts = [
   {
     id: '1',
-    title: 'Getting Started with Next.js 13',
-    slug: 'getting-started-with-nextjs-13',
-    content: '# Getting Started with Next.js 13\n\nNext.js 13 introduces a new App Router built on React Server Components...',
-    excerpt: 'Learn how to set up your first Next.js 13 project with the new App Router and React Server Components.',
-    featuredImage: 'https://images.unsplash.com/photo-1551650975-87deedd944c3',
-    tags: ['Next.js', 'React', 'Web Development'],
+    title: 'Getting Started with Next.js and TypeScript',
+    slug: 'getting-started-with-nextjs-typescript',
+    content: '# Getting Started with Next.js and TypeScript\n\nNext.js 13+ with TypeScript provides an excellent development experience with type safety and modern React features...',
+    excerpt: 'Learn how to set up your first Next.js project with TypeScript and build modern applications with type safety.',
+    featuredImage: '/images/blog/nextjs-typescript.svg',
+    tags: ['Next.js', 'TypeScript', 'React', 'Web Development'],
     published: true,
     publishedAt: '2023-05-15T10:00:00Z',
     createdAt: '2023-05-10T08:30:00Z',
     updatedAt: '2023-05-15T09:45:00Z',
-    metaDescription: 'A comprehensive guide to getting started with Next.js 13 and its new features.',
+    metaDescription: 'A comprehensive guide to getting started with Next.js and TypeScript for modern web development.',
+    permissions: {
+      level: 'all',
+      allowedRoles: ['admin', 'editor', 'author', 'subscriber', 'guest'],
+      allowedUsers: [],
+      restrictedUsers: [],
+      requiresAuth: false,
+      customRules: []
+    }
   },
   {
     id: '2',
-    title: 'Advanced TypeScript Patterns',
-    slug: 'advanced-typescript-patterns',
-    content: '# Advanced TypeScript Patterns\n\nIn this post, we\'ll explore advanced TypeScript patterns...',
-    excerpt: 'Discover powerful TypeScript patterns and techniques to improve your code quality and developer experience.',
-    featuredImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c',
-    tags: ['TypeScript', 'JavaScript', 'Programming'],
+    title: 'Why I Switched to Tailwind CSS',
+    slug: 'why-i-switched-to-tailwind-css',
+    content: '# Why I Switched to Tailwind CSS\n\nTailwind CSS has revolutionized my development workflow with its utility-first approach...',
+    excerpt: 'Discover why Tailwind CSS has revolutionized my development workflow and how it can improve your styling approach.',
+    featuredImage: '/images/blog/tailwind-css.svg',
+    tags: ['CSS', 'Tailwind', 'Design', 'Development'],
     published: true,
     publishedAt: '2023-04-20T14:30:00Z',
     createdAt: '2023-04-15T11:20:00Z',
     updatedAt: '2023-04-20T13:15:00Z',
-    metaDescription: 'Learn advanced TypeScript patterns to level up your development skills.',
-  },
-  {
-    id: '3',
-    title: 'Building a Custom React Hook',
-    slug: 'building-a-custom-react-hook',
-    content: '# Building a Custom React Hook\n\nReact Hooks are a powerful way to reuse stateful logic...',
-    excerpt: 'Learn how to create your own custom React hooks to share logic between components.',
-    featuredImage: 'https://images.unsplash.com/photo-1633356122102-3fe601e05bd2',
-    tags: ['React', 'JavaScript', 'Hooks'],
-    published: false,
-    createdAt: '2023-06-05T09:40:00Z',
-    updatedAt: '2023-06-07T16:25:00Z',
-    metaDescription: 'A step-by-step guide to creating custom React hooks for reusable logic.',
-  },
-  {
-    id: '4',
-    title: 'Optimizing Website Performance',
-    slug: 'optimizing-website-performance',
-    content: '# Optimizing Website Performance\n\nIn this comprehensive guide, we\'ll cover various techniques...',
-    excerpt: 'Learn how to measure and improve your website\'s performance for better user experience and SEO.',
-    featuredImage: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6',
-    tags: ['Performance', 'Web Development', 'SEO'],
-    published: true,
-    publishedAt: '2023-03-10T12:00:00Z',
-    createdAt: '2023-02-28T15:30:00Z',
-    updatedAt: '2023-03-10T11:45:00Z',
-    metaDescription: 'Practical techniques for optimizing your website\'s performance and improving user experience.',
-  },
-  {
-    id: '5',
-    title: 'Introduction to TailwindCSS',
-    slug: 'introduction-to-tailwindcss',
-    content: '# Introduction to TailwindCSS\n\nTailwindCSS is a utility-first CSS framework...',
-    excerpt: 'Discover how TailwindCSS can streamline your styling workflow with its utility-first approach.',
-    featuredImage: 'https://images.unsplash.com/photo-1618788372246-79faff0c3742',
-    tags: ['CSS', 'TailwindCSS', 'Web Design'],
-    published: true,
-    publishedAt: '2023-01-25T08:15:00Z',
-    createdAt: '2023-01-20T14:20:00Z',
-    updatedAt: '2023-01-25T07:30:00Z',
-    metaDescription: 'Learn the basics of TailwindCSS and how it can improve your development workflow.',
+    metaDescription: 'Learn why Tailwind CSS is becoming the go-to choice for modern web development.',
+    permissions: {
+      level: 'professional',
+      allowedRoles: ['admin', 'editor', 'author'],
+      allowedUsers: [],
+      restrictedUsers: [],
+      requiresAuth: true,
+      customRules: []
+    }
   }
 ];
 
-// GET /api/posts/[id] - Get a single post
+// GET /api/posts/[id] - Get a specific post
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
-    
-    // Find the post by ID
-    const post = mockPosts.find(p => p.id === id);
+    const post = mockPosts.find(p => p.id === params.id);
     
     if (!post) {
       return NextResponse.json(
@@ -94,8 +64,8 @@ export async function GET(
         { status: 404 }
       );
     }
-    
-    return NextResponse.json(post);
+
+    return NextResponse.json({ data: post });
   } catch (error) {
     console.error('Error fetching post:', error);
     return NextResponse.json(
@@ -105,7 +75,7 @@ export async function GET(
   }
 }
 
-// PUT /api/posts/[id] - Update a post
+// PUT /api/posts/[id] - Update a specific post
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
@@ -119,12 +89,9 @@ export async function PUT(
         { status: 401 }
       );
     }
-    
-    const { id } = params;
-    const updatedData = await request.json();
-    
-    // Find the post index
-    const postIndex = mockPosts.findIndex(p => p.id === id);
+
+    const postData = await request.json();
+    const postIndex = mockPosts.findIndex(p => p.id === params.id);
     
     if (postIndex === -1) {
       return NextResponse.json(
@@ -132,46 +99,43 @@ export async function PUT(
         { status: 404 }
       );
     }
-    
-    // Check if updating slug and if it already exists
-    if (
-      updatedData.slug && 
-      updatedData.slug !== mockPosts[postIndex].slug &&
-      mockPosts.some(p => p.id !== id && p.slug === updatedData.slug)
-    ) {
+
+    // Validate required fields
+    if (!postData.title || !postData.slug || !postData.content || !postData.excerpt) {
+      return NextResponse.json(
+        { error: 'Missing required fields: title, slug, content, and excerpt are required' },
+        { status: 400 }
+      );
+    }
+
+    // Check for duplicate slug (excluding current post)
+    const slugExists = mockPosts.some(post => post.slug === postData.slug && post.id !== params.id);
+    if (slugExists) {
       return NextResponse.json(
         { error: 'A post with this slug already exists' },
         { status: 400 }
       );
     }
-    
-    const now = new Date().toISOString();
-    
-    // Check if publishing status changed
-    const wasPublished = mockPosts[postIndex].published;
-    const isNowPublished = updatedData.published !== undefined 
-      ? Boolean(updatedData.published) 
-      : wasPublished;
-    
+
     // Update the post
-    mockPosts[postIndex] = {
+    const updatedPost = {
       ...mockPosts[postIndex],
-      ...updatedData,
-      tags: updatedData.tags || mockPosts[postIndex].tags,
-      published: isNowPublished,
-      updatedAt: now,
-      // Update publishedAt if post is being published for the first time
-      publishedAt: (!wasPublished && isNowPublished) 
-        ? now 
+      ...postData,
+      id: params.id, // Ensure ID doesn't change
+      updatedAt: new Date().toISOString(),
+      publishedAt: postData.published && !mockPosts[postIndex].published 
+        ? new Date().toISOString() 
         : mockPosts[postIndex].publishedAt
     };
-    
+
+    mockPosts[postIndex] = updatedPost;
+
     // Revalidate blog pages
     revalidatePath('/blog');
     revalidatePath('/admin/posts');
-    revalidatePath(`/blog/${mockPosts[postIndex].slug}`);
-    
-    return NextResponse.json(mockPosts[postIndex]);
+    revalidatePath(`/blog/${updatedPost.slug}`);
+
+    return NextResponse.json(updatedPost);
   } catch (error) {
     console.error('Error updating post:', error);
     return NextResponse.json(
@@ -181,7 +145,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/posts/[id] - Delete a post
+// DELETE /api/posts/[id] - Delete a specific post
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
@@ -195,11 +159,8 @@ export async function DELETE(
         { status: 401 }
       );
     }
-    
-    const { id } = params;
-    
-    // Find the post
-    const postIndex = mockPosts.findIndex(p => p.id === id);
+
+    const postIndex = mockPosts.findIndex(p => p.id === params.id);
     
     if (postIndex === -1) {
       return NextResponse.json(
@@ -207,19 +168,15 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    
-    // Store slug for revalidation
-    const slug = mockPosts[postIndex].slug;
-    
-    // Remove the post
-    mockPosts = mockPosts.filter(p => p.id !== id);
-    
+
+    const deletedPost = mockPosts[postIndex];
+    mockPosts.splice(postIndex, 1);
+
     // Revalidate blog pages
     revalidatePath('/blog');
     revalidatePath('/admin/posts');
-    revalidatePath(`/blog/${slug}`);
-    
-    return NextResponse.json({ success: true });
+
+    return NextResponse.json({ message: 'Post deleted successfully', post: deletedPost });
   } catch (error) {
     console.error('Error deleting post:', error);
     return NextResponse.json(

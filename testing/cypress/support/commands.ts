@@ -101,3 +101,6 @@ Cypress.Commands.add('tabBack', { prevSubject: 'optional' }, (subject) => {
     return cy.wrap(focusableElements.eq(previousIndex)).focus();
   });
 });
+
+// Export to make this file a module
+export {};

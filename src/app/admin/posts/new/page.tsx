@@ -5,12 +5,15 @@ import { useRouter } from 'next/navigation';
 import AdminLayout from '../../components/AdminLayout';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
-import Textarea from '@/components/Textarea';
+import TextArea from '@/components/TextArea';
 import { TagInput } from '@/components/TagInput';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import { Checkbox } from '@/components/Checkbox';
 import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
+import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import { BiUpload, BiSave } from 'react-icons/bi';
+import { ContentPermissions } from '@/types/content/permissions';
+import { PermissionService } from '@/lib/services/permission-service';
 
 interface NewPostFormData {
   title: string;
@@ -21,6 +24,7 @@ interface NewPostFormData {
   published: boolean;
   metaDescription?: string;
   featuredImage?: string;
+  permissions: ContentPermissions;
 }
 
 export default function NewPostPage() {
@@ -37,7 +41,8 @@ export default function NewPostPage() {
     tags: [],
     published: false,
     metaDescription: '',
-    featuredImage: ''
+    featuredImage: '',
+    permissions: PermissionService.getDefaultPermissions('all') // Default to public access
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -53,17 +58,16 @@ export default function NewPostPage() {
     }
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: checked }));
-  };
-
   const handleTagsChange = (tags: string[]) => {
     setFormData(prev => ({ ...prev, tags }));
   };
 
   const handleContentChange = (content: string) => {
     setFormData(prev => ({ ...prev, content }));
+  };
+
+  const handlePermissionsChange = (permissions: ContentPermissions) => {
+    setFormData(prev => ({ ...prev, permissions }));
   };
   
   const handleImageUploadClick = () => {
@@ -151,7 +155,7 @@ export default function NewPostPage() {
           </div>
         )}
         
-        <Card variant="default">
+        <Card>
           <form onSubmit={handleSubmit}>
             <CardHeader>
               <h2 className="text-lg font-medium">Post Information</h2>
@@ -179,7 +183,7 @@ export default function NewPostPage() {
                 />
               </div>
               
-              <Textarea
+              <TextArea
                 label="Excerpt"
                 name="excerpt"
                 value={formData.excerpt}
@@ -224,7 +228,7 @@ export default function NewPostPage() {
                     
                     <Input
                       name="featuredImage"
-                      value={formData.featuredImage}
+                      value={formData.featuredImage || ''}
                       onChange={handleChange}
                       placeholder="https://example.com/image.jpg"
                       wrapperClassName="mt-2 mb-0"
@@ -272,13 +276,21 @@ export default function NewPostPage() {
                   required
                 />
               </div>
+
+              {/* Permissions Section */}
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+                <PermissionsEditor
+                  permissions={formData.permissions}
+                  onChange={handlePermissionsChange}
+                  contentType="post"
+                />
+              </div>
               
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
                 <Checkbox
                   label="Published"
-                  name="published"
                   checked={formData.published}
-                  onChange={handleCheckboxChange}
+                  onChange={(checked) => setFormData(prev => ({ ...prev, published: checked }))}
                 />
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   When checked, this post will be visible to visitors. Otherwise, it will be saved as a draft.

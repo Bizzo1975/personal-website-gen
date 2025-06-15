@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import FallbackImage from './FallbackImage';
 
 // Array of development-related images
 const slideImages = [
@@ -74,13 +73,14 @@ const BackgroundSlideshow: React.FC<BackgroundSlideshowProps> = ({
             opacity: currentSlide === index ? opacity : 0,
           }}
         >
-          <FallbackImage
+          <img
             src={src}
             alt={`Background slide ${index + 1}`}
-            className="w-full h-full"
-            objectFit="cover"
-            priority={index === 0 || index === 1} // Prioritize the first two images
-            fallbackSrc="/images/placeholder.jpg"
+            width="auto"
+            height="auto"
+            className="w-full h-full transition-opacity duration-300"
+            style={{ objectFit: 'cover' }}
+            loading={index === 0 || index === 1 ? 'eager' : 'lazy'}
           />
         </div>
       ))}

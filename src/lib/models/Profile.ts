@@ -1,6 +1,21 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-const ProfileSchema = new Schema({
+export interface ProfileDocument extends Document {
+  name: string;
+  imageUrl: string;
+  skills: string[];
+  location: string;
+  email: string;
+  socialLinks: {
+    github: string;
+    twitter: string;
+    linkedin: string;
+    website: string;
+  };
+  updatedAt: Date;
+}
+
+const ProfileSchema = new Schema<ProfileDocument>({
   name: {
     type: String,
     required: true,
@@ -34,7 +49,8 @@ const ProfileSchema = new Schema({
 });
 
 // Fix for "mongoose.models is undefined" error
-// Check if mongoose.models exists before trying to access it
-export default (mongoose.models && mongoose.models.Profile) 
-  ? mongoose.models.Profile 
-  : mongoose.model('Profile', ProfileSchema); 
+const Profile = (mongoose.models && mongoose.models.Profile) 
+  ? mongoose.models.Profile as mongoose.Model<ProfileDocument>
+  : mongoose.model<ProfileDocument>('Profile', ProfileSchema);
+
+export default Profile; 

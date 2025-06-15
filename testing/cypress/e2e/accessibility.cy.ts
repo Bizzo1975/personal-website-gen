@@ -3,7 +3,7 @@ describe('Accessibility Features', () => {
     cy.visit('/');
     
     // Tab to make skip link visible
-    cy.get('body').tab();
+    cy.get('body').type('{tab}');
     
     // Skip link should be visible when focused
     cy.focused().should('have.text', 'Skip to content');
@@ -18,7 +18,7 @@ describe('Accessibility Features', () => {
     cy.visit('/blog');
     
     // Tab to first blog post link
-    cy.get('body').tab().tab().tab();
+    cy.get('body').type('{tab}{tab}{tab}');
     
     // Check focused element is a link in the blog post list
     cy.focused()

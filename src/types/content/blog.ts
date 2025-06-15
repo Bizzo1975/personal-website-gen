@@ -1,4 +1,5 @@
 import { SortOrder } from 'mongoose';
+import { ContentPermissions } from './permissions';
 
 /**
  * Represents a blog post in the application
@@ -18,6 +19,7 @@ export interface BlogPost {
   featuredImage?: string;
   seoDescription?: string;
   category?: string;
+  permissions: ContentPermissions;
 }
 
 /**
@@ -32,6 +34,9 @@ export interface BlogPostQuery {
   author?: string;
   searchTerm?: string;
   sort?: Record<string, SortOrder>;
+  permissionLevel?: 'personal' | 'professional' | 'all';
+  userRole?: string;
+  userId?: string;
 }
 
 /**
@@ -60,6 +65,22 @@ export interface BlogSearchProps {
   onSearch: (query: string) => void;
   initialQuery?: string;
   placeholder?: string;
+}
+
+/**
+ * Blog post creation/update data
+ */
+export interface BlogPostFormData {
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  tags: string[];
+  category?: string;
+  featuredImage?: string;
+  seoDescription?: string;
+  published: boolean;
+  permissions: ContentPermissions;
 }
 
 /**

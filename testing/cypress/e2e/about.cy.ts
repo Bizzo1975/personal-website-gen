@@ -64,10 +64,10 @@ describe('About Page', () => {
     // Start by focusing on the body
     cy.get('body').focus();
     
-    // Tab to focus on various elements
-    cy.get('body').tab().tab();
+    // Use keyboard navigation with Tab key
+    cy.get('body').type('{tab}{tab}');
     
-    // After some tabs, we should reach a skill item
+    // After some tabs, we should reach a focusable element
     cy.focused().should('exist');
   });
 }); 
