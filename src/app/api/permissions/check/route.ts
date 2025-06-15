@@ -18,8 +18,12 @@ export async function POST(request: NextRequest) {
     // Get user session
     const session = await getServerSession(authOptions);
     
-    // Create user context
-    const userContext = PermissionService.createUserContext(session?.user);
+    // Create user context - handle null email properly
+    const safeUser = session?.user ? {
+      ...session.user,
+      email: session.user.email || undefined
+    } : undefined;
+    const userContext = PermissionService.createUserContext(safeUser);
 
     // Check permissions
     const result = PermissionService.checkPermission(permissions as ContentPermissions, userContext);

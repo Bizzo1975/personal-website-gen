@@ -127,7 +127,11 @@ const NewsletterAdminPage: React.FC = () => {
             totalEmailsReceived: 8,
             totalEmailsOpened: 6,
             totalLinksClicked: 2,
-            tags: ['developer', 'frontend']
+            tags: ['developer', 'frontend'],
+            customFields: {
+              company: 'Tech Corp',
+              jobTitle: 'Frontend Developer'
+            }
           }
         ],
         analytics: {

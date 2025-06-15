@@ -20,6 +20,9 @@ export {
   availableIcons
 } from './IconSystem';
 
+// Form Components
+export { default as TextArea } from './TextArea';
+
 // Brand Assets
 export { Logo } from './Logo';
 export { DesignSystemDemo } from './DesignSystemDemo';
