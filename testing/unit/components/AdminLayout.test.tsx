@@ -72,6 +72,7 @@ describe('AdminLayout', () => {
     expect(screen.getByText('Projects')).toBeInTheDocument();
     expect(screen.getByText('Posts')).toBeInTheDocument();
     expect(screen.getByText('Contact')).toBeInTheDocument();
+    expect(screen.getByText('Newsletter')).toBeInTheDocument();
     expect(screen.getByText('Profile Settings')).toBeInTheDocument();
     expect(screen.getByText('Site Settings')).toBeInTheDocument();
     expect(screen.getByText('Add New Page')).toBeInTheDocument();
@@ -191,6 +192,7 @@ describe('AdminLayout', () => {
     expect(screen.getByRole('link', { name: /projects/i })).toHaveAttribute('href', '/admin/projects');
     expect(screen.getByRole('link', { name: /posts/i })).toHaveAttribute('href', '/admin/posts');
     expect(screen.getByRole('link', { name: /contact/i })).toHaveAttribute('href', '/admin/contact');
+    expect(screen.getByRole('link', { name: /newsletter/i })).toHaveAttribute('href', '/admin/newsletter');
     expect(screen.getByRole('link', { name: /add new page/i })).toHaveAttribute('href', '/admin/pages/new');
   });
 }); 

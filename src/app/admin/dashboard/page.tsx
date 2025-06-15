@@ -16,7 +16,8 @@ import {
   BiDownload,
   BiUpload,
   BiCog,
-  BiBarChart
+  BiBarChart,
+  BiEnvelope
 } from 'react-icons/bi';
 import AdminLayout from '@/app/admin/components/AdminLayout';
 import AdminPageLayout from '@/app/admin/components/AdminPageLayout';
@@ -31,6 +32,7 @@ function AdminDashboardContent() {
   const [userCount, setUserCount] = useState<string>('1');
   const [scheduledCount, setScheduledCount] = useState<string>('0');
   const [draftCount, setDraftCount] = useState<string>('0');
+  const [subscriberCount, setSubscriberCount] = useState<string>('2,683');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'users' | 'analytics'>('overview');
 
@@ -41,12 +43,13 @@ function AdminDashboardContent() {
   const fetchDashboardStats = async () => {
     try {
       // Fetch various statistics for the dashboard
-      const [blogRes, projectRes, userRes, scheduledRes, draftRes] = await Promise.all([
+      const [blogRes, projectRes, userRes, scheduledRes, draftRes, subscriberRes] = await Promise.all([
         fetch('/api/admin/stats/posts'),
         fetch('/api/admin/stats/projects'),
         fetch('/api/admin/stats/users'),
         fetch('/api/admin/stats/scheduled'),
-        fetch('/api/admin/stats/drafts')
+        fetch('/api/admin/stats/drafts'),
+        fetch('/api/newsletter/admin/stats')
       ]);
 
       if (blogRes.ok) {
@@ -69,6 +72,10 @@ function AdminDashboardContent() {
         const draftData = await draftRes.json();
         setDraftCount(draftData.count.toString());
       }
+      if (subscriberRes.ok) {
+        const subscriberData = await subscriberRes.json();
+        setSubscriberCount(subscriberData.totalSubscribers ? subscriberData.totalSubscribers.toString() : '0');
+      }
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);
     } finally {
@@ -80,11 +87,19 @@ function AdminDashboardContent() {
     { title: 'Blog Posts', count: blogCount, href: '/admin/posts', icon: <BiBarChart /> },
     { title: 'Projects', count: projectCount, href: '/admin/projects', icon: <BiFolder /> },
     { title: 'Users', count: userCount, href: '/admin/users', icon: <BiUser /> },
+    { title: 'Subscribers', count: subscriberCount, href: '/admin/newsletter/subscribers', icon: <BiEnvelope /> },
     { title: 'Scheduled', count: scheduledCount, href: '/admin/scheduled', icon: <BiCalendarCheck /> },
     { title: 'Drafts', count: draftCount, href: '/admin/drafts', icon: <BiHistory /> },
   ];
 
   const adminFeatures = [
+    {
+      title: 'Newsletter Management',
+      description: 'Create and manage newsletters, subscribers, and campaigns',
+      href: '/admin/newsletter',
+      icon: <BiEnvelope className="w-6 h-6" />,
+      color: 'cyan'
+    },
     {
       title: 'Content Scheduling',
       description: 'Schedule posts and content for future publication',
@@ -155,6 +170,7 @@ function AdminDashboardContent() {
 
   const getColorClasses = (color: string) => {
     const colors = {
+      cyan: 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-800 dark:text-cyan-300',
       blue: 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300',
       green: 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300',
       purple: 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-300',
@@ -205,7 +221,7 @@ function AdminDashboardContent() {
       {activeTab === 'overview' && (
         <div className="space-y-8">
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
             {stats.map((stat, index) => (
               <Card key={index} variant="default" className="hover:shadow-md transition-shadow">
                 <CardBody className="flex flex-col items-center py-6">

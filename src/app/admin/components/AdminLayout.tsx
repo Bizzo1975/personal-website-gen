@@ -51,6 +51,9 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     { href: '/admin/posts', label: 'Posts', icon: <BiNews className="w-5 h-5" /> },
     { href: '/admin/contact', label: 'Contact', icon: <BiEnvelope className="w-5 h-5" /> },
     
+    // Newsletter Management
+    { href: '/admin/newsletter', label: 'Newsletter', icon: <BiEnvelope className="w-5 h-5" /> },
+    
     // Advanced Content Management
     { href: '/admin/content-management', label: 'Content Management', icon: <BiFile className="w-5 h-5" /> },
     { href: '/admin/content-scheduler', label: 'Content Scheduler', icon: <BiCalendarCheck className="w-5 h-5" /> },
@@ -96,7 +99,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
             <ul className="space-y-1">
               {navItems.map((item, index) => {
                 // Add visual separation before Settings and Additional Management sections
-                const showSeparator = index === 6 || index === 8; // Before Settings and Additional Management
+                const showSeparator = index === 7 || index === 9; // Before Settings and Additional Management
                 
                 return (
                   <React.Fragment key={item.href}>
