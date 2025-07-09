@@ -1,60 +1,42 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth-config';
+import { ProjectService } from '@/lib/services/project-service';
+import { PermissionService } from '@/lib/services/permission-service';
 
-// Mock projects data store (replace with actual database in production)
-let mockProjects = [
-  {
-    id: '1',
-    title: 'E-commerce Platform',
-    slug: 'ecommerce-platform',
-    description: 'A full-featured e-commerce platform built with Next.js.',
-    image: '/images/projects/ecommerce-platform.svg',
-    technologies: ['Next.js', 'React', 'MongoDB', 'Stripe', 'Tailwind CSS'],
-    liveDemo: 'https://example.com/ecommerce',
-    sourceCode: 'https://github.com/johndoe/ecommerce',
-    featured: true,
-  },
-  {
-    id: '2',
-    title: 'Task Management App',
-    slug: 'task-management-app',
-    description: 'A productivity application for managing tasks and projects.',
-    image: '/images/projects/task-management.svg',
-    technologies: ['React', 'TypeScript', 'Redux', 'Firebase'],
-    liveDemo: 'https://example.com/taskmanager',
-    sourceCode: 'https://github.com/johndoe/taskmanager',
-    featured: false,
-  },
-  {
-    id: '3',
-    title: 'Weather Dashboard',
-    slug: 'weather-dashboard',
-    description: 'A responsive weather application with forecasts.',
-    image: '/images/projects/weather-dashboard.svg',
-    technologies: ['JavaScript', 'React', 'Weather API', 'Chart.js'],
-    liveDemo: 'https://example.com/weather',
-    sourceCode: 'https://github.com/johndoe/weather',
-    featured: true,
-  },
-  {
-    id: '4',
-    title: 'AI Image Generator',
-    slug: 'ai-image-generator',
-    description: 'An AI-powered tool that generates images from text descriptions.',
-    image: '/images/projects/ai-image-generator.svg',
-    technologies: ['Python', 'TensorFlow', 'FastAPI', 'React'],
-    liveDemo: 'https://example.com/ai-generator',
-    sourceCode: 'https://github.com/johndoe/ai-generator',
-    featured: false,
-  },
-];
-
-// GET /api/projects - Get all projects
-export async function GET() {
+// GET /api/projects - Get all projects with permission filtering
+export async function GET(request: Request) {
   try {
-    // In a real application, fetch from database
-    return NextResponse.json(mockProjects);
+    // Get user session for permission filtering
+    const session = await getServerSession(authOptions);
+    const userEmail = session?.user?.email;
+
+    // Check if user is admin
+    const isAdmin = userEmail ? await PermissionService.isUserAdmin(userEmail) : false;
+
+    let projects;
+    
+    if (isAdmin) {
+      // Admin gets all projects (including draft)
+      projects = await ProjectService.getAllProjectsForAdmin();
+    } else {
+      // Regular users get only published projects with permission filtering
+      projects = await ProjectService.getAllProjects(userEmail);
+    }
+
+    return NextResponse.json({
+      projects,
+      meta: {
+        total: projects.length,
+        filtered: userEmail ? true : false,
+        userContext: {
+          isAuthenticated: !!userEmail,
+          email: userEmail,
+          isAdmin: isAdmin
+        }
+      }
+    });
   } catch (error) {
     console.error('Error fetching projects:', error);
     return NextResponse.json(
@@ -64,15 +46,24 @@ export async function GET() {
   }
 }
 
-// POST /api/projects - Create a new project
+// POST /api/projects - Create a new project (admin only)
 export async function POST(request: Request) {
   try {
     // Check authentication
-    const session = await getServerSession();
-    if (!session) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Authentication required' },
         { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    const isAdmin = await PermissionService.isUserAdmin(session.user.email);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
       );
     }
 
@@ -82,31 +73,21 @@ export async function POST(request: Request) {
     // Validate required fields
     if (!projectData.title || !projectData.slug || !projectData.description) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: title, slug, and description are required' },
         { status: 400 }
       );
     }
-    
-    // Check for duplicate slug
-    const slugExists = mockProjects.some(project => project.slug === projectData.slug);
-    if (slugExists) {
+
+    // Validate permission level
+    if (projectData.permissionLevel && !PermissionService.isValidPermissionLevel(projectData.permissionLevel)) {
       return NextResponse.json(
-        { error: 'A project with this slug already exists' },
+        { error: 'Invalid permission level. Must be one of: all, professional, personal' },
         { status: 400 }
       );
     }
     
-    // Create new project
-    const newProject = {
-      id: Date.now().toString(),
-      ...projectData,
-      technologies: projectData.technologies || [],
-      featured: Boolean(projectData.featured),
-      createdAt: new Date().toISOString()
-    };
-    
-    // In a real app, save to database
-    mockProjects.push(newProject);
+    // Create new project with ProjectService
+    const newProject = await ProjectService.createProject(projectData, session.user.id || session.user.email);
     
     // Revalidate projects page
     revalidatePath('/projects');
@@ -115,6 +96,15 @@ export async function POST(request: Request) {
     return NextResponse.json(newProject, { status: 201 });
   } catch (error) {
     console.error('Error creating project:', error);
+    
+    // Handle specific database errors
+    if (error.message.includes('duplicate') || error.message.includes('unique')) {
+      return NextResponse.json(
+        { error: 'A project with this slug already exists' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Failed to create project' },
       { status: 500 }

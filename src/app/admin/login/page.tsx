@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import '@/styles/globals.css';
 
 import React, { useState, Suspense } from 'react';
@@ -44,7 +44,7 @@ function LoginForm() {
       console.log('SignIn result:', result);
 
       if (result?.error) {
-        setError(`Authentication error: ${result.error}`);
+        setError(`Authentication failed. Please check your email and password.`);
         setIsLoading(false);
         return;
       }
@@ -52,7 +52,7 @@ function LoginForm() {
       router.push('/admin/dashboard');
     } catch (error) {
       console.error('Login error:', error);
-      setError(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
+      setError(`An unexpected error occurred. Please try again.`);
       setIsLoading(false);
     }
   };
@@ -99,13 +99,6 @@ function LoginForm() {
             {isLoading ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
-        <div className="mt-4 text-center text-sm">
-          <p>Default admin credentials:</p>
-          <p className="font-mono bg-gray-100 dark:bg-gray-800 p-1 rounded mt-1">
-            Email: admin@example.com<br/>
-            Password: admin12345
-          </p>
-        </div>
       </CardBody>
     </Card>
   );

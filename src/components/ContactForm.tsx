@@ -6,15 +6,21 @@ import ReCaptcha from './ReCaptcha';
 
 interface ContactFormProps {
   className?: string;
+  defaultRequestType?: 'contact' | 'access_request';
 }
 
-const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
+const ContactForm: React.FC<ContactFormProps> = ({ 
+  className = '', 
+  defaultRequestType = 'contact' 
+}) => {
   // Form state
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     subject: '',
-    message: ''
+    message: '',
+    requestType: defaultRequestType,
+    requestedAccessLevel: 'personal' as 'personal' | 'professional'
   });
   
   // Form submission state
@@ -32,7 +38,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
   const nameInputRef = useRef<HTMLInputElement>(null);
   
   // Handle input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
     // Clear field-specific errors when the user types
@@ -41,6 +47,32 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+  
+  // Handle request type change
+  const handleRequestTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const requestType = e.target.value as 'contact' | 'access_request';
+    setFormData(prev => ({
+      ...prev,
+      requestType,
+      // Auto-populate subject for access requests
+      subject: requestType === 'access_request' 
+        ? `Access Request - ${prev.requestedAccessLevel}`
+        : prev.subject
+    }));
+  };
+
+  // Handle access level change
+  const handleAccessLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const accessLevel = e.target.value as 'personal' | 'professional';
+    setFormData(prev => ({
+      ...prev,
+      requestedAccessLevel: accessLevel,
+      // Update subject if it's an access request
+      subject: prev.requestType === 'access_request' 
+        ? `Access Request - ${accessLevel}`
+        : prev.subject
     }));
   };
   
@@ -79,16 +111,35 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
     }
     
     try {
-      // Send the form data to the API
-      const response = await fetch('/api/contact', {
+      // Determine API endpoint based on request type
+      const endpoint = formData.requestType === 'access_request' 
+        ? '/api/access-requests' 
+        : '/api/contact';
+      
+      // Prepare request data based on type
+      const requestData = formData.requestType === 'access_request' 
+        ? {
+            name: formData.name,
+            email: formData.email,
+            message: formData.message,
+            requestedAccessLevel: formData.requestedAccessLevel,
+            recaptchaToken
+          }
+        : {
+            name: formData.name,
+            email: formData.email,
+            subject: formData.subject,
+            message: formData.message,
+            recaptchaToken
+          };
+      
+      // Send the form data to the appropriate API
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          recaptchaToken
-        }),
+        body: JSON.stringify(requestData),
       });
       
       const data = await response.json();
@@ -104,7 +155,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
           }
         } else {
           // Handle general error
-          setSubmitError(data.error || 'Failed to send message. Please try again.');
+          setSubmitError(data.error || 'Failed to submit. Please try again.');
         }
         
         setIsSubmitting(false);
@@ -119,7 +170,9 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
         name: '',
         email: '',
         subject: '',
-        message: ''
+        message: '',
+        requestType: defaultRequestType,
+        requestedAccessLevel: 'personal'
       });
       
       // Reset reCAPTCHA
@@ -132,7 +185,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
       
     } catch (error) {
       setSubmitError('An unexpected error occurred. Please try again later.');
-      console.error('Contact form submission error:', error);
+      console.error('Form submission error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -150,7 +203,10 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
       {submitSuccess && (
         <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
           <p className="text-green-700 dark:text-green-300 font-medium">
-            Thank you for your message! We'll get back to you as soon as possible.
+            {formData.requestType === 'access_request' 
+              ? `Your ${formData.requestedAccessLevel} access request has been submitted successfully! We'll review it and get back to you soon.`
+              : 'Thank you for your message! We\'ll get back to you as soon as possible.'
+            }
           </p>
         </div>
       )}
@@ -161,6 +217,67 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
           <p className="text-red-700 dark:text-red-300 font-medium">
             {submitError}
           </p>
+        </div>
+      )}
+
+      {/* Request Type Selection */}
+      <div className="form-group">
+        <label 
+          htmlFor="requestType" 
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
+          Request Type <span className="text-red-500">*</span>
+        </label>
+        <select
+          id="requestType"
+          name="requestType"
+          value={formData.requestType}
+          onChange={handleRequestTypeChange}
+          required
+          aria-required="true"
+          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:ring-opacity-50 dark:bg-gray-800"
+          disabled={isSubmitting}
+        >
+          <option value="contact">General Contact</option>
+          <option value="access_request">Access Request</option>
+        </select>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {formData.requestType === 'access_request' 
+            ? 'Request access to register and use platform features'
+            : 'Send a general message or inquiry'
+          }
+        </p>
+      </div>
+
+      {/* Access Level Selection (only for access requests) */}
+      {formData.requestType === 'access_request' && (
+        <div className="form-group">
+          <label 
+            htmlFor="requestedAccessLevel" 
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
+            Access Level <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="requestedAccessLevel"
+            name="requestedAccessLevel"
+            value={formData.requestedAccessLevel}
+            onChange={handleAccessLevelChange}
+            required
+            aria-required="true"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:ring-opacity-50 dark:bg-gray-800"
+            disabled={isSubmitting}
+          >
+            <option value="personal">Personal Access</option>
+            <option value="professional">Professional Access</option>
+          </select>
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {formData.requestedAccessLevel === 'professional' ? (
+              <span>Professional access includes advanced features and content</span>
+            ) : (
+              <span>Personal access provides basic features and content</span>
+            )}
+          </div>
         </div>
       )}
       
@@ -229,37 +346,39 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
         )}
       </div>
       
-      {/* Subject field */}
-      <div className="form-group">
-        <label 
-          htmlFor="subject" 
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Subject <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="subject"
-          name="subject"
-          value={formData.subject}
-          onChange={handleChange}
-          required
-          aria-required="true"
-          aria-invalid={!!getFieldErrorMessage('subject')}
-          aria-describedby={getFieldErrorMessage('subject') ? 'subject-error' : undefined}
-          className={`w-full px-4 py-2 border rounded-md shadow-sm focus:ring-2 focus:ring-opacity-50 dark:bg-gray-800 dark:border-gray-700 ${
-            getFieldErrorMessage('subject')
-              ? 'border-red-500 focus:ring-red-200 dark:focus:ring-red-800'
-              : 'border-gray-300 focus:ring-blue-200 dark:focus:ring-blue-800'
-          }`}
-          disabled={isSubmitting}
-        />
-        {getFieldErrorMessage('subject') && (
-          <p id="subject-error" className="mt-1 text-sm text-red-600 dark:text-red-400">
-            {getFieldErrorMessage('subject')}
-          </p>
-        )}
-      </div>
+      {/* Subject field (only for contact requests) */}
+      {formData.requestType === 'contact' && (
+        <div className="form-group">
+          <label 
+            htmlFor="subject" 
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
+            Subject <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="subject"
+            name="subject"
+            value={formData.subject}
+            onChange={handleChange}
+            required
+            aria-required="true"
+            aria-invalid={!!getFieldErrorMessage('subject')}
+            aria-describedby={getFieldErrorMessage('subject') ? 'subject-error' : undefined}
+            className={`w-full px-4 py-2 border rounded-md shadow-sm focus:ring-2 focus:ring-opacity-50 dark:bg-gray-800 dark:border-gray-700 ${
+              getFieldErrorMessage('subject')
+                ? 'border-red-500 focus:ring-red-200 dark:focus:ring-red-800'
+                : 'border-gray-300 focus:ring-blue-200 dark:focus:ring-blue-800'
+            }`}
+            disabled={isSubmitting}
+          />
+          {getFieldErrorMessage('subject') && (
+            <p id="subject-error" className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {getFieldErrorMessage('subject')}
+            </p>
+          )}
+        </div>
+      )}
       
       {/* Message field */}
       <div className="form-group">
@@ -267,7 +386,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
           htmlFor="message" 
           className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
         >
-          Message <span className="text-red-500">*</span>
+          {formData.requestType === 'access_request' ? 'Reason for Access Request' : 'Message'} <span className="text-red-500">*</span>
         </label>
         <textarea
           id="message"
@@ -279,6 +398,10 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
           aria-required="true"
           aria-invalid={!!getFieldErrorMessage('message')}
           aria-describedby={getFieldErrorMessage('message') ? 'message-error' : undefined}
+          placeholder={formData.requestType === 'access_request' 
+            ? 'Please explain why you need access and how you plan to use the platform...'
+            : 'Enter your message here...'
+          }
           className={`w-full px-4 py-2 border rounded-md shadow-sm focus:ring-2 focus:ring-opacity-50 dark:bg-gray-800 dark:border-gray-700 ${
             getFieldErrorMessage('message')
               ? 'border-red-500 focus:ring-red-200 dark:focus:ring-red-800'
@@ -316,7 +439,11 @@ const ContactForm: React.FC<ContactFormProps> = ({ className = '' }) => {
           disabled={isSubmitting}
           aria-disabled={isSubmitting}
         >
-          {isSubmitting ? 'Sending...' : 'Send Message'}
+          {isSubmitting ? (
+            formData.requestType === 'access_request' ? 'Submitting Request...' : 'Sending...'
+          ) : (
+            formData.requestType === 'access_request' ? 'Submit Access Request' : 'Send Message'
+          )}
         </button>
       </div>
     </form>

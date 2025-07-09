@@ -32,19 +32,18 @@ describe('Contact Form Integration Test', () => {
     // Check for social media links
     const links = screen.getAllByRole('link');
     
-    // Filter links to social media (GitHub, LinkedIn, Twitter)
-    const socialLinks = links.filter(link => {
+    // Filter links to social media (GitHub, LinkedIn)
+    const socialMediaLinks = links.filter(link => {
       const href = link.getAttribute('href');
       return href?.includes('github.com') || 
-             href?.includes('linkedin.com') || 
-             href?.includes('twitter.com');
+             href?.includes('linkedin.com');
     });
     
     // Should have 3 social media links
-    expect(socialLinks).toHaveLength(3);
+    expect(socialMediaLinks).toHaveLength(3);
     
     // Each should open in a new tab
-    socialLinks.forEach(link => {
+    socialMediaLinks.forEach(link => {
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });

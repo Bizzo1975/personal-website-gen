@@ -1,3 +1,5 @@
+import { query } from '@/lib/db';
+
 export interface NavbarLink {
   label: string;
   url: string;
@@ -14,10 +16,104 @@ export interface SiteSettings {
   navbarLinks: NavbarLink[];
 }
 
+// Timeout wrapper for database queries
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error(`Database query timed out after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+};
+
 /**
- * Fetch the site settings
+ * Fetch the site settings from database (server-side)
  */
 export async function getSiteSettings(): Promise<SiteSettings> {
+  try {
+    // Add timeout protection to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Site settings query timeout')), 3000);
+    });
+    
+    const queryPromise = query('SELECT setting_key, setting_value FROM site_settings');
+    
+    // Race the query against timeout
+    const result = await Promise.race([queryPromise, timeoutPromise]);
+    
+    // Convert to object format
+    const settings: any = {};
+    result.rows.forEach(row => {
+      try {
+        settings[row.setting_key] = JSON.parse(row.setting_value);
+      } catch {
+        settings[row.setting_key] = row.setting_value;
+      }
+    });
+    
+    // Apply defaults for missing settings
+    const defaultSettings = {
+      logoUrl: '/images/jlk-logo.png',
+      logoText: 'Jonathan L Keck',
+      footerText: 'Built with Next.js and Tailwind CSS',
+      bioText: 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.',
+      navbarStyle: 'default',
+      navbarLinks: [
+        { label: 'Home', url: '/', isExternal: false },
+        { label: 'About', url: '/about', isExternal: false },
+        { label: 'Projects', url: '/projects', isExternal: false },
+        { label: 'Blog', url: '/blog', isExternal: false },
+        { label: 'Contact', url: '/contact', isExternal: false },
+      ],
+      ...settings
+    };
+    
+    return defaultSettings;
+  } catch (error) {
+    console.warn('Error fetching site settings (using fallback):', error);
+    // Return safe defaults as fallback
+    return {
+      logoUrl: '/images/jlk-logo.png',
+      logoText: 'Jonathan L Keck',
+      footerText: 'Built with Next.js and Tailwind CSS',
+      bioText: 'Full-stack developer specializing in modern web technologies.',
+      navbarStyle: 'default',
+      navbarLinks: [
+        { label: 'Home', url: '/', isExternal: false },
+        { label: 'About', url: '/about', isExternal: false },
+        { label: 'Projects', url: '/projects', isExternal: false },
+        { label: 'Blog', url: '/blog', isExternal: false },
+        { label: 'Contact', url: '/contact', isExternal: false },
+      ]
+    };
+  }
+}
+
+function getDefaultSiteSettings(): SiteSettings {
+  return {
+    logoUrl: '/images/jlk-logo.png',
+    logoText: 'Jonathan L Keck',
+    footerText: 'Built with Next.js and Tailwind CSS',
+    bioText: 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.',
+    navbarStyle: 'default',
+    navbarLinks: getDefaultNavbarLinks()
+  };
+}
+
+function getDefaultNavbarLinks() {
+  return [
+    { label: 'Home', url: '/', isExternal: false },
+    { label: 'About', url: '/about', isExternal: false },
+    { label: 'Projects', url: '/projects', isExternal: false },
+    { label: 'Blog', url: '/blog', isExternal: false },
+    { label: 'Contact', url: '/contact', isExternal: false },
+  ];
+}
+
+/**
+ * Fetch site settings for client-side use
+ */
+export async function getSiteSettingsClient(): Promise<SiteSettings> {
   try {
     const response = await fetch('/api/site-settings', { 
       cache: 'no-store',
@@ -31,11 +127,12 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     return response.json();
   } catch (error) {
     console.error('Error fetching site settings:', error);
+    // Return safe defaults only as fallback
     return {
-      logoUrl: '/images/wizard-icon.svg',
-      logoText: 'John Doe',
+      logoUrl: '/images/jlk-logo.png',
+      logoText: 'Jonathan L Keck',
       footerText: 'Built with Next.js and Tailwind CSS',
-      bioText: 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.',
+      bioText: 'Full-stack developer specializing in modern web technologies.',
       navbarStyle: 'default',
       navbarLinks: [
         { label: 'Home', url: '/', isExternal: false },
@@ -49,23 +146,38 @@ export async function getSiteSettings(): Promise<SiteSettings> {
 }
 
 /**
- * Update the site settings
+ * Update the site settings in database
  */
 export async function updateSiteSettings(settings: Partial<SiteSettings>): Promise<SiteSettings> {
   try {
-    const response = await fetch('/api/site-settings', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(settings),
-    });
+    const updatePromise = query(
+      `UPDATE site_settings SET 
+       logo_url = COALESCE($1, logo_url),
+       logo_text = COALESCE($2, logo_text),
+       footer_text = COALESCE($3, footer_text),
+       bio_text = COALESCE($4, bio_text),
+       navbar_style = COALESCE($5, navbar_style),
+       navbar_links = COALESCE($6, navbar_links),
+       updated_at = CURRENT_TIMESTAMP
+       WHERE id = (SELECT id FROM site_settings ORDER BY id DESC LIMIT 1)
+       RETURNING *`,
+      [
+        settings.logoUrl,
+        settings.logoText,
+        settings.footerText,
+        settings.bioText,
+        settings.navbarStyle,
+        settings.navbarLinks ? JSON.stringify(settings.navbarLinks) : null
+      ]
+    );
     
-    if (!response.ok) {
-      throw new Error(`Failed to update site settings: ${response.status}`);
+    const result = await withTimeout(updatePromise, 5000);
+    
+    if (result.rows.length === 0) {
+      throw new Error('Failed to update site settings');
     }
     
-    return response.json();
+    return await getSiteSettings();
   } catch (error) {
     console.error('Error updating site settings:', error);
     throw error;
@@ -90,7 +202,12 @@ export async function uploadLogo(file: File): Promise<{ path: string }> {
       throw new Error(`Failed to upload logo: ${response.status}`);
     }
     
-    return response.json();
+    const result = await response.json();
+    
+    // Automatically update site settings with new logo URL
+    await updateSiteSettings({ logoUrl: result.path });
+    
+    return result;
   } catch (error) {
     console.error('Error uploading logo:', error);
     throw error;

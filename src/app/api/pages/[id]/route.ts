@@ -75,11 +75,15 @@ export async function PUT(
     const updateData: any = {
       name: body.name,
       title: body.title,
-      content: body.content,
+      content: body.content || existingPage.content || '',
       metaDescription: body.metaDescription || existingPage.metaDescription,
       headerTitle: body.headerTitle || body.title || existingPage.headerTitle,
       headerSubtitle: body.headerSubtitle || existingPage.headerSubtitle,
-      heroHeading: body.heroHeading || existingPage.heroHeading
+      heroHeading: body.heroHeading || existingPage.heroHeading,
+      connectSectionTitle: body.connectSectionTitle || existingPage.connectSectionTitle,
+      connectSectionContent: body.connectSectionContent || existingPage.connectSectionContent,
+      formSectionTitle: body.formSectionTitle || existingPage.formSectionTitle,
+      formDescription: body.formDescription || existingPage.formDescription,
     };
     
     // Only update slug if it's not an essential page and slug is provided

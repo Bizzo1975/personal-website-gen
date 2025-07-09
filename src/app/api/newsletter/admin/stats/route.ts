@@ -2,19 +2,19 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Mock data for now - replace with actual database queries
+    // Return 0 values for clean development environment
     const stats = {
-      totalNewsletters: 24,
-      totalSubscribers: 2683,
-      activeSubscribers: 2683,
-      totalCampaigns: 18,
-      pendingCampaigns: 3,
-      averageOpenRate: 0.582,
-      averageClickRate: 0.167,
+      totalNewsletters: 0,
+      totalSubscribers: 0,
+      activeSubscribers: 0,
+      totalCampaigns: 0,
+      pendingCampaigns: 0,
+      averageOpenRate: 0,
+      averageClickRate: 0,
       subscriberGrowth: {
-        newSubscribers: 47,
-        unsubscribes: 12,
-        netGrowth: 35
+        newSubscribers: 0,
+        unsubscribes: 0,
+        netGrowth: 0
       }
     };
 

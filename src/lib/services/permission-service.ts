@@ -1,361 +1,363 @@
 /**
- * Permission Service
- * Handles all permission checking and access control logic
+ * Simplified Permission Service for PostgreSQL-based Content Access Control
+ * Supports content classification: all (public), professional, personal
+ * Users can have professional AND/OR personal access simultaneously
  */
 
-import {
-  ContentPermissions,
-  PermissionCheckResult,
-  UserContext,
-  PermissionLevel,
-  UserRole,
-  PermissionRule,
-  PERMISSION_LEVEL_HIERARCHY,
-  ROLE_HIERARCHY,
-  DEFAULT_PERMISSION_TEMPLATES
-} from '@/types/content/permissions';
+import { query } from '@/lib/db';
+
+export interface UserAccessLevels {
+  hasProfessionalAccess: boolean;
+  hasPersonalAccess: boolean;
+  isActive: boolean;
+}
+
+export interface ContentPermissionCheck {
+  hasAccess: boolean;
+  reason: string;
+  contentLevel: string;
+  userAccess: UserAccessLevels | null;
+}
 
 export class PermissionService {
   /**
-   * Check if a user has permission to access content
+   * Check if user has access to content based on permission level
    */
-  static checkPermission(
-    permissions: ContentPermissions,
-    userContext: UserContext
-  ): PermissionCheckResult {
-    // Check custom rules first (sorted by priority)
-    if (permissions.customRules && permissions.customRules.length > 0) {
-      const sortedRules = permissions.customRules.sort((a, b) => b.priority - a.priority);
-      
-      for (const rule of sortedRules) {
-        const ruleResult = this.evaluateRule(rule, userContext);
-        if (ruleResult !== null) {
-          return {
-            allowed: ruleResult,
-            reason: ruleResult ? `Allowed by rule: ${rule.name}` : `Denied by rule: ${rule.name}`,
-            appliedRule: rule
-          };
-        }
-      }
-    }
-
-    // Check if user is explicitly restricted
-    if (permissions.restrictedUsers.length > 0) {
-      const isRestricted = permissions.restrictedUsers.includes(userContext.id || '') ||
-                          permissions.restrictedUsers.includes(userContext.email || '');
-      
-      if (isRestricted) {
+  static async checkContentAccess(
+    contentPermissionLevel: 'all' | 'professional' | 'personal',
+    userEmail?: string
+  ): Promise<ContentPermissionCheck> {
+    try {
+      // Public content - everyone can access
+      if (contentPermissionLevel === 'all') {
         return {
-          allowed: false,
-          reason: 'User is explicitly restricted from accessing this content'
+          hasAccess: true,
+          reason: 'Public content accessible to everyone',
+          contentLevel: contentPermissionLevel,
+          userAccess: null
         };
       }
-    }
 
-    // Check if user is explicitly allowed
-    if (permissions.allowedUsers.length > 0) {
-      const isExplicitlyAllowed = permissions.allowedUsers.includes(userContext.id || '') ||
-                                 permissions.allowedUsers.includes(userContext.email || '');
-      
-      if (isExplicitlyAllowed) {
+      // Must be logged in for restricted content
+      if (!userEmail) {
         return {
-          allowed: true,
-          reason: 'User is explicitly allowed to access this content'
+          hasAccess: false,
+          reason: 'Authentication required for restricted content',
+          contentLevel: contentPermissionLevel,
+          userAccess: null
         };
       }
-    }
 
-    // Check authentication requirement
-    if (permissions.requiresAuth && !userContext.isAuthenticated) {
+      // Check user's access levels
+      const userAccess = await this.getUserAccessLevels(userEmail);
+      
+      if (!userAccess || !userAccess.isActive) {
+        return {
+          hasAccess: false,
+          reason: 'User has no access permissions or account is inactive',
+          contentLevel: contentPermissionLevel,
+          userAccess
+        };
+      }
+
+      // Check specific access level requirements
+      let hasRequiredAccess = false;
+      let accessReason = '';
+
+      if (contentPermissionLevel === 'professional' && userAccess.hasProfessionalAccess) {
+        hasRequiredAccess = true;
+        accessReason = 'User has professional access';
+      } else if (contentPermissionLevel === 'personal' && userAccess.hasPersonalAccess) {
+        hasRequiredAccess = true;
+        accessReason = 'User has personal access';
+      } else {
+        accessReason = `User lacks ${contentPermissionLevel} access`;
+      }
+
       return {
-        allowed: false,
-        reason: 'Authentication required',
-        requiredLevel: permissions.level
+        hasAccess: hasRequiredAccess,
+        reason: accessReason,
+        contentLevel: contentPermissionLevel,
+        userAccess
+      };
+    } catch (error) {
+      console.error('Error checking content access:', error);
+      return {
+        hasAccess: false,
+        reason: 'Error checking permissions',
+        contentLevel: contentPermissionLevel,
+        userAccess: null
       };
     }
+  }
 
-    // Check role permissions
-    const hasRolePermission = this.checkRolePermission(permissions.allowedRoles, userContext.role);
-    if (!hasRolePermission) {
+  /**
+   * Get user's access levels from database
+   */
+  static async getUserAccessLevels(email: string): Promise<UserAccessLevels | null> {
+    try {
+      const result = await query(
+        'SELECT has_professional_access, has_personal_access, is_active FROM user_access_levels WHERE email = $1',
+        [email]
+      );
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const row = result.rows[0];
       return {
-        allowed: false,
-        reason: 'Insufficient role permissions',
-        requiredRoles: permissions.allowedRoles
+        hasProfessionalAccess: row.has_professional_access,
+        hasPersonalAccess: row.has_personal_access,
+        isActive: row.is_active
       };
-    }
-
-    // Check access level permissions
-    const hasLevelPermission = this.checkLevelPermission(permissions.level, userContext.accessLevel);
-    if (!hasLevelPermission) {
-      return {
-        allowed: false,
-        reason: 'Insufficient access level',
-        requiredLevel: permissions.level
-      };
-    }
-
-    return {
-      allowed: true,
-      reason: 'All permission checks passed'
-    };
-  }
-
-  /**
-   * Check if user role has permission
-   */
-  private static checkRolePermission(allowedRoles: UserRole[], userRole: UserRole): boolean {
-    if (allowedRoles.length === 0) return true;
-
-    // Check if user's role or any of its included roles are allowed
-    const userRoleHierarchy = ROLE_HIERARCHY[userRole] || [userRole];
-    return allowedRoles.some(role => userRoleHierarchy.includes(role));
-  }
-
-  /**
-   * Check if user access level has permission
-   */
-  private static checkLevelPermission(
-    requiredLevel: PermissionLevel,
-    userAccessLevel?: PermissionLevel
-  ): boolean {
-    if (!userAccessLevel) {
-      // If no access level specified, default to 'all' for authenticated users
-      userAccessLevel = 'all';
-    }
-
-    // Check if user's access level includes the required level
-    const userLevelHierarchy = PERMISSION_LEVEL_HIERARCHY[userAccessLevel] || ['all'];
-    return userLevelHierarchy.includes(requiredLevel);
-  }
-
-  /**
-   * Evaluate a custom permission rule
-   */
-  private static evaluateRule(rule: PermissionRule, userContext: UserContext): boolean | null {
-    const { condition } = rule;
-    let conditionMet = false;
-
-    switch (condition.type) {
-      case 'role':
-        conditionMet = this.evaluateCondition(userContext.role, condition.operator, condition.value);
-        break;
-      
-      case 'user':
-        const userId = userContext.id || userContext.email || '';
-        conditionMet = this.evaluateCondition(userId, condition.operator, condition.value);
-        break;
-      
-      case 'date':
-        const now = new Date();
-        conditionMet = this.evaluateCondition(now, condition.operator, condition.value);
-        break;
-      
-      case 'custom':
-        // For custom conditions, you can extend this based on your needs
-        conditionMet = this.evaluateCustomCondition(condition, userContext);
-        break;
-      
-      default:
-        return null; // Unknown condition type
-    }
-
-    return conditionMet ? (rule.action === 'allow') : null;
-  }
-
-  /**
-   * Evaluate a condition based on operator
-   */
-  private static evaluateCondition(actual: any, operator: string, expected: any): boolean {
-    switch (operator) {
-      case 'equals':
-        return actual === expected;
-      
-      case 'not_equals':
-        return actual !== expected;
-      
-      case 'in':
-        return Array.isArray(expected) && expected.includes(actual);
-      
-      case 'not_in':
-        return Array.isArray(expected) && !expected.includes(actual);
-      
-      case 'before':
-        return new Date(actual) < new Date(expected);
-      
-      case 'after':
-        return new Date(actual) > new Date(expected);
-      
-      case 'between':
-        if (Array.isArray(expected) && expected.length === 2) {
-          const date = new Date(actual);
-          return date >= new Date(expected[0]) && date <= new Date(expected[1]);
-        }
-        return false;
-      
-      default:
-        return false;
+    } catch (error) {
+      console.error('Error getting user access levels:', error);
+      return null;
     }
   }
 
   /**
-   * Evaluate custom conditions (extend as needed)
+   * Filter content array based on user's access permissions
+   * Returns only content the user can access
    */
-  private static evaluateCustomCondition(condition: any, userContext: UserContext): boolean {
-    // Implement custom condition logic here
-    // For example, checking specific permissions, IP ranges, etc.
-    return false;
-  }
-
-  /**
-   * Get default permissions for a content type
-   */
-  static getDefaultPermissions(level: PermissionLevel = 'all'): ContentPermissions {
-    const template = DEFAULT_PERMISSION_TEMPLATES.find(t => t.level === level) ||
-                    DEFAULT_PERMISSION_TEMPLATES.find(t => t.id === 'public')!;
-
-    return {
-      level: template.level,
-      allowedRoles: [...template.defaultRoles],
-      allowedUsers: [],
-      restrictedUsers: [],
-      requiresAuth: template.requiresAuth,
-      customRules: []
-    };
-  }
-
-  /**
-   * Create permissions from template
-   */
-  static createPermissionsFromTemplate(templateId: string): ContentPermissions {
-    const template = DEFAULT_PERMISSION_TEMPLATES.find(t => t.id === templateId);
-    
-    if (!template) {
-      throw new Error(`Permission template '${templateId}' not found`);
-    }
-
-    return {
-      level: template.level,
-      allowedRoles: [...template.defaultRoles],
-      allowedUsers: [],
-      restrictedUsers: [],
-      requiresAuth: template.requiresAuth,
-      customRules: []
-    };
-  }
-
-  /**
-   * Filter content based on user permissions
-   */
-  static filterContentByPermissions<T extends { permissions: ContentPermissions }>(
+  static async filterContentByUserAccess<T extends { permissionLevel: string }>(
     content: T[],
-    userContext: UserContext
-  ): T[] {
-    return content.filter(item => {
-      const result = this.checkPermission(item.permissions, userContext);
-      return result.allowed;
-    });
-  }
-
-  /**
-   * Get user context from session or request
-   */
-  static createUserContext(
-    user?: {
-      id?: string;
-      email?: string;
-      role?: string;
-      permissions?: string[];
-      accessLevel?: PermissionLevel;
-    }
-  ): UserContext {
-    if (!user) {
-      return {
-        role: 'guest',
-        permissions: [],
-        isAuthenticated: false
-      };
+    userEmail?: string
+  ): Promise<T[]> {
+    if (!content || content.length === 0) {
+      return [];
     }
 
-    return {
-      id: user.id,
-      email: user.email,
-      role: (user.role as UserRole) || 'subscriber',
-      permissions: user.permissions || [],
-      isAuthenticated: true,
-      accessLevel: user.accessLevel || 'all'
-    };
-  }
-
-  /**
-   * Validate permission configuration
-   */
-  static validatePermissions(permissions: ContentPermissions): string[] {
-    const errors: string[] = [];
-
-    // Check if level is valid
-    if (!['personal', 'professional', 'all'].includes(permissions.level)) {
-      errors.push('Invalid permission level');
+    // If no user email, return only public content
+    if (!userEmail) {
+      return content.filter(item => item.permissionLevel === 'all');
     }
 
-    // Check if roles are valid
-    const validRoles: UserRole[] = ['admin', 'editor', 'author', 'subscriber', 'guest'];
-    const invalidRoles = permissions.allowedRoles.filter(role => !validRoles.includes(role));
-    if (invalidRoles.length > 0) {
-      errors.push(`Invalid roles: ${invalidRoles.join(', ')}`);
-    }
+    try {
+      // Get user's access levels once
+      const userAccess = await this.getUserAccessLevels(userEmail);
+      
+      if (!userAccess || !userAccess.isActive) {
+        // User has no access or is inactive, return only public content
+        return content.filter(item => item.permissionLevel === 'all');
+      }
 
-    // Check custom rules
-    if (permissions.customRules) {
-      permissions.customRules.forEach((rule, index) => {
-        if (!rule.id || !rule.name) {
-          errors.push(`Rule ${index + 1}: Missing id or name`);
-        }
-        if (!['allow', 'deny'].includes(rule.action)) {
-          errors.push(`Rule ${index + 1}: Invalid action`);
-        }
-        if (typeof rule.priority !== 'number') {
-          errors.push(`Rule ${index + 1}: Priority must be a number`);
+      // Filter content based on user's accumulated access levels
+      return content.filter(item => {
+        switch (item.permissionLevel) {
+          case 'all':
+            return true; // Everyone can see public content
+          case 'professional':
+            return userAccess.hasProfessionalAccess;
+          case 'personal':
+            return userAccess.hasPersonalAccess;
+          default:
+            return false; // Unknown permission level - deny access
         }
       });
+    } catch (error) {
+      console.error('Error filtering content by user access:', error);
+      // On error, return only public content for safety
+      return content.filter(item => item.permissionLevel === 'all');
     }
-
-    return errors;
   }
 
   /**
-   * Get permission summary for display
+   * Check if user is admin (has admin role in users table)
    */
-  static getPermissionSummary(permissions: ContentPermissions): string {
-    const parts: string[] = [];
+  static async isUserAdmin(email: string): Promise<boolean> {
+    try {
+      const result = await query(
+        'SELECT role FROM users WHERE email = $1 AND role = $2',
+        [email, 'admin']
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      return false;
+    }
+  }
 
-    // Add level
-    parts.push(`Level: ${permissions.level}`);
-
-    // Add authentication requirement
-    if (permissions.requiresAuth) {
-      parts.push('Authentication required');
+  /**
+   * Get content accessibility summary for user
+   */
+  static async getContentAccessSummary(userEmail?: string): Promise<{
+    canAccessPublic: boolean;
+    canAccessProfessional: boolean;
+    canAccessPersonal: boolean;
+    isAuthenticated: boolean;
+    isAdmin: boolean;
+    accessLevels: UserAccessLevels | null;
+  }> {
+    if (!userEmail) {
+      return {
+        canAccessPublic: true,
+        canAccessProfessional: false,
+        canAccessPersonal: false,
+        isAuthenticated: false,
+        isAdmin: false,
+        accessLevels: null
+      };
     }
 
-    // Add roles
-    if (permissions.allowedRoles.length > 0) {
-      parts.push(`Roles: ${permissions.allowedRoles.join(', ')}`);
-    }
+    try {
+      const [userAccess, isAdmin] = await Promise.all([
+        this.getUserAccessLevels(userEmail),
+        this.isUserAdmin(userEmail)
+      ]);
 
-    // Add specific users
-    if (permissions.allowedUsers.length > 0) {
-      parts.push(`${permissions.allowedUsers.length} specific user(s)`);
-    }
+      if (isAdmin) {
+        // Admins can access everything
+        return {
+          canAccessPublic: true,
+          canAccessProfessional: true,
+          canAccessPersonal: true,
+          isAuthenticated: true,
+          isAdmin: true,
+          accessLevels: userAccess
+        };
+      }
 
-    // Add restrictions
-    if (permissions.restrictedUsers.length > 0) {
-      parts.push(`${permissions.restrictedUsers.length} restricted user(s)`);
-    }
+      if (!userAccess || !userAccess.isActive) {
+        return {
+          canAccessPublic: true,
+          canAccessProfessional: false,
+          canAccessPersonal: false,
+          isAuthenticated: true,
+          isAdmin: false,
+          accessLevels: userAccess
+        };
+      }
 
-    // Add custom rules
-    if (permissions.customRules && permissions.customRules.length > 0) {
-      parts.push(`${permissions.customRules.length} custom rule(s)`);
+      return {
+        canAccessPublic: true,
+        canAccessProfessional: userAccess.hasProfessionalAccess,
+        canAccessPersonal: userAccess.hasPersonalAccess,
+        isAuthenticated: true,
+        isAdmin: false,
+        accessLevels: userAccess
+      };
+    } catch (error) {
+      console.error('Error getting content access summary:', error);
+      return {
+        canAccessPublic: true,
+        canAccessProfessional: false,
+        canAccessPersonal: false,
+        isAuthenticated: true,
+        isAdmin: false,
+        accessLevels: null
+      };
     }
+  }
 
-    return parts.join(' • ');
+  /**
+   * Validate permission level string
+   */
+  static isValidPermissionLevel(level: string): level is 'all' | 'professional' | 'personal' {
+    return ['all', 'professional', 'personal'].includes(level);
+  }
+
+  /**
+   * Get permission level hierarchy for display
+   */
+  static getPermissionLevelInfo(level: 'all' | 'professional' | 'personal') {
+    const levelInfo = {
+      all: {
+        name: 'Public',
+        description: 'Accessible to everyone',
+        color: 'green',
+        icon: '🌐'
+      },
+      professional: {
+        name: 'Professional',
+        description: 'Accessible to users with professional access',
+        color: 'blue',
+        icon: '💼'
+      },
+      personal: {
+        name: 'Personal',
+        description: 'Accessible to users with personal access',
+        color: 'purple',
+        icon: '👤'
+      }
+    };
+
+    return levelInfo[level];
+  }
+
+  /**
+   * Get user's effective content counts by permission level
+   */
+  static async getUserContentCounts(userEmail?: string): Promise<{
+    totalPublic: number;
+    totalProfessional: number;
+    totalPersonal: number;
+    accessibleProfessional: number;
+    accessiblePersonal: number;
+  }> {
+    try {
+      // Get total counts by permission level
+      const countsResult = await query(`
+        SELECT 
+          permission_level,
+          COUNT(*) as count
+        FROM (
+          SELECT permission_level FROM posts WHERE published = true
+          UNION ALL
+          SELECT permission_level FROM projects WHERE status = 'published'
+        ) combined
+        GROUP BY permission_level
+      `);
+
+      const counts = {
+        totalPublic: 0,
+        totalProfessional: 0,
+        totalPersonal: 0,
+        accessibleProfessional: 0,
+        accessiblePersonal: 0
+      };
+
+      // Parse total counts
+      countsResult.rows.forEach(row => {
+        switch (row.permission_level) {
+          case 'all':
+            counts.totalPublic = parseInt(row.count);
+            break;
+          case 'professional':
+            counts.totalProfessional = parseInt(row.count);
+            break;
+          case 'personal':
+            counts.totalPersonal = parseInt(row.count);
+            break;
+        }
+      });
+
+      // Calculate accessible counts based on user access
+      if (userEmail) {
+        const userAccess = await this.getUserAccessLevels(userEmail);
+        const isAdmin = await this.isUserAdmin(userEmail);
+
+        if (isAdmin || (userAccess && userAccess.isActive)) {
+          if (isAdmin || (userAccess && userAccess.hasProfessionalAccess)) {
+            counts.accessibleProfessional = counts.totalProfessional;
+          }
+          if (isAdmin || (userAccess && userAccess.hasPersonalAccess)) {
+            counts.accessiblePersonal = counts.totalPersonal;
+          }
+        }
+      }
+
+      return counts;
+    } catch (error) {
+      console.error('Error getting user content counts:', error);
+      return {
+        totalPublic: 0,
+        totalProfessional: 0,
+        totalPersonal: 0,
+        accessibleProfessional: 0,
+        accessiblePersonal: 0
+      };
+    }
   }
 }

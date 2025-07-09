@@ -1,55 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import dbConnect, { isMockMode } from '@/lib/db';
-import Post from '@/lib/models/Post';
-import Project from '@/lib/models/Project';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth-config';
+import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await dbConnect();
+    // Get all scheduled content from PostgreSQL
+    const [postsResult, projectsResult, newslettersResult] = await Promise.all([
+      query(`
+        SELECT id, title, slug, scheduled_publish_at as scheduledDate, status, 
+               permission_level, excerpt, 'post' as type
+        FROM posts 
+        WHERE status = 'scheduled' 
+        ORDER BY scheduled_publish_at ASC
+      `),
+      query(`
+        SELECT id, title, slug, scheduled_publish_at as scheduledDate, status, 
+               permission_level, description as excerpt, 'project' as type
+        FROM projects 
+        WHERE status = 'scheduled' 
+        ORDER BY scheduled_publish_at ASC
+      `),
+      query(`
+        SELECT id, title, subject as slug, scheduled_send_at as scheduledDate, status, 
+               target_access_levels as permission_level, content as excerpt, 'newsletter' as type
+        FROM newsletter_campaigns 
+        WHERE status = 'scheduled' 
+        ORDER BY scheduled_send_at ASC
+      `)
+    ]);
 
-    // For now, return mock data since the models don't have scheduledDate fields
-    // This feature would need to be properly implemented by adding scheduledDate to the models
-    const mockScheduledContent = [
-      {
-        id: '1',
-        title: 'Getting Started with Next.js 14',
-        slug: 'getting-started-nextjs-14',
-        scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'scheduled',
-        type: 'post',
+    // Combine all scheduled content
+    const scheduledContent = [
+      ...postsResult.rows.map(row => ({
+        ...row,
+        scheduledDate: row.scheduleddate, // PostgreSQL returns lowercase field names
+        author: 'Admin User', // You could join with users table to get actual author
+        excerpt: row.excerpt || `${row.title} scheduled for publication`
+      })),
+      ...projectsResult.rows.map(row => ({
+        ...row,
+        scheduledDate: row.scheduleddate,
         author: 'Admin User',
-        excerpt: 'A comprehensive guide to the latest features in Next.js 14 and how to get started.'
-      },
-      {
-        id: '2',
-        title: 'Advanced TypeScript Patterns',
-        slug: 'advanced-typescript-patterns',
-        scheduledDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'scheduled',
-        type: 'post',
+        excerpt: row.excerpt || `${row.title} project scheduled for publication`
+      })),
+      ...newslettersResult.rows.map(row => ({
+        ...row,
+        scheduledDate: row.scheduleddate,
         author: 'Admin User',
-        excerpt: 'Exploring advanced TypeScript patterns for better code organization and type safety.'
-      },
-      {
-        id: '3',
-        title: 'E-commerce Platform Project',
-        slug: 'ecommerce-platform-project',
-        scheduledDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'scheduled',
-        type: 'project',
-        author: 'Admin User',
-        excerpt: 'A full-stack e-commerce platform built with modern technologies.'
-      }
+        excerpt: `Newsletter: ${row.title}`
+      }))
     ];
 
-    return NextResponse.json(mockScheduledContent);
+    // Sort by scheduled date
+    scheduledContent.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+
+    return NextResponse.json(scheduledContent);
 
   } catch (error) {
     console.error('Scheduled content API error:', error);

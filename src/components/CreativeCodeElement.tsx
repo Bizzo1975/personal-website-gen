@@ -6,6 +6,8 @@ interface CreativeCodeElementProps {
   className?: string;
   width?: number;
   height?: number;
+  theme?: 'light' | 'dark';
+  showBackground?: boolean;
 }
 
 // Animation states - using string literals to avoid enum issues
@@ -20,6 +22,8 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
   className = '',
   width = 300,
   height = 200,
+  theme = 'dark',
+  showBackground = true
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
@@ -27,9 +31,20 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
   const stateChangeTimeRef = useRef<number>(Date.now());
   const currentWordRef = useRef<string>('');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+  const [hasError, setHasError] = useState<boolean>(false);
+  
+  // ALL HOOKS MUST BE AT THE TOP LEVEL - NO EARLY RETURNS BEFORE HOOKS
+  
+  // Client-side mount guard
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   // Check for dark mode on component mount and when theme changes
   useEffect(() => {
+    if (!isMounted) return;
+    
     const checkDarkMode = () => {
       if (typeof window !== 'undefined') {
         // Check if browser supports matchMedia
@@ -56,15 +71,18 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
         } catch (error) {
           console.warn('Dark mode detection failed:', error);
           setIsDarkMode(false);
+          setHasError(true);
         }
       }
     };
     
     checkDarkMode();
-  }, []);
+  }, [isMounted]);
   
   // Binary matrix effect
   useEffect(() => {
+    if (!isMounted) return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
     
@@ -220,76 +238,95 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
       ctx.lineWidth = 2;
       ctx.stroke();
       
-      // Draw rotating characters in random mode
-      const radius = 50;
+      // Draw text in center based on current state
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 18px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       
-      if (animationStateRef.current === ANIMATION_STATE.HELLO || 
-          animationStateRef.current === ANIMATION_STATE.WORLD) {
-        // Display word in the center of the circle
-        ctx.font = '24px monospace';
-        ctx.fillStyle = '#a855f7'; // Bright purple
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Add glow effect for word states
-        ctx.shadowColor = '#a855f7';
-        ctx.shadowBlur = 15;
-        
-        // Draw the current word in the middle
+      if (animationStateRef.current === ANIMATION_STATE.HELLO) {
+        ctx.fillText(currentWordRef.current, centerX, centerY);
+      } else if (animationStateRef.current === ANIMATION_STATE.WORLD) {
         ctx.fillText(currentWordRef.current, centerX, centerY);
       } else {
-        // For RANDOM states, show rotating characters
-        ctx.font = '20px monospace';
-        ctx.fillStyle = '#8b5cf6'; // Normal purple for random mode
-        ctx.shadowBlur = 0;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Calculate base angle for rotation
-        const baseAngle = time;
-        
-        for (let i = 0; i < circleChars.length; i++) {
-          // Angle calculation for rotation around circle
-          const angle = baseAngle + (i * Math.PI / 3);
+        // For random states, display rotating characters
+        const radius = 40;
+        circleChars.forEach((char, index) => {
+          const angle = (index / circleChars.length) * Math.PI * 2 + time;
           const x = centerX + Math.cos(angle) * radius;
           const y = centerY + Math.sin(angle) * radius;
-          
-          ctx.save();
-          ctx.translate(x, y);
-          ctx.rotate(angle);
-          ctx.fillText(circleChars[i], 0, 0);
-          ctx.restore();
-        }
+          ctx.fillText(char, x, y);
+        });
       }
       
+      // Continue animation
       requestRef.current = requestAnimationFrame(draw);
     };
     
+    // Start animation
     draw();
     
+    // Cleanup function
     return () => {
-      cancelAnimationFrame(requestRef.current);
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
       clearInterval(charUpdateInterval);
     };
-  }, [width, height]);
+  }, [isMounted, width, height]);
   
-  // Background color based on dark/light mode
-  const backgroundColor = isDarkMode 
-    ? 'rgba(15, 23, 42, 0.8)'    // Dark blue background for dark mode
-    : 'rgba(71, 85, 105, 0.9)';  // Darker gray (slate-600) for light mode
+  // CONDITIONAL RENDERING AFTER ALL HOOKS
   
+  // If not mounted yet, return placeholder to prevent SSR issues
+  if (!isMounted) {
+    return (
+      <div 
+        className={`bg-slate-800/90 dark:bg-slate-900/90 rounded-2xl flex items-center justify-center ${className}`}
+        style={{ width, height }}
+      >
+        <div className="text-white/50 text-center">
+          <div className="animate-pulse">
+            <div className="text-blue-400 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mx-auto">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+              </svg>
+            </div>
+            <div className="text-sm">Loading...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // If there's an error, show fallback
+  if (hasError) {
+    return (
+      <div 
+        className={`bg-slate-800/90 dark:bg-slate-900/90 rounded-2xl flex items-center justify-center ${className}`}
+        style={{ width, height }}
+      >
+        <div className="text-white/50 text-center">
+          <div className="text-blue-400 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mx-auto">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+            </svg>
+          </div>
+          <div className="text-sm">Code Animation</div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Render the actual canvas animation
   return (
-    <div className={`relative ${className}`} style={{ width, height }}>
+    <div 
+      className={`relative ${showBackground ? 'bg-slate-900/95 dark:bg-slate-950/95' : ''} rounded-2xl overflow-hidden ${className}`}
+      style={{ width, height }}
+    >
       <canvas
         ref={canvasRef}
-        className="rounded-2xl border-0"
-        style={{ 
-          width: '100%', 
-          height: '100%',
-          background: backgroundColor,
-          border: 'none',
-          outline: 'none'
-        }}
+        className="w-full h-full"
+        style={{ display: 'block' }}
       />
     </div>
   );

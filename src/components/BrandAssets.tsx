@@ -586,7 +586,6 @@ export const SocialMediaAssets: React.FC = () => {
   const [generatedAssets, setGeneratedAssets] = useState<{[key: string]: string}>({});
 
   const socialMediaSizes = {
-    'Twitter Header': { width: 1500, height: 500 },
     'Facebook Cover': { width: 1200, height: 630 },
     'LinkedIn Banner': { width: 1584, height: 396 },
     'Instagram Post': { width: 1080, height: 1080 },

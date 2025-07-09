@@ -42,147 +42,21 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
   const [selectedTag, setSelectedTag] = useState('all');
   const [sortBy, setSortBy] = useState('date');
 
-  // Default blog posts with our UI-specific fields
-  const defaultPosts: ExtendedPost[] = [
-    {
-      id: '1',
-      title: 'Building Modern Web Applications with Next.js 14 and TypeScript',
-      slug: 'building-modern-web-apps-nextjs-14-typescript',
-      excerpt: 'Discover the powerful features of Next.js 14 and learn how to build modern, performant web applications with TypeScript. From Turbopack to Server Actions, explore the latest innovations.',
-      date: '2024-01-15',
-      content: '',
-      readTime: 8,
-      tags: ['Next.js', 'TypeScript', 'React', 'Web Development'],
-      category: 'Frontend Development',
-      views: 1247,
-      author: {
-        name: 'Alex Johnson',
-        image: '/images/authors/alex-johnson.jpg'
-      },
-      coverImage: '/images/blog/nextjs-14-typescript.jpg',
-      featuredImage: '/images/blog/nextjs-14-typescript.jpg',
-      published: true,
-      updatedAt: new Date('2024-01-15')
-    },
-    {
-      id: '2',
-      title: 'Advanced TypeScript Patterns for React Developers',
-      slug: 'advanced-typescript-patterns-react',
-      excerpt: 'Learn advanced TypeScript patterns that will make your React code more robust and maintainable. Explore utility types, conditional types, and more.',
-      date: '2024-01-10',
-      content: '',
-      readTime: 6,
-      tags: ['TypeScript', 'React', 'Patterns', 'Best Practices'],
-      category: 'Frontend Development',
-      views: 892,
-      author: {
-        name: 'Sarah Chen',
-        image: '/images/authors/sarah-chen.jpg'
-      },
-      coverImage: '/images/blog/typescript-patterns.jpg',
-      featuredImage: '/images/blog/typescript-patterns.jpg',
-      published: true,
-      updatedAt: new Date('2024-01-10')
-    },
-    {
-      id: '3',
-      title: 'Optimizing React Performance in 2024',
-      slug: 'optimizing-react-performance-2024',
-      excerpt: 'Discover the latest techniques and tools for optimizing React application performance. From React 18 features to advanced optimization strategies.',
-      date: '2024-01-08',
-      content: '',
-      readTime: 10,
-      tags: ['React', 'Performance', 'Optimization', 'JavaScript'],
-      category: 'Performance',
-      views: 1456,
-      author: {
-        name: 'Alex Johnson',
-        image: '/images/authors/alex-johnson.jpg'
-      },
-      coverImage: '/images/blog/react-performance.jpg',
-      featuredImage: '/images/blog/react-performance.jpg',
-      published: true,
-      updatedAt: new Date('2024-01-08')
-    },
-    {
-      id: '4',
-      title: 'Building Scalable APIs with Next.js App Router',
-      slug: 'scalable-apis-nextjs-app-router',
-      excerpt: 'Learn how to build robust and scalable APIs using Next.js 14 App Router and best practices for API design and implementation.',
-      date: '2024-01-05',
-      content: '',
-      readTime: 7,
-      tags: ['Next.js', 'API', 'Backend', 'Scalability'],
-      category: 'Backend Development',
-      views: 734,
-      author: {
-        name: 'Mike Rodriguez',
-        image: '/images/authors/mike-rodriguez.jpg'
-      },
-      coverImage: '/images/blog/nextjs-apis.jpg',
-      featuredImage: '/images/blog/nextjs-apis.jpg',
-      published: true,
-      updatedAt: new Date('2024-01-05')
-    },
-    {
-      id: '5',
-      title: 'Modern CSS Techniques: Grid, Flexbox, and Container Queries',
-      slug: 'modern-css-techniques-2024',
-      excerpt: 'Explore the latest CSS features and techniques including CSS Grid, Flexbox, Container Queries, and modern layout patterns.',
-      date: '2024-01-03',
-      content: '',
-      readTime: 5,
-      tags: ['CSS', 'Grid', 'Flexbox', 'Layout'],
-      category: 'Frontend Development',
-      views: 623,
-      author: {
-        name: 'Emma Wilson',
-        image: '/images/authors/emma-wilson.jpg'
-      },
-      coverImage: '/images/blog/modern-css.jpg',
-      featuredImage: '/images/blog/modern-css.jpg',
-      published: true,
-      updatedAt: new Date('2024-01-03')
-    },
-    {
-      id: '6',
-      title: 'Database Design Patterns for Modern Applications',
-      slug: 'database-design-patterns-modern-apps',
-      excerpt: 'Learn essential database design patterns and best practices for building scalable and maintainable modern applications.',
-      date: '2023-12-28',
-      content: '',
-      readTime: 9,
-      tags: ['Database', 'Design Patterns', 'Architecture', 'SQL'],
-      category: 'Backend Development',
-      views: 445,
-      author: {
-        name: 'David Kim',
-        image: '/images/authors/david-kim.jpg'
-      },
-      coverImage: '/images/blog/database-patterns.jpg',
-      featuredImage: '/images/blog/database-patterns.jpg',
-      published: true,
-      updatedAt: new Date('2023-12-28')
-    }
-  ];
-
-  // Use provided posts or default to our samples
-  const displayedPosts = posts.length > 0 
-    ? posts.map(post => {
-        const imageUrl = (post as any).featuredImage || `/images/slideshow/coding-${Math.floor(Math.random() * 5) + 1}.jpg`;
-        
-        return {
-          ...post,
-          coverImage: imageUrl,
-          featuredImage: imageUrl,
-          category: (post as any).category || 'General',
-          views: (post as any).views || Math.floor(Math.random() * 1000) + 100,
-          author: typeof post.author === 'string' 
-            ? { name: post.author, image: '/images/placeholder.jpg' }
-            : post.author
-        };
-      })
-    : defaultPosts;
+  // Use only the database posts - no mock data fallback
+  const displayedPosts = posts.map(post => {
+    const imageUrl = (post as any).featuredImage || `/images/slideshow/coding-${Math.floor(Math.random() * 5) + 1}.jpg`;
+    
+    return {
+      ...post,
+      coverImage: imageUrl,
+      featuredImage: imageUrl,
+      category: (post as any).category || 'General',
+      views: (post as any).views || Math.floor(Math.random() * 1000) + 100,
+      author: typeof post.author === 'string' 
+        ? { name: post.author, image: '/images/placeholder.jpg' }
+        : post.author
+    };
+  });
 
   // Get unique categories and tags
   const categories = useMemo(() => {
@@ -479,12 +353,11 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
       <section className="section-modern">
         <div className="container-modern">
           <NewsletterSignup
-            variant="inline"
-            title="Stay Updated with Latest Posts"
-            description="Get notified when I publish new articles and tutorials on web development, design, and technology."
-            incentive="✨ Plus exclusive tips and early access to new content"
+            variant="compact"
+            title="Never Miss a Post"
+            description="Subscribe to get the latest articles delivered directly to your inbox."
             showSocialProof={true}
-            subscriberCount={2847}
+            subscriberCount={127}
           />
         </div>
       </section>

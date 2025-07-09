@@ -83,11 +83,12 @@ export default function AdminProjectsPage() {
         }
         
         const data = await response.json();
-        setProjects(data);
+        setProjects(data.projects || []);
         setError(null);
       } catch (err) {
         console.error('Error fetching projects:', err);
         setError('Failed to load projects. Please try again.');
+        setProjects([]);
       } finally {
         setLoading(false);
       }

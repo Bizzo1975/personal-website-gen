@@ -8,23 +8,21 @@ import AdminFormLayout from '../components/AdminFormLayout';
 import { AdminInput, AdminTextarea } from '../components/AdminFormField';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
-import dynamic from 'next/dynamic';
 import { ProfileData } from '@/lib/services/profile-service';
-
-// Simple markdown editor component
-const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
-import 'easymde/dist/easymde.min.css';
 
 interface ContactPageData {
   _id: string;
   name: string;
   title: string;
   slug: string;
-  content: string;
   metaDescription: string;
   updatedAt: Date;
   headerTitle: string;
   headerSubtitle: string;
+  connectSectionTitle: string;
+  connectSectionContent: string;
+  formSectionTitle: string;
+  formDescription: string;
 }
 
 export default function AdminContactPage() {
@@ -35,10 +33,13 @@ export default function AdminContactPage() {
     name: 'Contact',
     title: 'Contact Me',
     slug: 'contact',
-    content: '',
     metaDescription: 'Get in touch with me',
     headerTitle: 'Get in Touch',
-    headerSubtitle: 'Have a question or want to work together? Send me a message!'
+    headerSubtitle: 'Have a question or want to work together? Send me a message!',
+    connectSectionTitle: 'Let\'s Connect',
+    connectSectionContent: 'I am always open to discussing new opportunities, collaborations, or just having a conversation about technology and development.',
+    formSectionTitle: 'Send Me a Message or Request Access',
+    formDescription: 'Use the form below to either send a general message or request access to register on the platform. For access requests, please select the appropriate access level and provide details about your intended use.'
   });
   
   // State for the profile data
@@ -50,9 +51,8 @@ export default function AdminContactPage() {
     email: '',
     socialLinks: {
       github: '',
-      twitter: '',
       linkedin: '',
-      website: '',
+      website: ''
     }
   });
   
@@ -60,6 +60,7 @@ export default function AdminContactPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(true);
 
   // Fetch both page data and profile data
   useEffect(() => {
@@ -111,13 +112,6 @@ export default function AdminContactPage() {
     });
   };
 
-  const handleContentChange = (value: string) => {
-    setPageData({
-      ...pageData,
-      content: value,
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -158,10 +152,15 @@ export default function AdminContactPage() {
       }
       
       // Revalidate the contact page
-      fetch(`/api/revalidate?path=/contact`, { method: 'POST' })
-        .catch(err => {
-          console.error('Error revalidating page:', err);
-        });
+      try {
+        await fetch(`/api/revalidate?path=/contact`, { method: 'POST' });
+      } catch (revalidateError) {
+        console.warn('Failed to revalidate contact page:', revalidateError);
+      }
+      
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
     } catch (err: any) {
       console.error('Error saving contact page:', err);
       setError(err.message || 'Failed to save contact page');
@@ -172,68 +171,98 @@ export default function AdminContactPage() {
   if (loading) {
     return (
       <AdminLayout title="Loading...">
-        <div className="text-center py-10">Loading data...</div>
+        <div className="text-center py-10">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent"></div>
+          <p className="mt-4">Loading Contact Page Editor...</p>
+        </div>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Contact Page">
-      <AdminPageLayout
-        title="Edit Contact Page"
-        status={
-          saveSuccess 
-            ? { type: 'success', message: 'Contact page saved successfully!' }
-            : error 
-              ? { type: 'error', message: error }
-              : undefined
-        }
-      >
-        <AdminFormLayout
-          onSubmit={handleSubmit}
-          isSubmitting={saving}
-          submitLabel="Save Contact Page"
-          onCancel={() => router.push('/admin/dashboard')}
-          actions={
-            <a 
-              href="/contact" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+    <AdminLayout title="Edit Contact Page">
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-6">
+          {/* Collapsible Edit Contact Page Header */}
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg mb-6">
+            <button
+              type="button"
+              onClick={() => setIsMetadataCollapsed(!isMetadataCollapsed)}
+              className="w-full flex items-center justify-between p-4 text-left bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-t-lg"
             >
-              View Live Page
-            </a>
-          }
-        >
-          <AdminInput
-            id="name"
-            name="name"
-            label="Internal Name"
-            value={pageData.name || ''}
-            onChange={handleInputChange}
-            required
-          />
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Edit Contact Page</h1>
+              <div className="flex items-center space-x-3">
+                <a 
+                  href="/contact" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View Live Page
+                </a>
+                <svg
+                  className={`w-5 h-5 text-gray-500 dark:text-gray-400 transform transition-transform ${
+                    isMetadataCollapsed ? 'rotate-180' : ''
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+            
+            {!isMetadataCollapsed && (
+              <div className="p-4 space-y-4 border-t border-gray-200 dark:border-gray-700">
+                <AdminInput
+                  id="name"
+                  name="name"
+                  label="Internal Name"
+                  value={pageData.name || ''}
+                  onChange={handleInputChange}
+                />
+
+                <AdminInput
+                  id="title"
+                  name="title"
+                  label="Page Title"
+                  value={pageData.title || ''}
+                  onChange={handleInputChange}
+                  required
+                  helpText="The title shown in browser tabs and search results"
+                />
+
+                <AdminInput
+                  id="metaDescription"
+                  name="metaDescription"
+                  label="Meta Description"
+                  value={pageData.metaDescription || ''}
+                  onChange={handleInputChange}
+                  helpText="Brief description for search engines (recommended: 150-160 characters)"
+                />
+              </div>
+            )}
+          </div>
           
-          <AdminInput
-            id="title"
-            name="title"
-            label="Page Title"
-            value={pageData.title || ''}
-            onChange={handleInputChange}
-            required
-          />
-          
-          <AdminInput
-            id="metaDescription"
-            name="metaDescription"
-            label="Meta Description"
-            value={pageData.metaDescription || ''}
-            onChange={handleInputChange}
-            helpText="Brief description for search engines (recommended: 150-160 characters)"
-          />
-          
-          <div className="border-t pt-6 border-slate-200 dark:border-slate-700 mt-6 mb-6">
-            <h3 className="text-lg font-medium mb-4">Page Header</h3>
+          {/* Status Messages */}
+          {saveSuccess && (
+            <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md">
+              Contact page saved successfully!
+            </div>
+          )}
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Contact Page Header Fields - Always Visible */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Contact Page Header</h3>
             
             <AdminInput
               id="headerTitle"
@@ -255,25 +284,74 @@ export default function AdminContactPage() {
               rows={2}
             />
           </div>
-          
-          <div className="space-y-1">
-            <label htmlFor="content" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Content (Markdown)
-            </label>
-            <SimpleMDE
-              value={pageData.content || ''}
-              onChange={handleContentChange}
-              options={{
-                spellChecker: false,
-                status: false,
-              }}
+
+          {/* Connect Section Fields */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Connect Section</h3>
+            
+            <AdminInput
+              id="connectSectionTitle"
+              name="connectSectionTitle"
+              label="Connect Section Title"
+              value={pageData.connectSectionTitle || ''}
+              onChange={handleInputChange}
+              helpText="The title for the left column contact information section"
             />
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Use markdown to format your content. This will appear above the contact form.
-            </p>
+            
+            <AdminTextarea
+              id="connectSectionContent"
+              name="connectSectionContent"
+              label="Connect Section Content"
+              value={pageData.connectSectionContent || ''}
+              onChange={handleInputChange}
+              helpText="The content text displayed in the left column under the connect section title"
+              rows={3}
+            />
           </div>
-        </AdminFormLayout>
-      </AdminPageLayout>
+
+          {/* Form Section Fields */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Form Section</h3>
+            
+            <AdminInput
+              id="formSectionTitle"
+              name="formSectionTitle"
+              label="Form Section Title"
+              value={pageData.formSectionTitle || ''}
+              onChange={handleInputChange}
+              helpText="The title for the right column contact form section"
+            />
+            
+            <AdminTextarea
+              id="formDescription"
+              name="formDescription"
+              label="Form Description"
+              value={pageData.formDescription || ''}
+              onChange={handleInputChange}
+              helpText="The description text displayed above the contact form"
+              rows={3}
+            />
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => router.push('/admin/dashboard')}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Contact Page'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </AdminLayout>
   );
 } 

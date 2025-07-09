@@ -47,20 +47,25 @@ describe('Footer Integration Test', () => {
     expect(screen.getByText('Terms of Service')).toBeInTheDocument();
   });
 
-  test('renders social media links', () => {
-    render(<Footer />);
-    
-    // Check for social media links
+  it('renders social media links', () => {
+    const footerProps = {
+      profileData: {
+        socialLinks: {
+          github: 'https://github.com',
+          linkedin: 'https://linkedin.com'
+        }
+      }
+    };
+
+    render(<Footer {...footerProps} />);
+
     const githubLink = screen.getByLabelText('GitHub');
-    const twitterLink = screen.getByLabelText('Twitter');
     const linkedinLink = screen.getByLabelText('LinkedIn');
-    
+
     expect(githubLink).toBeInTheDocument();
-    expect(twitterLink).toBeInTheDocument();
     expect(linkedinLink).toBeInTheDocument();
-    
+
     expect(githubLink).toHaveAttribute('href', 'https://github.com');
-    expect(twitterLink).toHaveAttribute('href', 'https://twitter.com');
     expect(linkedinLink).toHaveAttribute('href', 'https://linkedin.com');
   });
 }); 

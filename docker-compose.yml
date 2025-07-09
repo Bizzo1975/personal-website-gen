@@ -1,33 +1,90 @@
 services:
-  # Frontend - Next.js application
-  frontend:
+  # Next.js Development Application
+  app:
     build:
       context: .
       dockerfile: Dockerfile
       target: development
-    container_name: personal-website-frontend
     ports:
       - "3006:3006"
     environment:
       - NODE_ENV=development
-      - FRONTEND_PORT=3006
+      - DATABASE_URL=postgresql://postgres:admin123@db:5432/personal_website
+      - NEXTAUTH_SECRET=dev-secret-key-change-in-production
       - NEXTAUTH_URL=http://localhost:3006
-      - NEXTAUTH_URL_INTERNAL=http://frontend:3006
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - MONGODB_URI=${MONGODB_URI}
-      - DB_NAME=personal_website
-      - MOCK_DATA=true
-      # Windows & Docker compatibility
       - NEXT_WEBPACK_USEPOLLING=1
       - WATCHPACK_POLLING=true
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./styles:/app/styles
+      - ./components:/app/components
     networks:
-      - personal-website-network
+      - app-network
     restart: unless-stopped
 
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=personal_website
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin123
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d personal_website"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis for session storage and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6386:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Adminer for database management
+  adminer:
+    image: adminer:4.8.1
+    ports:
+      - "8086:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+      - ADMINER_DESIGN=galkaev
+    depends_on:
+      - db
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
 networks:
-  personal-website-network:
+  app-network:
     driver: bridge 

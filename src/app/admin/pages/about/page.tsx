@@ -1,19 +1,17 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminLayout from '../../components/AdminLayout';
-import Button from '@/components/Button';
+import AdminPageLayout from '../../components/AdminPageLayout';
+import AdminFormLayout from '../../components/AdminFormLayout';
+import { AdminInput, AdminTextarea } from '../../components/AdminFormField';
 import Card from '@/components/Card';
-import Link from 'next/link';
-
-// Import SimpleMDE editor
-import dynamic from 'next/dynamic';
-const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
-import 'easymde/dist/easymde.min.css';
+import Button from '@/components/Button';
+import EnhancedEditor from '@/components/admin/EnhancedEditor';
 
 interface PageData {
-  _id: string;
+  id: string;
   name: string;
   title: string;
   slug: string;
@@ -27,68 +25,54 @@ interface PageData {
 export default function AdminAboutPageEditor() {
   const router = useRouter();
   const [pageData, setPageData] = useState<Partial<PageData>>({
-    name: 'About Page',
-    title: 'About Me',
+    name: '',
+    title: '',
     slug: 'about',
     content: '',
     metaDescription: '',
-    headerTitle: 'About Me',
-    headerSubtitle: 'Learn more about my background, skills, and experience in web development.',
+    headerTitle: '',
+    headerSubtitle: '',
   });
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(true);
   
   useEffect(() => {
     const fetchAboutPage = async () => {
-      setLoading(true);
-      setError(null);
-      
       try {
-        // Fetch the specific about page to ensure we get the latest data
-        const response = await fetch('/api/pages?slug=about');
+        const response = await fetch('/api/pages?slug=about', {
+          cache: 'no-store',
+        });
         
         if (!response.ok) {
           throw new Error(`Failed to fetch about page: ${response.status}`);
         }
         
-        const data = await response.json();
+        const aboutPage = await response.json();
         
-        if (data && data.page) {
-          // Set all the page data at once to ensure consistency
-          setPageData({
-            _id: data.page._id,
-            name: data.page.name || 'About Page',
-            title: data.page.title || 'About Me',
-            slug: 'about',
-            content: data.page.content || '',
-            metaDescription: data.page.metaDescription || '',
-            headerTitle: data.page.headerTitle || 'About Me',
-            headerSubtitle: data.page.headerSubtitle || 'Learn more about my background, skills, and experience in web development.'
-          });
+        if (aboutPage) {
+          console.log('Found about page:', aboutPage);
+          setPageData(aboutPage);
         } else {
-          // Attempt to fetch using the general pages endpoint as fallback
-          const allPagesResponse = await fetch('/api/pages');
-          
-          if (!allPagesResponse.ok) {
-            throw new Error(`Failed to fetch pages: ${allPagesResponse.status}`);
-          }
-          
-          const allPages = await allPagesResponse.json();
-          const aboutPage = allPages.find((page: PageData) => page.slug === 'about');
-          
-          if (aboutPage) {
-            setPageData(aboutPage);
-          } else {
-            console.log('About page not found, will create a new one on save');
-          }
+          console.log('No about page found, using defaults');
+          setPageData({
+            name: 'About Page',
+            title: 'About Me - Personal Website',
+            slug: 'about',
+            content: 'Tell your story here...',
+            metaDescription: 'Learn more about my background, skills, and experience.',
+            headerTitle: 'About Me',
+            headerSubtitle: 'Get to know me better',
+          });
         }
+        
+        setLoading(false);
       } catch (err) {
         console.error('Error fetching about page:', err);
         setError('Failed to load about page. Please check console for details.');
-      } finally {
         setLoading(false);
       }
     };
@@ -98,18 +82,19 @@ export default function AdminAboutPageEditor() {
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setPageData({
-      ...pageData,
+    setPageData(prev => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
-  const handleContentChange = (value: string) => {
-    setPageData({
-      ...pageData,
+  // Fixed content change handler for the rich text editor
+  const handleContentChange = useCallback((value: string) => {
+    setPageData(prev => ({
+      ...prev,
       content: value,
-    });
-  };
+    }));
+  }, []);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,46 +103,45 @@ export default function AdminAboutPageEditor() {
     setSaveSuccess(false);
     
     try {
-      let response;
+      console.log('Saving about page data:', pageData);
       
-      if (pageData._id) {
-        // Update existing page
-        response = await fetch(`/api/pages/${pageData._id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(pageData),
-          cache: 'no-store',
-        });
-      } else {
-        // Create new page
-        response = await fetch('/api/pages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(pageData),
-          cache: 'no-store',
-        });
-      }
+      const method = pageData.id ? 'PUT' : 'POST';
+      const url = pageData.id ? `/api/pages/${pageData.id}` : '/api/pages';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pageData),
+        cache: 'no-store',
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('API Error:', errorData);
         throw new Error(errorData.error || `Failed to save page: ${response.status}`);
       }
       
       const result = await response.json();
-      console.log('About page updated successfully:', result);
+      console.log('About page saved successfully:', result);
       setSaving(false);
       setSaveSuccess(true);
       
+      if (!pageData.id && result.page) {
+        setPageData(result.page);
+      }
+      
       // Revalidate the about page
-      await fetch(`/api/revalidate?path=/about`, { method: 'POST' });
+      try {
+        await fetch(`/api/revalidate?path=/about`, { method: 'POST' });
+      } catch (revalidateError) {
+        console.warn('Failed to revalidate about page:', revalidateError);
+      }
       
       setTimeout(() => {
-        router.push('/admin/pages');
-      }, 1500);
+        setSaveSuccess(false);
+      }, 3000);
     } catch (err: any) {
       console.error('Error saving about page:', err);
       setError(err.message || 'Failed to save page');
@@ -176,133 +160,163 @@ export default function AdminAboutPageEditor() {
     );
   }
 
+  if (error) {
+    return (
+      <AdminLayout title="Error">
+        <div className="text-center py-10">
+          <div className="text-red-600 mb-4">{error}</div>
+          <Button onClick={() => router.push('/admin/pages')}>
+            Back to Pages
+          </Button>
+        </div>
+      </AdminLayout>
+    );
+  }
+  
   return (
     <AdminLayout title="Edit About Page">
-      <div className="space-y-6">
-        {error && (
-          <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
-            {error}
-          </div>
-        )}
-        
-        {saveSuccess && (
-          <div className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded">
-            About page saved successfully! Redirecting...
-          </div>
-        )}
-        
-        <Card variant="default">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Internal Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={pageData.name || 'About Page'}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Page Title
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={pageData.title || 'About Me'}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="metaDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Meta Description
-              </label>
-              <textarea
-                id="metaDescription"
-                name="metaDescription"
-                value={pageData.metaDescription || ''}
-                onChange={handleInputChange}
-                rows={2}
-                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                placeholder="Brief description for search engines"
-              />
-            </div>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-6">
+          {/* Collapsible Edit About Page Header */}
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg mb-6">
+            <button
+              type="button"
+              onClick={() => setIsMetadataCollapsed(!isMetadataCollapsed)}
+              className="w-full flex items-center justify-between p-4 text-left bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-t-lg"
+            >
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Edit About Page</h1>
+              <div className="flex items-center space-x-3">
+                <a 
+                  href="/about" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View Live Page
+                </a>
+                <svg
+                  className={`w-5 h-5 text-gray-500 dark:text-gray-400 transform transition-transform ${
+                    isMetadataCollapsed ? 'rotate-180' : ''
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
             
-            <div className="border-t pt-6 border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Page Header</h3>
-              
-              <div className="mb-4">
-                <label htmlFor="headerTitle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Header Title
-                </label>
-                <input
-                  type="text"
-                  id="headerTitle"
-                  name="headerTitle"
-                  value={pageData.headerTitle || 'About Me'}
+            {!isMetadataCollapsed && (
+              <div className="p-4 space-y-4 border-t border-gray-200 dark:border-gray-700">
+                <AdminInput
+                  id="name"
+                  name="name"
+                  label="Internal Name"
+                  value={pageData.name || ''}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  placeholder="Main heading displayed at the top of the page"
+                  required
+                />
+
+                <AdminInput
+                  id="title"
+                  name="title"
+                  label="Page Title"
+                  value={pageData.title || ''}
+                  onChange={handleInputChange}
+                  required
+                  helpText="The title shown in browser tabs and search results"
+                />
+
+                <AdminInput
+                  id="metaDescription"
+                  name="metaDescription"
+                  label="Meta Description"
+                  value={pageData.metaDescription || ''}
+                  onChange={handleInputChange}
+                  helpText="Brief description for search engines (recommended: 150-160 characters)"
                 />
               </div>
-              
-              <div>
-                <label htmlFor="headerSubtitle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Header Subtitle
-                </label>
-                <textarea
-                  id="headerSubtitle"
-                  name="headerSubtitle"
-                  value={pageData.headerSubtitle || 'Learn more about my background, skills, and experience in web development.'}
-                  onChange={handleInputChange}
-                  rows={2}
-                  className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800"
-                  placeholder="Subtitle displayed below the main heading"
-                />
-              </div>
+            )}
+          </div>
+          
+          {/* Status Messages */}
+          {saveSuccess && (
+            <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md">
+              About page saved successfully!
             </div>
+          )}
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+              {error}
+            </div>
+          )}
+        </div>
 
-            <div>
-              <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Content (Markdown)
-              </label>
-              <SimpleMDE
-                value={pageData.content || ''}
-                onChange={handleContentChange}
-                options={{
-                  spellChecker: false,
-                  status: false,
-                }}
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                This content will be displayed on the about page. You can use Markdown formatting to structure your content.
-              </p>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* About Page Header Fields - Always Visible */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">About Page Header</h3>
+            
+            <AdminInput
+              id="headerTitle"
+              name="headerTitle"
+              label="Header Title"
+              value={pageData.headerTitle || ''}
+              onChange={handleInputChange}
+              helpText="The main heading displayed at the top of the about page"
+              required
+            />
+            
+            <AdminTextarea
+              id="headerSubtitle"
+              name="headerSubtitle"
+              label="Header Subtitle"
+              value={pageData.headerSubtitle || ''}
+              onChange={handleInputChange}
+              helpText="The subtitle displayed below the main heading"
+              rows={2}
+            />
+          </div>
 
-            <div className="flex justify-end gap-4">
-              <Button 
-                variant="outline" 
-                type="button" 
-                onClick={() => router.push('/admin/pages')}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </form>
-        </Card>
+          {/* Content Editor */}
+          <div className="space-y-1">
+            <label htmlFor="content" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Content
+            </label>
+            <EnhancedEditor
+              value={pageData.content || ''}
+              onChange={handleContentChange}
+              placeholder="Write your about page content here..."
+              height="400px"
+              toolbar="full"
+              id="about-content-editor"
+              ariaLabel="About page content rich text editor"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Use the toolbar to format your content with headings, bold, italic, lists, links, and more.
+            </p>
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => router.push('/admin/pages')}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save About Page'}
+            </Button>
+          </div>
+        </form>
       </div>
     </AdminLayout>
   );

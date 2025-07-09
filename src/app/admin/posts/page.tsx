@@ -17,43 +17,16 @@ interface BlogPage {
   headerSubtitle: string;
 }
 
-// Mock blog post data (will be replaced with API calls)
-const mockPosts = [
-  {
-    id: '1',
-    title: 'Getting Started with Next.js and TypeScript',
-    slug: 'getting-started-with-nextjs-and-typescript',
-    date: '2023-11-15',
-    excerpt: 'Learn how to set up a new project with Next.js and TypeScript from scratch...',
-    readTime: 5,
-    published: true,
-    tags: ['Next.js', 'TypeScript', 'React']
-  },
-  {
-    id: '2',
-    title: 'Why I Switched to Tailwind CSS',
-    slug: 'why-i-switched-to-tailwind-css',
-    date: '2023-10-28',
-    excerpt: 'After years of using traditional CSS and CSS-in-JS solutions...',
-    readTime: 4,
-    published: true,
-    tags: ['CSS', 'Tailwind CSS', 'Web Development']
-  },
-  {
-    id: '3',
-    title: 'Building a Blog with MDX and Next.js (Draft)',
-    slug: 'building-a-blog-with-mdx-and-nextjs',
-    date: '2023-10-12',
-    excerpt: 'A step-by-step guide on how to create a blog using MDX for content...',
-    readTime: 7,
-    published: false,
-    tags: ['Next.js', 'MDX', 'Blog']
-  },
-];
-
 export default function AdminPostsPage() {
-  const [posts, setPosts] = useState(mockPosts);
-  const [filter, setFilter] = useState('all'); // 'all', 'published', 'drafts'
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [filters, setFilters] = useState({
+    published: 'all',
+    author: 'all',
+    tag: 'all'
+  });
   const [pageData, setPageData] = useState<BlogPage>({
     headerTitle: 'My Blog',
     headerSubtitle: 'Thoughts, tutorials, and insights about technology and development'
@@ -63,41 +36,63 @@ export default function AdminPostsPage() {
   const [headerSaveSuccess, setHeaderSaveSuccess] = useState(false);
   
   useEffect(() => {
-    const fetchBlogPage = async () => {
-      try {
-        setHeaderLoading(true);
-        const response = await fetch('/api/pages');
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch pages: ${response.status}`);
-        }
-        
-        const pages = await response.json();
-        const blogPage = pages.find((page: any) => page.slug === 'blog');
-        
-        if (blogPage) {
-          setPageData({
-            _id: blogPage._id,
-            headerTitle: blogPage.headerTitle || 'My Blog',
-            headerSubtitle: blogPage.headerSubtitle || 'Thoughts, tutorials, and insights about technology and development'
-          });
-        }
-        setHeaderLoading(false);
-      } catch (err) {
-        console.error('Error fetching blog page:', err);
-        setHeaderLoading(false);
-      }
-    };
-    
     fetchBlogPage();
+    fetchPosts();
   }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/posts');
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(data.posts || []);
+      } else {
+        console.error('Failed to fetch posts');
+        setPosts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBlogPage = async () => {
+    try {
+      setHeaderLoading(true);
+      const response = await fetch('/api/pages');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch pages: ${response.status}`);
+      }
+      
+      const pages = await response.json();
+      const blogPage = pages.find((page: any) => page.slug === 'blog');
+      
+      if (blogPage) {
+        setPageData({
+          _id: blogPage._id,
+          headerTitle: blogPage.headerTitle || 'My Blog',
+          headerSubtitle: blogPage.headerSubtitle || 'Thoughts, tutorials, and insights about technology and development'
+        });
+      }
+      setHeaderLoading(false);
+    } catch (err) {
+      console.error('Error fetching blog page:', err);
+      setHeaderLoading(false);
+    }
+  };
   
-  // Filter posts based on the current filter
-  const filteredPosts = filter === 'all' 
-    ? posts 
-    : filter === 'published' 
-      ? posts.filter(post => post.published) 
-      : posts.filter(post => !post.published);
+  // Filter posts based on the current filter - ensure posts is always an array
+  const filteredPosts = Array.isArray(posts) ? (
+    filters.published === 'all' 
+      ? posts 
+      : filters.published === 'published' 
+        ? posts.filter(post => post.published) 
+        : posts.filter(post => !post.published)
+  ) : [];
 
   const handleHeaderInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -241,20 +236,20 @@ export default function AdminPostsPage() {
         
         <AdminFilterBar>
           <AdminFilterButton
-            isActive={filter === 'all'}
-            onClick={() => setFilter('all')}
+            isActive={filters.published === 'all'}
+            onClick={() => setFilters({ ...filters, published: 'all' })}
           >
             All Posts
           </AdminFilterButton>
           <AdminFilterButton
-            isActive={filter === 'published'}
-            onClick={() => setFilter('published')}
+            isActive={filters.published === 'published'}
+            onClick={() => setFilters({ ...filters, published: 'published' })}
           >
             Published
           </AdminFilterButton>
           <AdminFilterButton
-            isActive={filter === 'drafts'}
-            onClick={() => setFilter('drafts')}
+            isActive={filters.published === 'drafts'}
+            onClick={() => setFilters({ ...filters, published: 'drafts' })}
           >
             Drafts
           </AdminFilterButton>

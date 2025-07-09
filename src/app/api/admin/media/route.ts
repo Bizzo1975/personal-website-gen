@@ -1,76 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
-import fs from 'fs/promises';
-import path from 'path';
+import { query } from '@/lib/db';
+import { MediaService } from '@/lib/services/media-service';
 
-// Mock media data - in a real app, this would come from a database
-const mockMediaItems = [
-  {
-    id: '1',
-    name: 'hero-image.jpg',
-    type: 'image' as const,
-    size: 2048576,
-    url: '/images/slideshow/slide1.jpg',
-    thumbnail: '/images/slideshow/slide1.jpg',
-    uploadedAt: '2024-01-15T10:30:00Z',
-    folder: 'slideshow'
-  },
-  {
-    id: '2',
-    name: 'project-screenshot.png',
-    type: 'image' as const,
-    size: 1536000,
-    url: '/images/projects/ecommerce-platform.svg',
-    thumbnail: '/images/projects/ecommerce-platform.svg',
-    uploadedAt: '2024-01-14T15:45:00Z',
-    folder: 'projects'
-  },
-  {
-    id: '3',
-    name: 'blog-featured.jpg',
-    type: 'image' as const,
-    size: 1024000,
-    url: '/images/blog/featured-post.jpg',
-    thumbnail: '/images/blog/featured-post.jpg',
-    uploadedAt: '2024-01-13T09:20:00Z',
-    folder: 'blog'
-  },
-  {
-    id: '4',
-    name: 'demo-video.mp4',
-    type: 'video' as const,
-    size: 15728640,
-    url: '/videos/demo.mp4',
-    thumbnail: '/images/video-thumbnail.jpg',
-    uploadedAt: '2024-01-12T14:10:00Z',
-    folder: 'videos'
-  },
-  {
-    id: '5',
-    name: 'documentation.pdf',
-    type: 'document' as const,
-    size: 512000,
-    url: '/documents/guide.pdf',
-    uploadedAt: '2024-01-11T11:00:00Z',
-    folder: 'documents'
-  }
-];
+/**
+ * Admin Media API Routes
+ * GET: List media files with filtering
+ * POST: Upload new media files
+ */
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user) {
+    if (!session || session.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // In a real app, you would fetch from database
-    // For now, return mock data
-    return NextResponse.json(mockMediaItems);
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
+    let whereClause = '';
+    const params = [limit, offset];
+
+    if (type) {
+      whereClause = 'WHERE type = $3';
+      params.push(type);
+    }
+
+    const result = await query(
+      `SELECT id, filename, original_name, type, size, url, alt_text, 
+              created_at, updated_at, created_by
+       FROM media_files 
+       ${whereClause}
+       ORDER BY created_at DESC 
+       LIMIT $1 OFFSET $2`,
+      params
+    );
+
+    const countResult = await query(
+      `SELECT COUNT(*) as total FROM media_files ${whereClause}`,
+      type ? [type] : []
+    );
+
+    return NextResponse.json({
+      media: result.rows,
+      total: parseInt(countResult.rows[0].total),
+      limit,
+      offset
+    });
+
   } catch (error) {
-    console.error('Error fetching media items:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Media API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch media files' },
+      { status: 500 }
+    );
   }
 }
 
@@ -78,75 +66,88 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user) {
+    if (!session || session.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const formData = await request.formData();
-    const files = formData.getAll('files') as File[];
-    const folder = formData.get('folder') as string || '';
-
-    if (!files || files.length === 0) {
-      return NextResponse.json({ error: 'No files provided' }, { status: 400 });
+    const file = formData.get('file') as File;
+    const altText = formData.get('altText') as string;
+    
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const uploadedItems = [];
+    const uploadResult = await MediaService.uploadFile(file, {
+      altText: altText || '',
+      uploadedBy: session.user.id
+    });
 
-    for (const file of files) {
-      if (file.size === 0) continue;
+    if (!uploadResult.success) {
+      return NextResponse.json(
+        { error: uploadResult.error },
+        { status: 400 }
+      );
+    }
 
-      // Determine file type
-      let fileType: 'image' | 'video' | 'document' = 'document';
-      if (file.type.startsWith('image/')) {
-        fileType = 'image';
-      } else if (file.type.startsWith('video/')) {
-        fileType = 'video';
-      }
+    return NextResponse.json(uploadResult.data);
 
-      // Create upload directory if it doesn't exist
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', folder || 'general');
+  } catch (error) {
+    console.error('Media upload error:', error);
+    return NextResponse.json(
+      { error: 'Failed to upload media file' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: Delete multiple files (for bulk operations)
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session || session.user?.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { fileIds } = await request.json();
+
+    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+      return NextResponse.json(
+        { error: 'No file IDs provided' },
+        { status: 400 }
+      );
+    }
+
+    const results = [];
+    for (const fileId of fileIds) {
       try {
-        await fs.mkdir(uploadDir, { recursive: true });
+        const deleted = await MediaService.deleteMediaFile(fileId);
+        results.push({ id: fileId, deleted, error: null });
       } catch (error) {
-        // Directory might already exist
+        results.push({ id: fileId, deleted: false, error: error.message });
       }
-
-      // Generate unique filename
-      const timestamp = Date.now();
-      const extension = path.extname(file.name);
-      const baseName = path.basename(file.name, extension);
-      const fileName = `${baseName}-${timestamp}${extension}`;
-      const filePath = path.join(uploadDir, fileName);
-
-      // Save file
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      await fs.writeFile(filePath, buffer);
-
-      // Create media item
-      const mediaItem = {
-        id: `upload-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
-        name: file.name,
-        type: fileType,
-        size: file.size,
-        url: `/uploads/${folder || 'general'}/${fileName}`,
-        thumbnail: fileType === 'image' ? `/uploads/${folder || 'general'}/${fileName}` : undefined,
-        uploadedAt: new Date().toISOString(),
-        folder: folder || undefined
-      };
-
-      uploadedItems.push(mediaItem);
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      items: uploadedItems,
-      message: `Successfully uploaded ${uploadedItems.length} file(s)`
+    const successCount = results.filter(r => r.deleted).length;
+    const failCount = results.length - successCount;
+
+    return NextResponse.json({
+      success: failCount === 0,
+      message: `Deleted ${successCount} file(s)${failCount > 0 ? `, failed to delete ${failCount}` : ''}`,
+      results
     });
 
   } catch (error) {
-    console.error('Error uploading files:', error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    console.error('Error deleting media files:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Failed to delete files',
+        message: error.message 
+      },
+      { status: 500 }
+    );
   }
 } 
 

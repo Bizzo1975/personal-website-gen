@@ -282,24 +282,42 @@ export const EnhancedAnimatedElement: React.FC<EnhancedAnimatedElementProps> = (
   const [isHovered, setIsHovered] = useState(false);
   const [manualTrigger, setManualTrigger] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [hasError, setHasError] = useState(false);
   
-  // Handle client-side mounting
+  // Handle client-side mounting with error handling
   useEffect(() => {
-    setIsMounted(true);
+    try {
+      const timer = setTimeout(() => {
+        setIsMounted(true);
+      }, 10);
+      
+      return () => clearTimeout(timer);
+    } catch (error) {
+      console.warn('Error during animation mounting:', error);
+      setHasError(true);
+    }
   }, []);
   
-  // Use intersection observer for inView trigger
+  // Use intersection observer for inView trigger with error handling
   const ref = React.useRef(null);
-  const isInView = useInView(ref, viewport);
+  let isInView = false;
+  
+  try {
+    isInView = useInView(ref, viewport);
+  } catch (error) {
+    console.warn('Error with useInView:', error);
+    isInView = true;
+    setHasError(true);
+  }
   
   // Calculate total delay including stagger effect
   const totalDelay = delay + (staggerIndex * staggerDelay);
   
-  // Get animation variant based on type
-  const variant = enhancedAnimations[type];
+  // Get animation variant based on type with error handling
+  const variant = enhancedAnimations[type] || enhancedAnimations.fadeIn;
   
   // Determine if animation should be active
-  const shouldAnimate = !disabled && !shouldReduceMotion && isMounted && (
+  const shouldAnimate = !disabled && !shouldReduceMotion && !hasError && isMounted && (
     trigger === 'mount' ||
     (trigger === 'hover' && isHovered) ||
     (trigger === 'inView' && isInView) ||
@@ -309,52 +327,114 @@ export const EnhancedAnimatedElement: React.FC<EnhancedAnimatedElementProps> = (
   // Always show final state to prevent hydration mismatch
   const animateToState = variant.animate;
   
-  // Create transition configuration
+  // Create transition configuration with safe fallbacks
   const transition = {
-    duration: shouldReduceMotion || !isMounted ? 0.01 : duration,
-    delay: shouldReduceMotion || !isMounted ? 0 : totalDelay,
+    duration: shouldReduceMotion || !isMounted || hasError ? 0.01 : Math.max(0.01, duration),
+    delay: shouldReduceMotion || !isMounted || hasError ? 0 : Math.max(0, totalDelay),
     ease: easingFunctions[easing] || easingFunctions.easeOut,
-    repeat: typeof repeat === 'boolean' ? (repeat ? Infinity : 0) : repeat,
+    repeat: typeof repeat === 'boolean' ? (repeat ? Infinity : 0) : Math.max(0, repeat),
     repeatType,
     ...variant.transition,
   };
   
   // Create motion component with specified element type
-  const MotionComponent = motion[as as keyof typeof motion] as any;
+  let MotionComponent;
+  try {
+    MotionComponent = motion[as as keyof typeof motion] as any;
+  } catch (error) {
+    console.warn('Error creating motion component:', error);
+    MotionComponent = motion.div;
+    setHasError(true);
+  }
   
-  // Handle hover events
+  // Handle hover events with error protection
   const handleMouseEnter = () => {
-    if (trigger === 'hover') setIsHovered(true);
+    try {
+      if (trigger === 'hover') setIsHovered(true);
+    } catch (error) {
+      console.warn('Error in handleMouseEnter:', error);
+    }
   };
   
   const handleMouseLeave = () => {
-    if (trigger === 'hover') setIsHovered(false);
+    try {
+      if (trigger === 'hover') setIsHovered(false);
+    } catch (error) {
+      console.warn('Error in handleMouseLeave:', error);
+    }
   };
   
+  // Protected animation callbacks
+  const protectedOnAnimationStart = () => {
+    try {
+      onAnimationStart?.();
+    } catch (error) {
+      console.warn('Error in onAnimationStart:', error);
+    }
+  };
+  
+  const protectedOnAnimationComplete = () => {
+    try {
+      onAnimationComplete?.();
+    } catch (error) {
+      console.warn('Error in onAnimationComplete:', error);
+    }
+  };
+  
+  // If there's an error or not mounted, render static content
+  if (hasError || !isMounted) {
+    return (
+      <div
+        ref={ref}
+        className={className}
+        style={{
+          opacity: 1,
+          ...props.style
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+  
   // Always render motion component to ensure consistent structure
-  // Use initial state that matches final state to prevent hydration mismatch
-  return (
-    <MotionComponent
-      ref={ref}
-      initial={isMounted ? variant.initial : variant.animate}
-      animate={animateToState}
-      exit={variant.exit}
-      transition={transition}
-      className={className}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onAnimationStart={onAnimationStart}
-      onAnimationComplete={onAnimationComplete}
-      style={{
-        // Ensure consistent rendering between server and client
-        opacity: 1, // Always show content
-        ...props.style
-      }}
-      {...props}
-    >
-      {children}
-    </MotionComponent>
-  );
+  try {
+    return (
+      <MotionComponent
+        ref={ref}
+        initial={isMounted ? variant.initial : variant.animate}
+        animate={animateToState}
+        exit={variant.exit}
+        transition={transition}
+        className={className}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onAnimationStart={protectedOnAnimationStart}
+        onAnimationComplete={protectedOnAnimationComplete}
+        style={{
+          opacity: 1,
+          ...props.style
+        }}
+        {...props}
+      >
+        {children}
+      </MotionComponent>
+    );
+  } catch (error) {
+    console.warn('Error rendering motion component:', error);
+    return (
+      <div
+        ref={ref}
+        className={className}
+        style={{
+          opacity: 1,
+          ...props.style
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
 };
 
 // Enhanced staggered children component

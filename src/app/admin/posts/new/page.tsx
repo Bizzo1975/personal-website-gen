@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
 import AdminLayout from '../../components/AdminLayout';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
@@ -13,7 +14,15 @@ import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
 import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import { BiUpload, BiSave } from 'react-icons/bi';
 import { ContentPermissions } from '@/types/content/permissions';
-import { PermissionService } from '@/lib/services/permission-service';
+
+// Default permissions for public content
+const getDefaultPermissions = (): ContentPermissions => ({
+  level: 'all',
+  allowedRoles: ['admin', 'editor', 'author', 'subscriber', 'guest'],
+  allowedUsers: [],
+  restrictedUsers: [],
+  requiresAuth: false
+});
 
 interface NewPostFormData {
   title: string;
@@ -42,7 +51,7 @@ export default function NewPostPage() {
     published: false,
     metaDescription: '',
     featuredImage: '',
-    permissions: PermissionService.getDefaultPermissions('all') // Default to public access
+    permissions: getDefaultPermissions() // Default to public access
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);

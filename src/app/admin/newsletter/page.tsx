@@ -15,6 +15,22 @@ import {
   CogIcon
 } from '@heroicons/react/24/outline';
 import { Newsletter, NewsletterSubscriber, NewsletterAnalytics } from '@/types/newsletter';
+import AdminLayout from '@/app/admin/components/AdminLayout';
+import Card, { CardBody, CardHeader } from '@/components/Card';
+import Button from '@/components/Button';
+import { 
+  BiPlus, 
+  BiMail, 
+  BiUsers, 
+  BiCalendar, 
+  BiBarChart,
+  BiEdit,
+  BiSend,
+  BiCog,
+  BiTrendingUp
+} from 'react-icons/bi';
+import AdminPageLayout from '../components/AdminPageLayout';
+import { AdminInput, AdminTextarea, AdminSelect } from '../components/AdminFormField';
 
 interface NewsletterDashboardStats {
   totalNewsletters: number;
@@ -25,13 +41,92 @@ interface NewsletterDashboardStats {
   analytics: Pick<NewsletterAnalytics, 'averageOpenRate' | 'averageClickRate' | 'newSubscribers' | 'netGrowth'>;
 }
 
+interface NewsletterStats {
+  totalNewsletters: number;
+  totalSubscribers: number;
+  totalCampaigns: number;
+  pendingCampaigns: number;
+  averageOpenRate: number;
+  averageClickRate: number;
+}
+
+interface NewsletterContent {
+  title: string;
+  description: string;
+  incentive: string;
+  subscriberCount: number;
+  footerText: string;
+  weeklyArticlesIcon: string;
+  weeklyArticlesTitle: string;
+  weeklyArticlesDescription: string;
+  exclusiveTipsIcon: string;
+  exclusiveTipsTitle: string;
+  exclusiveTipsDescription: string;
+  earlyAccessIcon: string;
+  earlyAccessTitle: string;
+  earlyAccessDescription: string;
+}
+
 const NewsletterAdminPage: React.FC = () => {
   const [stats, setStats] = useState<NewsletterDashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [newsletterStats, setNewsletterStats] = useState<NewsletterStats>({
+    totalNewsletters: 0,
+    totalSubscribers: 0,
+    totalCampaigns: 0,
+    pendingCampaigns: 0,
+    averageOpenRate: 0,
+    averageClickRate: 0,
+  });
+  const [content, setContent] = useState<NewsletterContent>({
+    title: 'Stay in the Loop',
+    description: 'Get notified about new projects, blog posts, and insights on modern web development.',
+    incentive: '🚀 Plus exclusive tips, early access to new content, and behind-the-scenes updates',
+    subscriberCount: 127,
+    footerText: 'By subscribing, you agree to receive our newsletter and promotional emails.',
+    weeklyArticlesIcon: 'book',
+    weeklyArticlesTitle: 'Weekly Articles',
+    weeklyArticlesDescription: 'In-depth tutorials and insights',
+    exclusiveTipsIcon: 'lightning-bolt',
+    exclusiveTipsTitle: 'Exclusive Tips',
+    exclusiveTipsDescription: 'Subscriber-only content and resources',
+    earlyAccessIcon: 'clock',
+    earlyAccessTitle: 'Early Access',
+    earlyAccessDescription: 'Be first to see new projects and posts'
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  // Available icon options (matching IconSystem names)
+  const iconOptions = [
+    { value: 'document', label: 'Document' },
+    { value: 'bolt', label: 'Lightning Bolt' },
+    { value: 'clock', label: 'Clock' },
+    { value: 'envelope', label: 'Envelope' },
+    { value: 'star', label: 'Star' },
+    { value: 'heart', label: 'Heart' },
+    { value: 'fire', label: 'Fire' },
+    { value: 'briefcase', label: 'Briefcase' },
+    { value: 'pencil', label: 'Pencil' },
+    { value: 'code', label: 'Code' },
+    { value: 'globe', label: 'Globe' },
+    { value: 'shield', label: 'Shield' },
+    { value: 'rocket', label: 'Rocket' },
+    { value: 'trophy', label: 'Trophy' },
+    { value: 'light-bulb', label: 'Light Bulb' },
+    { value: 'chart-bar', label: 'Chart Bar' },
+    { value: 'settings', label: 'Settings' },
+    { value: 'user-group', label: 'User Group' },
+    { value: 'academic-cap', label: 'Academic Cap' },
+    { value: 'sparkles', label: 'Sparkles' }
+  ];
 
   useEffect(() => {
     fetchDashboardStats();
+    fetchStats();
+    fetchNewsletterContent();
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -41,7 +136,7 @@ const NewsletterAdminPage: React.FC = () => {
       // Mock data for development - replace with actual API calls
       const mockStats: NewsletterDashboardStats = {
         totalNewsletters: 24,
-        totalSubscribers: 2847,
+        totalSubscribers: 0,
         activeSubscribers: 2683,
         recentNewsletters: [
           {
@@ -145,9 +240,69 @@ const NewsletterAdminPage: React.FC = () => {
       setStats(mockStats);
     } catch (error) {
       console.error('Error fetching newsletter stats:', error);
-      setError('Failed to load newsletter statistics');
+      setError('Failed to load newsletter data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/newsletter/admin/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setNewsletterStats({
+          totalNewsletters: data.totalNewsletters || 0,
+          totalSubscribers: data.totalSubscribers || 0,
+          totalCampaigns: data.totalCampaigns || 0,
+          pendingCampaigns: data.pendingCampaigns || 0,
+          averageOpenRate: data.averageOpenRate || 0,
+          averageClickRate: data.averageClickRate || 0,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch newsletter stats:', error);
+    }
+  };
+
+  const fetchNewsletterContent = async () => {
+    try {
+      const response = await fetch('/api/admin/newsletter-content');
+      if (response.ok) {
+        const data = await response.json();
+        setContent(data);
+      }
+    } catch (error) {
+      console.error('Error fetching newsletter content:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage('');
+
+    try {
+      const response = await fetch('/api/admin/newsletter-content', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(content),
+      });
+
+      if (response.ok) {
+        setMessage('Newsletter content updated successfully!');
+      } else {
+        setMessage('Failed to update newsletter content');
+      }
+    } catch (error) {
+      console.error('Error saving newsletter content:', error);
+      setMessage('Error saving newsletter content');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -225,270 +380,165 @@ const NewsletterAdminPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Newsletter Management
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Create, manage, and analyze your newsletter campaigns with permission-based audience targeting
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Link
-            href="/admin/newsletter/create"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Create Newsletter
-          </Link>
-          <Link
-            href="/admin/newsletter/campaigns/create"
-            className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Create Campaign
-          </Link>
-          <Link
-            href="/admin/newsletter/settings"
-            className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-          >
-            <CogIcon className="h-5 w-5 mr-2" />
-            Settings
-          </Link>
-        </div>
-      </div>
+    <AdminLayout title="Newsletter Management">
+      <AdminPageLayout
+        title="Newsletter Content"
+        description="Manage the newsletter signup section content and icons displayed on your website"
+      >
+        <div className="max-w-4xl">
+          <Card>
+            <form onSubmit={handleSave} className="space-y-8">
+              {/* Basic Content Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Basic Content
+                </h3>
+                <div className="space-y-6">
+                  <AdminInput
+                    label="Newsletter Title"
+                    value={content.title}
+                    onChange={(e) => setContent({ ...content, title: e.target.value })}
+                    required
+                  />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <DocumentTextIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Newsletters</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stats?.totalNewsletters}</p>
-            </div>
-          </div>
-        </div>
+                  <AdminTextarea
+                    label="Description"
+                    value={content.description}
+                    onChange={(e) => setContent({ ...content, description: e.target.value })}
+                    rows={3}
+                    required
+                  />
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-              <UserGroupIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Subscribers</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {stats?.activeSubscribers.toLocaleString()}
-              </p>
-              <p className="text-sm text-green-600 dark:text-green-400">
-                +{stats?.analytics.newSubscribers} this month
-              </p>
-            </div>
-          </div>
-        </div>
+                  <AdminInput
+                    label="Incentive Text"
+                    value={content.incentive}
+                    onChange={(e) => setContent({ ...content, incentive: e.target.value })}
+                    placeholder="e.g., 🚀 Plus exclusive tips and early access"
+                  />
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-              <EyeIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Open Rate</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {formatPercent(stats?.analytics.averageOpenRate || 0)}
-              </p>
-            </div>
-          </div>
-        </div>
+                  <AdminInput
+                    label="Subscriber Count"
+                    type="number"
+                    value={content.subscriberCount.toString()}
+                    onChange={(e) => setContent({ ...content, subscriberCount: parseInt(e.target.value) || 0 })}
+                    min="0"
+                  />
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-              <ChartBarIcon className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Click Rate</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {formatPercent(stats?.analytics.averageClickRate || 0)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <Link
-          href="/admin/newsletter/newsletters"
-          className="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-6"
-        >
-          <div className="flex items-center">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <EnvelopeIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Manage Newsletters</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-                Create, edit, and schedule newsletters
-              </p>
-            </div>
-          </div>
-        </Link>
-
-        <Link
-          href="/admin/newsletter/subscribers"
-          className="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-6"
-        >
-          <div className="flex items-center">
-            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-              <UserGroupIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
-            </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Manage Subscribers</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-                View and manage your subscriber base
-              </p>
-            </div>
-          </div>
-        </Link>
-
-        <Link
-          href="/admin/newsletter/templates"
-          className="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-6"
-        >
-          <div className="flex items-center">
-            <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-lg">
-              <DocumentTextIcon className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Newsletter Templates</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-                Create and manage email templates
-              </p>
-            </div>
-          </div>
-        </Link>
-
-        <Link
-          href="/admin/newsletter/analytics"
-          className="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-6"
-        >
-          <div className="flex items-center">
-            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-              <ChartBarIcon className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Analytics</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-                Track performance and engagement
-              </p>
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Newsletters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Newsletters</h3>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {stats?.recentNewsletters.map((newsletter) => (
-                <div key={newsletter.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900 dark:text-white">{newsletter.title}</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{newsletter.subject}</p>
-                    <div className="flex items-center mt-2 space-x-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(newsletter.status)}`}>
-                        {getStatusIcon(newsletter.status)}
-                        <span className="ml-1 capitalize">{newsletter.status}</span>
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {newsletter.sentAt ? formatDate(newsletter.sentAt) : formatDate(newsletter.createdAt)}
-                      </span>
-                      {newsletter.stats && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatPercent(newsletter.stats.openRate)} open rate
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Link
-                    href={`/admin/newsletter/newsletters/${newsletter.id}`}
-                    className="ml-4 text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                  >
-                    <EyeIcon className="h-5 w-5" />
-                  </Link>
+                  <AdminTextarea
+                    label="Footer Text"
+                    value={content.footerText}
+                    onChange={(e) => setContent({ ...content, footerText: e.target.value })}
+                    rows={2}
+                    placeholder="Privacy policy and subscription terms"
+                  />
                 </div>
-              ))}
-            </div>
-            <div className="mt-6">
-              <Link
-                href="/admin/newsletter/newsletters"
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm font-medium"
-              >
-                View all newsletters →
-              </Link>
-            </div>
-          </div>
-        </div>
+              </div>
 
-        {/* Recent Subscribers */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Subscribers</h3>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {stats?.recentSubscribers.map((subscriber) => (
-                <div key={subscriber.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="flex-1">
+              {/* Features Section */}
+              <div className="border-t pt-8">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Feature Highlights
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Weekly Articles */}
+                  <div className="space-y-4">
                     <h4 className="font-medium text-gray-900 dark:text-white">
-                      {subscriber.firstName ? `${subscriber.firstName} ${subscriber.lastName || ''}`.trim() : subscriber.email}
+                      Weekly Articles
                     </h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{subscriber.email}</p>
-                    <div className="flex items-center mt-2 space-x-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        subscriber.status === 'active' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                      }`}>
-                        {subscriber.status}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatDate(subscriber.subscribedAt)}
-                      </span>
-                    </div>
+                    <AdminSelect
+                      label="Icon"
+                      value={content.weeklyArticlesIcon}
+                      onChange={(e) => setContent({ ...content, weeklyArticlesIcon: e.target.value })}
+                      options={iconOptions}
+                    />
+                    <AdminInput
+                      label="Title"
+                      value={content.weeklyArticlesTitle}
+                      onChange={(e) => setContent({ ...content, weeklyArticlesTitle: e.target.value })}
+                    />
+                    <AdminTextarea
+                      label="Description"
+                      value={content.weeklyArticlesDescription}
+                      onChange={(e) => setContent({ ...content, weeklyArticlesDescription: e.target.value })}
+                      rows={2}
+                    />
                   </div>
-                  <Link
-                    href={`/admin/newsletter/subscribers/${subscriber.id}`}
-                    className="ml-4 text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                  >
-                    <EyeIcon className="h-5 w-5" />
-                  </Link>
+
+                  {/* Exclusive Tips */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900 dark:text-white">
+                      Exclusive Tips
+                    </h4>
+                    <AdminSelect
+                      label="Icon"
+                      value={content.exclusiveTipsIcon}
+                      onChange={(e) => setContent({ ...content, exclusiveTipsIcon: e.target.value })}
+                      options={iconOptions}
+                    />
+                    <AdminInput
+                      label="Title"
+                      value={content.exclusiveTipsTitle}
+                      onChange={(e) => setContent({ ...content, exclusiveTipsTitle: e.target.value })}
+                    />
+                    <AdminTextarea
+                      label="Description"
+                      value={content.exclusiveTipsDescription}
+                      onChange={(e) => setContent({ ...content, exclusiveTipsDescription: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Early Access */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900 dark:text-white">
+                      Early Access
+                    </h4>
+                    <AdminSelect
+                      label="Icon"
+                      value={content.earlyAccessIcon}
+                      onChange={(e) => setContent({ ...content, earlyAccessIcon: e.target.value })}
+                      options={iconOptions}
+                    />
+                    <AdminInput
+                      label="Title"
+                      value={content.earlyAccessTitle}
+                      onChange={(e) => setContent({ ...content, earlyAccessTitle: e.target.value })}
+                    />
+                    <AdminTextarea
+                      label="Description"
+                      value={content.earlyAccessDescription}
+                      onChange={(e) => setContent({ ...content, earlyAccessDescription: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-            <div className="mt-6">
-              <Link
-                href="/admin/newsletter/subscribers"
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm font-medium"
-              >
-                View all subscribers →
-              </Link>
-            </div>
-          </div>
+              </div>
+
+              {/* Save Button */}
+              {message && (
+                <div className={`p-4 rounded-md ${
+                  message.includes('successfully') 
+                    ? 'bg-green-50 text-green-700 border border-green-200' 
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                  {message}
+                </div>
+              )}
+
+              <div className="flex justify-end pt-6 border-t">
+                <Button 
+                  type="submit" 
+                  disabled={saving}
+                  className="min-w-[120px]"
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </Card>
         </div>
-      </div>
-    </div>
+      </AdminPageLayout>
+    </AdminLayout>
   );
 };
 

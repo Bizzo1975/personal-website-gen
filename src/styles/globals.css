@@ -79,17 +79,32 @@
 
 .EasyMDEContainer .CodeMirror {
   @apply border border-gray-300 dark:border-gray-700 rounded-md;
-  @apply bg-white dark:bg-gray-900;
+  @apply bg-white dark:bg-slate-800;
   @apply text-gray-900 dark:text-gray-100;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  min-height: 300px !important;
+}
+
+.EasyMDEContainer .CodeMirror-scroll {
+  @apply min-h-[300px];
+}
+
+.EasyMDEContainer .CodeMirror-lines {
+  padding: 16px !important;
 }
 
 .EasyMDEContainer .editor-toolbar {
   @apply border border-gray-300 dark:border-gray-700 rounded-t-md;
-  @apply bg-white dark:bg-gray-800;
+  @apply bg-white dark:bg-slate-800;
+  border-bottom: none !important;
 }
 
 .EasyMDEContainer .editor-toolbar button {
   @apply text-gray-700 dark:text-gray-300;
+  border: none !important;
+  background: transparent !important;
 }
 
 .EasyMDEContainer .editor-toolbar button:hover {
@@ -102,6 +117,44 @@
 
 .EasyMDEContainer .CodeMirror-cursor {
   @apply border-l-2 border-primary-600 dark:border-primary-400;
+}
+
+/* Fix SimpleMDE preview styles */
+.EasyMDEContainer .editor-preview,
+.EasyMDEContainer .editor-preview-side {
+  @apply bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  padding: 16px !important;
+}
+
+.EasyMDEContainer .editor-preview h1,
+.EasyMDEContainer .editor-preview h2,
+.EasyMDEContainer .editor-preview h3,
+.EasyMDEContainer .editor-preview h4,
+.EasyMDEContainer .editor-preview h5,
+.EasyMDEContainer .editor-preview h6 {
+  @apply text-gray-900 dark:text-gray-100 font-semibold;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.EasyMDEContainer .editor-preview p {
+  margin-bottom: 1em;
+  line-height: 1.6;
+}
+
+.EasyMDEContainer .editor-preview strong {
+  @apply font-semibold;
+}
+
+.EasyMDEContainer .editor-preview ul,
+.EasyMDEContainer .editor-preview ol {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.EasyMDEContainer .editor-preview li {
+  margin: 0.5em 0;
 }
 
 /* Fix layout issues */

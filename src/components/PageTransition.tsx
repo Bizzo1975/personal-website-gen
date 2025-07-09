@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 
 // Temporarily disable framer-motion to avoid import issues
 // import { motion, AnimatePresence } from 'framer-motion';
@@ -29,18 +28,19 @@ const pageVariants = {
   }
 };
 
-const PageTransition: React.FC<PageTransitionProps> = ({ 
-  children, 
-  mode = 'fade' 
-}) => {
-  const pathname = usePathname();
+export default function PageTransition({ children, mode = 'fade' }: PageTransitionProps) {
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Temporarily return children without animation to avoid framer-motion issues
-  return (
-    <div className="w-full">
-      {children}
-    </div>
-  );
-};
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-export default PageTransition; 
+  // During SSR and initial mount, render children directly
+  if (!isMounted || mode === 'none') {
+    return <>{children}</>;
+  }
+
+  // For client-side, just render children without animation for now
+  // This prevents framer-motion import issues while preserving functionality
+  return <>{children}</>;
+} 

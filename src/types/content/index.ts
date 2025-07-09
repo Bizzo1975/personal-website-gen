@@ -1,9 +1,17 @@
 export interface PageData {
   id: string;
+  name?: string;
   title: string;
   slug: string;
   content: string;
   metaDescription?: string;
+  headerTitle?: string;
+  headerSubtitle?: string;
+  heroHeading?: string;
+  connectSectionTitle?: string;
+  connectSectionContent?: string;
+  formSectionTitle?: string;
+  formDescription?: string;
   createdAt: Date;
   updatedAt: Date;
 }

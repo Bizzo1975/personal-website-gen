@@ -28,14 +28,14 @@ export const faviconSizes: FaviconSize[] = [
 
 // Social media asset dimensions
 export const socialMediaAssets: SocialMediaAsset[] = [
-  { name: 'Twitter Header', width: 1500, height: 500, description: 'Twitter profile header image' },
-  { name: 'Facebook Cover', width: 1200, height: 630, description: 'Facebook page cover photo' },
+  // Social media images
+  { name: 'Open Graph', width: 1200, height: 630, description: 'Open Graph image for social sharing' },
   { name: 'LinkedIn Banner', width: 1584, height: 396, description: 'LinkedIn profile banner' },
+  { name: 'Facebook Cover', width: 820, height: 312, description: 'Facebook cover image' },
   { name: 'Instagram Post', width: 1080, height: 1080, description: 'Instagram square post' },
-  { name: 'Instagram Story', width: 1080, height: 1920, description: 'Instagram story template' },
+  { name: 'Instagram Story', width: 1080, height: 1920, description: 'Instagram story' },
   { name: 'YouTube Thumbnail', width: 1280, height: 720, description: 'YouTube video thumbnail' },
-  { name: 'Open Graph', width: 1200, height: 630, description: 'Open Graph meta image' },
-  { name: 'Twitter Card', width: 1200, height: 600, description: 'Twitter card image' },
+  { name: 'Generic Social Card', width: 1200, height: 600, description: 'Generic social media card' },
 ];
 
 // Brand colors

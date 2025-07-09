@@ -10,7 +10,6 @@ import { AdminInput, AdminTextarea } from '../../components/AdminFormField';
 
 interface SocialLinks {
   github?: string;
-  twitter?: string;
   linkedin?: string;
   website?: string;
 }
@@ -38,9 +37,8 @@ export default function ProfilePage() {
     email: '',
     socialLinks: {
       github: '',
-      twitter: '',
       linkedin: '',
-      website: '',
+      website: ''
     }
   });
   
@@ -65,7 +63,12 @@ export default function ProfilePage() {
         
         const data = await response.json();
         console.log('Fetched profile data:', data);
-        setProfileData(data);
+        // Ensure skills is always an array and socialLinks is always an object
+        setProfileData({
+          ...data,
+          skills: data.skills || [],
+          socialLinks: data.socialLinks || {}
+        });
         setLoading(false);
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -81,37 +84,49 @@ export default function ProfilePage() {
     const { name, value } = e.target;
     
     if (name.startsWith('social.')) {
-      const socialField = name.split('.')[1];
-      setProfileData({
-        ...profileData,
+      const socialField = name.replace('social.', '');
+      setProfileData(prev => ({
+        ...prev,
         socialLinks: {
-          ...profileData.socialLinks,
+          ...prev.socialLinks,
           [socialField]: value
         }
-      });
+      }));
     } else {
-      setProfileData({
-        ...profileData,
-        [name]: value,
-      });
+      setProfileData(prev => ({
+        ...prev,
+        [name]: value
+      }));
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
       
-      reader.onload = (event) => {
-        if (event.target && typeof event.target.result === 'string') {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'profile');
+        
+        const response = await fetch('/api/admin/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
           setProfileData({
             ...profileData,
-            imageUrl: event.target.result
+            imageUrl: result.path
           });
+        } else {
+          throw new Error('Upload failed');
         }
-      };
-      
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Error uploading profile image:', error);
+        setError('Failed to upload profile image');
+      }
     }
   };
 
@@ -137,7 +152,7 @@ export default function ProfilePage() {
     if (newSkill.trim()) {
       setProfileData({
         ...profileData,
-        skills: [...profileData.skills, newSkill.trim()]
+        skills: [...(profileData.skills || []), newSkill.trim()]
       });
       setNewSkill('');
       setIsAddingSkill(false);
@@ -164,7 +179,7 @@ export default function ProfilePage() {
   };
 
   const handleRemoveSkill = (index: number) => {
-    const updatedSkills = [...profileData.skills];
+    const updatedSkills = [...(profileData.skills || [])];
     updatedSkills.splice(index, 1);
     setProfileData({
       ...profileData,
@@ -275,7 +290,7 @@ export default function ProfilePage() {
               title="Click to upload a new image"
             >
               <Image 
-                src={profileData.imageUrl || 'https://via.placeholder.com/200?text=Profile+Image'} 
+                src={profileData.imageUrl || '/images/placeholder-image.png'} 
                 alt="Profile Preview" 
                 fill
                 style={{objectFit: 'cover'}}
@@ -327,7 +342,7 @@ export default function ProfilePage() {
               )}
               
               <div className="mt-2 flex flex-wrap gap-2">
-                {profileData.skills.map((skill, index) => (
+                {(profileData.skills || []).map((skill, index) => (
                   <div 
                     key={index} 
                     className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full flex items-center"
@@ -391,16 +406,6 @@ export default function ProfilePage() {
                   value={profileData.socialLinks?.github || ''}
                   onChange={handleInputChange}
                   placeholder="https://github.com/yourusername"
-                />
-                
-                <AdminInput
-                  id="twitter"
-                  name="social.twitter"
-                  label="Twitter"
-                  type="url"
-                  value={profileData.socialLinks?.twitter || ''}
-                  onChange={handleInputChange}
-                  placeholder="https://twitter.com/yourusername"
                 />
                 
                 <AdminInput

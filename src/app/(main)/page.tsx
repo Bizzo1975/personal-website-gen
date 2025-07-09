@@ -1,82 +1,42 @@
 import React from 'react';
-import { Metadata } from 'next';
+import HomePage from './home-page';
 import { getPageBySlug } from '@/lib/services/page-service';
 import { serializeMarkdown } from '@/lib/mdx';
-import { getProjects, ProjectData } from '@/lib/services/project-service';
-import { getPosts, PostData } from '@/lib/services/post-service';
-import HomePage from './home-page';
-
-export async function generateMetadata(): Promise<Metadata> {
-  const page = await getPageBySlug('home');
-  
-  return {
-    title: page?.title || 'Home',
-    description: page?.metaDescription || 'Personal website and portfolio',
-  };
-}
 
 export default async function Page() {
-  // Get the home page content
+  // Fetch the home page content from database
+  console.log('🔄 Fetching Home page content...');
   const page = await getPageBySlug('home');
   
-  if (!page) {
-    return <div>Page not found</div>;
-  }
+  // Simple fallback if no content exists in database
+  const fallbackContent = "I am a **Full Stack Developer** with expertise in modern web technologies. I specialize in creating high-performance, scalable applications using React, Next.js, Node.js, and cloud technologies.";
+  
+  // Get content from page or use simple fallback
+  const content = page?.content || fallbackContent;
+  
+  // Serialize the markdown content
+  const mdxSource = await serializeMarkdown(content);
+  
+  // Get hero heading from page data - use the database value if available
+  const heroHeading = page?.heroHeading || page?.hero_heading || "Building the Modern Web";
+  
+  console.log('📄 Page data:', {
+    heroHeading: heroHeading,
+    headerTitle: page?.headerTitle || page?.header_title,
+    headerSubtitle: page?.headerSubtitle || page?.header_subtitle,
+    hasContent: !!content
+  });
+  
+  return (
+    <HomePage 
+      content={mdxSource}
+      heroHeading={heroHeading}
+      headerTitle={page?.headerTitle || page?.header_title}
+      headerSubtitle={page?.headerSubtitle || page?.header_subtitle}
+      projects={[]}
+      blogPosts={[]}
+    />
+  );
+}
 
-  // Serialize the markdown content to MDX with error handling
-  let mdxSource;
-  try {
-    mdxSource = await serializeMarkdown(page.content);
-  } catch (error) {
-    console.error('Error serializing markdown:', error);
-    // Create a fallback MDX source with proper imports
-    mdxSource = {
-      compiledSource: `
-        const React = arguments[0];
-        function _createMdxContent() {
-          return React.createElement('div', null, 
-            React.createElement('h1', null, 'Welcome to My Portfolio'),
-            React.createElement('p', null, "I'm a full-stack developer specializing in modern web technologies."),
-            React.createElement('p', null, 'Feel free to explore my projects and blog posts, or get in touch via the contact page.')
-          );
-        }
-        function MDXContent(props = {}) {
-          return _createMdxContent(props);
-        }
-        return { default: MDXContent };
-      `,
-      frontmatter: {},
-      scope: {}
-    };
-  }
 
-  // Get featured projects with proper error handling
-  let projects: ProjectData[] = [];
-  try {
-    console.log('🔍 Fetching featured projects for homepage...');
-    projects = await getProjects({ featured: true, limit: 3 });
-    console.log('✅ Featured projects fetched:', projects.length);
-  } catch (error) {
-    console.error('❌ Error fetching projects for homepage:', error);
-    projects = [];
-  }
-
-  // Get recent blog posts with proper error handling
-  let blogPosts: PostData[] = [];
-  try {
-    console.log('🔍 Fetching recent blog posts for homepage...');
-    blogPosts = await getPosts({ limit: 2 });
-    console.log('✅ Blog posts fetched:', blogPosts.length);
-  } catch (error) {
-    console.error('❌ Error fetching blog posts for homepage:', error);
-    blogPosts = [];
-  }
-
-  // Pass all data to the client component
-  return <HomePage 
-    content={mdxSource}
-    projects={projects}
-    blogPosts={blogPosts}
-    heroHeading={page.heroHeading || "Building the Modern Web"}
-  />;
-} 

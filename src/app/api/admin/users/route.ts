@@ -1,70 +1,144 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
-
-// Mock user data - in a real app, this would come from a database
-const mockUsers = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    role: 'admin' as const,
-    status: 'active' as const,
-    lastLogin: '2024-01-15T10:30:00Z',
-    createdAt: '2024-01-01T00:00:00Z',
-    permissions: ['manage_users', 'manage_settings', 'view_analytics', 'manage_media', 'edit_posts', 'delete_posts']
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    role: 'editor' as const,
-    status: 'active' as const,
-    lastLogin: '2024-01-14T15:45:00Z',
-    createdAt: '2024-01-02T00:00:00Z',
-    permissions: ['edit_posts', 'write_posts', 'read_posts', 'manage_media']
-  },
-  {
-    id: '3',
-    name: 'Bob Wilson',
-    email: 'bob@example.com',
-    role: 'author' as const,
-    status: 'active' as const,
-    lastLogin: '2024-01-13T09:20:00Z',
-    createdAt: '2024-01-03T00:00:00Z',
-    permissions: ['write_posts', 'read_posts', 'edit_posts']
-  },
-  {
-    id: '4',
-    name: 'Alice Johnson',
-    email: 'alice@example.com',
-    role: 'subscriber' as const,
-    status: 'pending' as const,
-    createdAt: '2024-01-10T00:00:00Z',
-    permissions: ['read_posts']
-  },
-  {
-    id: '5',
-    name: 'Charlie Brown',
-    email: 'charlie@example.com',
-    role: 'author' as const,
-    status: 'inactive' as const,
-    lastLogin: '2024-01-05T12:00:00Z',
-    createdAt: '2024-01-05T00:00:00Z',
-    permissions: ['write_posts', 'read_posts']
-  }
-];
+import { AccessRequestService } from '@/lib/services/access-request-service';
+import { PermissionService } from '@/lib/services/permission-service';
+import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized - Authentication required' }, { status: 401 });
     }
 
-    // In a real app, you would fetch from database with proper filtering and pagination
-    return NextResponse.json(mockUsers);
+    // Check if user is admin
+    const isAdmin = await PermissionService.isUserAdmin(session.user.email);
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+    }
+
+    // Get query parameters for filtering
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const accessLevel = searchParams.get('accessLevel');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * limit;
+
+    // Build query for users with access levels
+    let userQuery = `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.role,
+        u.created_at,
+        ual.has_professional_access,
+        ual.has_personal_access,
+        ual.is_active,
+        ual.granted_at,
+        ual.granted_by
+      FROM users u
+      LEFT JOIN user_access_levels ual ON u.email = ual.email
+      WHERE 1=1
+    `;
+    
+    const queryParams: any[] = [];
+    let paramIndex = 1;
+
+    // Add filters
+    if (status === 'active') {
+      userQuery += ` AND ual.is_active = $${paramIndex}`;
+      queryParams.push(true);
+      paramIndex++;
+    } else if (status === 'inactive') {
+      userQuery += ` AND (ual.is_active = $${paramIndex} OR ual.is_active IS NULL)`;
+      queryParams.push(false);
+      paramIndex++;
+    }
+
+    if (accessLevel === 'professional') {
+      userQuery += ` AND ual.has_professional_access = $${paramIndex}`;
+      queryParams.push(true);
+      paramIndex++;
+    } else if (accessLevel === 'personal') {
+      userQuery += ` AND ual.has_personal_access = $${paramIndex}`;
+      queryParams.push(true);
+      paramIndex++;
+    }
+
+    // Add pagination
+    userQuery += ` ORDER BY u.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryParams.push(limit, offset);
+
+    const result = await query(userQuery, queryParams);
+
+    // Get total count for pagination
+    let countQuery = `
+      SELECT COUNT(DISTINCT u.id) as total
+      FROM users u
+      LEFT JOIN user_access_levels ual ON u.email = ual.email
+      WHERE 1=1
+    `;
+    
+    const countParams: any[] = [];
+    let countParamIndex = 1;
+
+    if (status === 'active') {
+      countQuery += ` AND ual.is_active = $${countParamIndex}`;
+      countParams.push(true);
+      countParamIndex++;
+    } else if (status === 'inactive') {
+      countQuery += ` AND (ual.is_active = $${countParamIndex} OR ual.is_active IS NULL)`;
+      countParams.push(false);
+      countParamIndex++;
+    }
+
+    if (accessLevel === 'professional') {
+      countQuery += ` AND ual.has_professional_access = $${countParamIndex}`;
+      countParams.push(true);
+      countParamIndex++;
+    } else if (accessLevel === 'personal') {
+      countQuery += ` AND ual.has_personal_access = $${countParamIndex}`;
+      countParams.push(true);
+      countParamIndex++;
+    }
+
+    const countResult = await query(countQuery, countParams);
+    const total = parseInt(countResult.rows[0]?.total || '0');
+
+    // Format users data
+    const users = result.rows.map(row => ({
+      id: row.id.toString(),
+      name: row.name,
+      email: row.email,
+      role: row.role,
+      createdAt: row.created_at,
+      accessLevels: {
+        hasProfessionalAccess: row.has_professional_access || false,
+        hasPersonalAccess: row.has_personal_access || false,
+        isActive: row.is_active || false,
+        grantedAt: row.granted_at,
+        grantedBy: row.granted_by
+      }
+    }));
+
+    return NextResponse.json({
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      },
+      filters: {
+        status,
+        accessLevel
+      }
+    });
+
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -75,46 +149,70 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized - Authentication required' }, { status: 401 });
     }
 
-    const userData = await request.json();
+    // Check if user is admin
+    const isAdmin = await PermissionService.isUserAdmin(session.user.email);
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+    }
+
+    const { action, email, accessType } = await request.json();
     
     // Validate required fields
-    if (!userData.name || !userData.email) {
-      return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+    if (!action || !email) {
+      return NextResponse.json({ error: 'Action and email are required' }, { status: 400 });
     }
 
-    // Check if email already exists
-    const existingUser = mockUsers.find(u => u.email === userData.email);
-    if (existingUser) {
-      return NextResponse.json({ error: 'Email already exists' }, { status: 400 });
+    // Validate access type for grant/revoke actions
+    if (['grant', 'revoke'].includes(action) && !accessType) {
+      return NextResponse.json({ error: 'Access type is required for grant/revoke actions' }, { status: 400 });
     }
 
-    // Create new user
-    const newUser = {
-      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: userData.name,
-      email: userData.email,
-      role: userData.role || 'subscriber',
-      status: userData.status || 'active',
-      createdAt: new Date().toISOString(),
-      permissions: userData.permissions || ['read_posts']
-    };
+    if (accessType && !['professional', 'personal'].includes(accessType)) {
+      return NextResponse.json({ error: 'Invalid access type. Must be professional or personal' }, { status: 400 });
+    }
 
-    // In a real app, you would save to database
-    mockUsers.push(newUser);
+    const adminId = session.user.id || session.user.email;
 
-    return NextResponse.json({ 
-      success: true, 
-      user: newUser,
-      message: 'User created successfully'
-    });
+    switch (action) {
+      case 'grant':
+        await AccessRequestService.grantAccess(email, accessType, adminId);
+        return NextResponse.json({ 
+          success: true, 
+          message: `${accessType.charAt(0).toUpperCase() + accessType.slice(1)} access granted to ${email}` 
+        });
+
+      case 'revoke':
+        await AccessRequestService.revokeAccess(email, accessType);
+        return NextResponse.json({ 
+          success: true, 
+          message: `${accessType.charAt(0).toUpperCase() + accessType.slice(1)} access revoked from ${email}` 
+        });
+
+      case 'activate':
+        await AccessRequestService.activateUser(email);
+        return NextResponse.json({ 
+          success: true, 
+          message: `User ${email} activated` 
+        });
+
+      case 'deactivate':
+        await AccessRequestService.deactivateUser(email);
+        return NextResponse.json({ 
+          success: true, 
+          message: `User ${email} deactivated` 
+        });
+
+      default:
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
 
   } catch (error) {
-    console.error('Error creating user:', error);
-    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
+    console.error('Error managing user access:', error);
+    return NextResponse.json({ error: 'Failed to manage user access' }, { status: 500 });
   }
 } 
 

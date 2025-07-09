@@ -366,34 +366,28 @@ export const EnhancedSocialShare: React.FC<EnhancedSocialShareProps> = ({
 }) => {
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
 
-  const socialPlatforms = [
-    {
-      name: 'Twitter',
-      icon: '𝕏',
-      color: 'hover:text-black dark:hover:text-white',
-      shareUrl: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}${hashtags ? `&hashtags=${hashtags.join(',')}` : ''}`
-    },
+  const socialShareOptions = [
     {
       name: 'Facebook',
-      icon: '📘',
-      color: 'hover:text-blue-600',
-      shareUrl: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
+      icon: 'facebook',
+      color: 'bg-blue-600',
+      shareUrl: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&t=${encodeURIComponent(title)}`
     },
     {
       name: 'LinkedIn',
-      icon: '💼',
-      color: 'hover:text-blue-700',
-      shareUrl: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`
+      icon: 'linkedin',
+      color: 'bg-blue-700',
+      shareUrl: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`
     },
     {
       name: 'Reddit',
-      icon: '🔴',
-      color: 'hover:text-orange-600',
-      shareUrl: `https://reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`
+      icon: 'reddit',
+      color: 'bg-orange-600',
+      shareUrl: `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`
     }
   ];
 
-  const handleShare = (platform: typeof socialPlatforms[0]) => {
+  const handleShare = (platform: typeof socialShareOptions[0]) => {
     window.open(
       platform.shareUrl,
       'share',
@@ -415,7 +409,7 @@ export const EnhancedSocialShare: React.FC<EnhancedSocialShareProps> = ({
     <div className={`flex items-center gap-2 ${className}`}>
       <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Share:</span>
       <div className="flex items-center gap-1">
-        {socialPlatforms.map((platform) => (
+        {socialShareOptions.map((platform) => (
           <button
             key={platform.name}
             onClick={() => handleShare(platform)}

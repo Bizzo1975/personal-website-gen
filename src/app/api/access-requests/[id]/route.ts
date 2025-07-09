@@ -1,100 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AccessRequestService, UserRoleService } from '@/lib/models/access-request';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
+import { query } from '@/lib/db';
+import { AccessRequestService } from '@/lib/services/access-request-service';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session || session.user?.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const accessRequest = await AccessRequestService.getById(params.id);
+    
+    if (!accessRequest) {
+      return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(accessRequest);
+  } catch (error) {
+    console.error('Error fetching access request:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch access request' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check authentication
     const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
-    const { id } = params;
+
     const { status, adminNotes } = await request.json();
     
-    // Validate status
     if (!['approved', 'rejected'].includes(status)) {
-      return NextResponse.json(
-        { error: 'Invalid status. Must be "approved" or "rejected"' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
-    
-    // Get the access request
-    const accessRequest = await AccessRequestService.getById(id);
-    if (!accessRequest) {
-      return NextResponse.json(
-        { error: 'Access request not found' },
-        { status: 404 }
-      );
-    }
-    
-    // Check if already processed
-    if (accessRequest.status !== 'pending') {
-      return NextResponse.json(
-        { error: 'Access request has already been processed' },
-        { status: 400 }
-      );
-    }
-    
-    // Update the access request status
-    const updatedRequest = await AccessRequestService.updateStatus(
-      id,
+
+    const result = await AccessRequestService.updateStatus(
+      params.id,
       status,
-      session.user.email!,
+      session.user.id,
       adminNotes
     );
-    
-    if (!updatedRequest) {
-      return NextResponse.json(
-        { error: 'Failed to update access request' },
-        { status: 500 }
-      );
+
+    if (!result) {
+      return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
     }
-    
-    // If approved, create user role
-    if (status === 'approved' && updatedRequest.accessLevel) {
-      try {
-        const userRole = await UserRoleService.createFromAccessRequest(
-          updatedRequest,
-          session.user.email!
-        );
-        
-        console.log('✅ User role created:', {
-          email: userRole.email,
-          accessLevel: userRole.accessLevel,
-          grantedBy: userRole.grantedBy
-        });
-      } catch (error) {
-        console.error('Error creating user role:', error);
-        // Don't fail the request if role creation fails
-      }
-    }
-    
-    console.log(`🔄 Access request ${status}:`, {
-      id: updatedRequest._id,
-      email: updatedRequest.email,
-      accessLevel: updatedRequest.accessLevel,
-      processedBy: session.user.email
-    });
-    
-    return NextResponse.json({
-      success: true,
-      accessRequest: updatedRequest
-    });
-    
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error updating access request:', error);
-    
     return NextResponse.json(
       { error: 'Failed to update access request' },
       { status: 500 }
@@ -102,42 +69,28 @@ export async function PUT(
   }
 }
 
-export async function GET(
+export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check authentication
     const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const result = await AccessRequestService.deleteById(params.id);
     
-    const { id } = params;
-    
-    // Get the access request
-    const accessRequest = await AccessRequestService.getById(id);
-    if (!accessRequest) {
-      return NextResponse.json(
-        { error: 'Access request not found' },
-        { status: 404 }
-      );
+    if (!result) {
+      return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
     }
-    
-    return NextResponse.json({
-      success: true,
-      accessRequest
-    });
-    
+
+    return NextResponse.json({ message: 'Access request deleted successfully' });
   } catch (error) {
-    console.error('Error fetching access request:', error);
-    
+    console.error('Error deleting access request:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch access request' },
+      { error: 'Failed to delete access request' },
       { status: 500 }
     );
   }

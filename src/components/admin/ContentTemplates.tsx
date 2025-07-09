@@ -2,6 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { AccessibleButton } from '@/components/AccessibilityEnhancements';
+import Card, { CardBody, CardHeader } from '@/components/Card';
+import Button from '@/components/Button';
+import { BiPlus, BiEdit, BiTrash, BiCopy, BiEye } from 'react-icons/bi';
+
+interface Template {
+  id: string;
+  name: string;
+  description: string;
+  type: 'post' | 'project' | 'page';
+  content: string;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface ContentTemplate {
   id: string;
@@ -47,159 +61,50 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
   selectedType = 'all',
   className = ''
 }) => {
-  const [templates, setTemplates] = useState<ContentTemplate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<ContentTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'name' | 'usage' | 'created'>('name');
 
-  // Mock data - in a real app, this would come from an API
   useEffect(() => {
-    const fetchTemplates = async () => {
-      setIsLoading(true);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockTemplates: ContentTemplate[] = [
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      // For now, using default empty templates until we implement the API
+      const defaultTemplates: Template[] = [
         {
           id: '1',
-          name: 'Technical Blog Post',
-          description: 'A comprehensive template for technical tutorials and guides',
+          name: 'Blog Post Template',
+          description: 'Standard template for blog posts with introduction, main content, and conclusion sections.',
           type: 'post',
-          category: 'Technical',
-          template: {
-            title: 'How to [Technology/Concept]: A Complete Guide',
-            content: '# Introduction\n\nBrief overview of what will be covered...\n\n## Prerequisites\n\n- Requirement 1\n- Requirement 2\n\n## Step-by-Step Guide\n\n### Step 1: Setup\n\nDetailed instructions...\n\n### Step 2: Implementation\n\nCode examples and explanations...\n\n## Best Practices\n\nKey recommendations...\n\n## Conclusion\n\nSummary and next steps...',
-            metadata: {
-              tags: ['tutorial', 'guide', 'technical'],
-              category: 'Development',
-              estimatedReadTime: 10
-            },
-            structure: {
-              sections: [
-                { title: 'Introduction', content: 'Overview and objectives', type: 'header' },
-                { title: 'Prerequisites', content: 'Required knowledge and tools', type: 'list' },
-                { title: 'Step-by-Step Guide', content: 'Main tutorial content', type: 'paragraph' },
-                { title: 'Code Examples', content: 'Working code snippets', type: 'code' },
-                { title: 'Best Practices', content: 'Recommendations and tips', type: 'list' },
-                { title: 'Conclusion', content: 'Summary and next steps', type: 'paragraph' }
-              ]
-            }
-          },
-          usageCount: 24,
-          createdBy: 'John Doe',
-          createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-          updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-          isDefault: true,
-          tags: ['technical', 'tutorial', 'development']
+          content: '# {{ title }}\n\n## Introduction\n\n{{ introduction }}\n\n## Main Content\n\n{{ content }}\n\n## Conclusion\n\n{{ conclusion }}',
+          usageCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         },
         {
           id: '2',
-          name: 'Project Showcase',
-          description: 'Template for highlighting personal projects and their features',
+          name: 'Project Showcase Template',
+          description: 'Template for showcasing projects with overview, features, and technical details.',
           type: 'project',
-          category: 'Portfolio',
-          template: {
-            title: '[Project Name] - [Brief Description]',
-            content: '## Project Overview\n\n[Project description and purpose]\n\n## Key Features\n\n- Feature 1: Description\n- Feature 2: Description\n- Feature 3: Description\n\n## Technologies Used\n\n- Technology 1\n- Technology 2\n- Technology 3\n\n## Architecture\n\n[System architecture description]\n\n## Challenges & Solutions\n\n### Challenge 1\nDescription and solution...\n\n## Demo & Links\n\n- [Live Demo](url)\n- [GitHub Repository](url)\n\n## Future Enhancements\n\n- Enhancement 1\n- Enhancement 2',
-            metadata: {
-              tags: ['project', 'portfolio', 'showcase'],
-              category: 'Portfolio'
-            },
-            structure: {
-              sections: [
-                { title: 'Project Overview', content: 'Description and purpose', type: 'paragraph' },
-                { title: 'Key Features', content: 'Main functionality highlights', type: 'list' },
-                { title: 'Technologies Used', content: 'Tech stack overview', type: 'list' },
-                { title: 'Architecture', content: 'System design explanation', type: 'paragraph' },
-                { title: 'Demo Image', content: 'Project screenshot or demo', type: 'image' },
-                { title: 'Challenges & Solutions', content: 'Problem-solving highlights', type: 'paragraph' },
-                { title: 'Future Enhancements', content: 'Planned improvements', type: 'list' }
-              ]
-            }
-          },
-          usageCount: 12,
-          createdBy: 'John Doe',
-          createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-          updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-          isDefault: true,
-          tags: ['project', 'portfolio', 'showcase']
-        },
-        {
-          id: '3',
-          name: 'About Page',
-          description: 'Professional about page template with personal story and skills',
-          type: 'page',
-          category: 'Personal',
-          template: {
-            title: 'About [Your Name]',
-            content: '# Hello, I\'m [Your Name]\n\n## My Story\n\n[Personal introduction and background]\n\n## What I Do\n\n[Professional summary and expertise]\n\n## Skills & Technologies\n\n### Frontend\n- Technology 1\n- Technology 2\n\n### Backend\n- Technology 1\n- Technology 2\n\n## Experience\n\n### [Position] at [Company]\n*[Duration]*\n\n[Description of role and achievements]\n\n## Education\n\n### [Degree] from [Institution]\n*[Year]*\n\n## Let\'s Connect\n\n[Call to action and contact information]',
-            metadata: {
-              excerpt: 'Learn more about my background, skills, and experience',
-              tags: ['about', 'personal', 'professional']
-            },
-            structure: {
-              sections: [
-                { title: 'Introduction', content: 'Personal greeting and overview', type: 'header' },
-                { title: 'Personal Story', content: 'Background and journey', type: 'paragraph' },
-                { title: 'Professional Summary', content: 'What you do and expertise', type: 'paragraph' },
-                { title: 'Skills Grid', content: 'Technical and soft skills', type: 'list' },
-                { title: 'Experience Timeline', content: 'Work history and achievements', type: 'paragraph' },
-                { title: 'Education', content: 'Academic background', type: 'paragraph' },
-                { title: 'Contact CTA', content: 'Invitation to connect', type: 'paragraph' }
-              ]
-            }
-          },
-          usageCount: 8,
-          createdBy: 'John Doe',
-          createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-          updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          isDefault: true,
-          tags: ['about', 'personal', 'professional']
-        },
-        {
-          id: '4',
-          name: 'Product Review',
-          description: 'Comprehensive template for reviewing tools, books, or products',
-          type: 'post',
-          category: 'Review',
-          template: {
-            title: '[Product Name] Review: [Quick Opinion]',
-            content: '## Product Overview\n\n[Basic information about the product]\n\n## Pros\n\n- Pro 1\n- Pro 2\n- Pro 3\n\n## Cons\n\n- Con 1\n- Con 2\n\n## Detailed Analysis\n\n### [Aspect 1]\n[In-depth review]\n\n### [Aspect 2]\n[In-depth review]\n\n## Comparison\n\n[How it compares to alternatives]\n\n## Final Verdict\n\n**Rating**: ⭐⭐⭐⭐⭐ (X/5)\n\n[Summary and recommendation]',
-            metadata: {
-              tags: ['review', 'analysis', 'recommendation'],
-              category: 'Review',
-              estimatedReadTime: 8
-            },
-            structure: {
-              sections: [
-                { title: 'Product Overview', content: 'Basic product information', type: 'paragraph' },
-                { title: 'Pros & Cons', content: 'Quick advantages and disadvantages', type: 'list' },
-                { title: 'Detailed Analysis', content: 'In-depth feature review', type: 'paragraph' },
-                { title: 'Comparison Table', content: 'vs. alternatives', type: 'paragraph' },
-                { title: 'Screenshots/Images', content: 'Visual examples', type: 'image' },
-                { title: 'Final Verdict', content: 'Rating and recommendation', type: 'quote' }
-              ]
-            }
-          },
-          usageCount: 6,
-          createdBy: 'John Doe',
-          createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-          updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-          isDefault: false,
-          tags: ['review', 'analysis', 'recommendation']
+          content: '# {{ title }}\n\n## Overview\n\n{{ overview }}\n\n## Key Features\n\n{{ features }}\n\n## Technical Details\n\n{{ techStack }}',
+          usageCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         }
       ];
-      
-      setTemplates(mockTemplates);
-      setIsLoading(false);
-    };
-
-    fetchTemplates();
-  }, []);
+      setTemplates(defaultTemplates);
+    } catch (error) {
+      console.error('Failed to fetch templates:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter and sort templates
   const filteredTemplates = templates
@@ -227,7 +132,7 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
   // Get unique categories
   const categories = ['all', ...Array.from(new Set(templates.map(t => t.category)))];
 
-  const handleTemplateSelect = (template: ContentTemplate) => {
+  const handleTemplateSelect = (template: Template) => {
     onTemplateSelect?.(template);
     
     // Update usage count
@@ -247,25 +152,14 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
       name: '',
       description: '',
       type: 'post',
-      category: 'General',
-      template: {
-        title: '',
-        content: '',
-        metadata: {},
-        structure: {
-          sections: []
-        }
-      },
+      content: '',
       usageCount: 0,
-      createdBy: 'John Doe',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      isDefault: false,
-      tags: []
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
   };
 
-  const handleSaveTemplate = (template: ContentTemplate) => {
+  const handleSaveTemplate = (template: Template) => {
     if (template.id) {
       // Update existing
       setTemplates(prev => 
@@ -295,7 +189,7 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
     });
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className={`bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 ${className}`}>
         <div className="p-6">

@@ -3,16 +3,25 @@
 import React, { useState, useEffect } from 'react';
 import { AccessibleButton } from '@/components/AccessibilityEnhancements';
 
-interface NewsletterSignupProps {
-  variant?: 'inline' | 'modal' | 'sidebar' | 'footer' | 'popup';
+interface NewsletterSignupProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: 'default' | 'compact' | 'inline' | 'popup' | 'modal' | 'sidebar';
   title?: string;
   description?: string;
   incentive?: string;
   showSocialProof?: boolean;
   subscriberCount?: number;
-  className?: string;
-  onSuccess?: (email: string) => void;
-  onError?: (error: string) => void;
+  placeholder?: string;
+  buttonText?: string;
+  size?: 'sm' | 'md' | 'lg';
+  theme?: 'light' | 'dark' | 'accent';
+  position?: 'fixed' | 'sticky' | 'static';
+  onSubscribe?: (email: string, firstName?: string) => Promise<boolean>;
+  onClose?: () => void;
+  contentOverride?: {
+    title?: string;
+    description?: string;
+    incentive?: string;
+  };
 }
 
 interface SubscriptionData {
@@ -23,16 +32,34 @@ interface SubscriptionData {
   timestamp: Date;
 }
 
+interface NewsletterContent {
+  title: string;
+  description: string;
+  incentive: string;
+  subscriberCount: number;
+  footerText: string;
+  weeklyArticlesIcon: string;
+  weeklyArticlesTitle: string;
+  weeklyArticlesDescription: string;
+  exclusiveTipsIcon: string;
+  exclusiveTipsTitle: string;
+  exclusiveTipsDescription: string;
+  earlyAccessIcon: string;
+  earlyAccessTitle: string;
+  earlyAccessDescription: string;
+}
+
 const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
   variant = 'inline',
   title,
   description,
   incentive,
   showSocialProof = true,
-  subscriberCount = 2847,
+  subscriberCount,
   className = '',
   onSuccess,
-  onError
+  onError,
+  contentOverride
 }) => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -42,6 +69,8 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [showModal, setShowModal] = useState(false);
+  const [adminContent, setAdminContent] = useState<NewsletterContent | null>(null);
+  const [contentLoading, setContentLoading] = useState(true);
 
   // Available interest categories
   const interestOptions = [
@@ -57,7 +86,26 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
     'Tutorial Requests'
   ];
 
-  // Default content based on variant
+  // Fetch admin content on component mount
+  useEffect(() => {
+    const fetchAdminContent = async () => {
+      try {
+        const response = await fetch('/api/admin/newsletter-content');
+        if (response.ok) {
+          const data = await response.json();
+          setAdminContent(data);
+        }
+      } catch (error) {
+        console.error('Error fetching admin newsletter content:', error);
+      } finally {
+        setContentLoading(false);
+      }
+    };
+
+    fetchAdminContent();
+  }, []);
+
+  // Default content based on variant (fallback if admin content not available)
   const getDefaultContent = () => {
     switch (variant) {
       case 'modal':
@@ -93,7 +141,14 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
     }
   };
 
-  const content = getDefaultContent();
+  // Use admin content if available, otherwise fallback to default content
+  const content = contentOverride || (adminContent ? {
+    title: adminContent.title,
+    description: adminContent.description,
+    incentive: adminContent.incentive
+  } : getDefaultContent());
+
+  const currentSubscriberCount = subscriberCount || (adminContent?.subscriberCount) || 127;
 
   // Popup logic for exit-intent
   useEffect(() => {
@@ -190,51 +245,53 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
           if (variant === 'popup' || variant === 'modal') {
             setShowModal(false);
           }
-        }, 3000);
-        
+          setIsSubscribed(false);
+        }, 5000);
       } else {
-        throw new Error('Subscription failed. Please try again.');
+        setFormErrors({ submit: 'Something went wrong. Please try again.' });
       }
-      
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
-      onError?.(errorMessage);
-      setFormErrors({ submit: errorMessage });
+      console.error('Newsletter subscription error:', error);
+      setFormErrors({ submit: 'Network error. Please check your connection and try again.' });
+      onError?.(error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle interest selection
+  // Toggle interest selection
   const toggleInterest = (interest: string) => {
     setSelectedInterests(prev => 
-      prev.includes(interest)
+      prev.includes(interest) 
         ? prev.filter(i => i !== interest)
         : [...prev, interest]
     );
   };
 
-  // Get form classes based on variant
   const getFormClasses = () => {
+    const baseClasses = 'w-full max-w-md mx-auto';
+    
     switch (variant) {
-      case 'modal':
-      case 'popup':
-        return 'max-w-md mx-auto';
+      case 'compact':
+        return `${baseClasses} text-sm`;
+      case 'inline':
+        return `${baseClasses} max-w-2xl`;
       case 'sidebar':
-        return 'max-w-sm';
-      case 'footer':
-        return 'max-w-lg mx-auto';
+        return `${baseClasses} max-w-sm`;
+      case 'popup':
+      case 'modal':
+        return `${baseClasses} max-w-lg`;
       default:
-        return 'max-w-2xl mx-auto';
+        return baseClasses;
     }
   };
 
   // Success state
-  if (isSubscribed && (variant !== 'popup' && variant !== 'modal')) {
+  if (isSubscribed) {
     return (
       <div className={`${getFormClasses()} ${className}`}>
-        <div className="text-center p-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-          <div className="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+        <div className="text-center p-8 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl border border-green-200 dark:border-green-800">
+          <div className="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
             <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
@@ -278,7 +335,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{subscriberCount.toLocaleString()}+ subscribers</span>
+              <span>{currentSubscriberCount.toLocaleString()}+ subscribers</span>
             </div>
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -382,16 +439,15 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
 
           {/* Privacy Notice */}
           <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-            By subscribing, you agree to receive our newsletter and promotional emails. 
-            You can unsubscribe at any time. Read our{' '}
+            {adminContent?.footerText || 'By subscribing, you agree to receive our newsletter and promotional emails. You can unsubscribe at any time.'}{' '}
             <a href="/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">
               Privacy Policy
             </a>.
           </p>
         </form>
 
-        {/* Features List */}
-        {variant === 'inline' && (
+        {/* Features List - Use admin content if available */}
+        {variant === 'inline' && !contentLoading && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-slate-200 dark:border-slate-700">
             <div className="text-center">
               <div className="w-12 h-12 mx-auto mb-3 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
@@ -400,10 +456,10 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
                 </svg>
               </div>
               <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
-                Weekly Articles
+                {adminContent?.weeklyArticlesTitle || 'Weekly Articles'}
               </h4>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                In-depth tutorials and insights
+                {adminContent?.weeklyArticlesDescription || 'In-depth tutorials and insights'}
               </p>
             </div>
 
@@ -414,10 +470,10 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
                 </svg>
               </div>
               <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
-                Exclusive Tips
+                {adminContent?.exclusiveTipsTitle || 'Exclusive Tips'}
               </h4>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Subscriber-only content and resources
+                {adminContent?.exclusiveTipsDescription || 'Subscriber-only content and resources'}
               </p>
             </div>
 
@@ -428,10 +484,10 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
                 </svg>
               </div>
               <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
-                Early Access
+                {adminContent?.earlyAccessTitle || 'Early Access'}
               </h4>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Be first to see new projects and posts
+                {adminContent?.earlyAccessDescription || 'Be first to see new projects and posts'}
               </p>
             </div>
           </div>
@@ -441,43 +497,26 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
   );
 
   // Modal/Popup wrapper
-  if ((variant === 'modal' || variant === 'popup') && showModal) {
+  if ((variant === 'popup' || variant === 'modal') && showModal) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full relative">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full mx-4 relative">
           <button
             onClick={() => setShowModal(false)}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <div className="p-6">
-            {isSubscribed ? (
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">
-                  You're all set! 🎉
-                </h3>
-                <p className="text-green-700 dark:text-green-300">
-                  Check your email for confirmation.
-                </p>
-              </div>
-            ) : (
-              formContent
-            )}
+          <div className="p-8">
+            {formContent}
           </div>
         </div>
       </div>
     );
   }
 
-  // Regular inline form
   return formContent;
 };
 

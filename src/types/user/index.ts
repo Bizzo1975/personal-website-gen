@@ -1,11 +1,28 @@
-export interface UserData {
+export interface User {
   id: string;
   name: string;
   email: string;
   image?: string;
-  role: string;
-  createdAt: Date;
-  updatedAt: Date;
+  bio?: string;
+  jobTitle?: string;
+  location?: string;
+  githubUsername?: string;
+  linkedinUsername?: string;
+  websiteUrl?: string;
+  skills?: string[];
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  
+  // Extended user properties
+  role?: 'admin' | 'user';
+  permissions?: string[];
+  lastLogin?: string;
+  preferences?: {
+    theme?: 'light' | 'dark' | 'system';
+    emailNotifications?: boolean;
+    marketingEmails?: boolean;
+  };
 }
 
 export enum UserRole {

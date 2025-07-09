@@ -1,56 +1,57 @@
-import mongoose, { Schema, Document } from 'mongoose';
-
-export interface ProfileDocument extends Document {
+// PostgreSQL Profile interface matching the profiles table schema
+export interface Profile {
+  id: string;
   name: string;
   imageUrl: string;
   skills: string[];
-  location: string;
-  email: string;
-  socialLinks: {
-    github: string;
-    twitter: string;
-    linkedin: string;
-    website: string;
-  };
-  updatedAt: Date;
+  location?: string;
+  email?: string;
+  github?: string;
+  linkedin?: string;
+  website?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-const ProfileSchema = new Schema<ProfileDocument>({
-  name: {
-    type: String,
-    required: true,
-  },
-  imageUrl: {
-    type: String,
-    required: true,
-  },
-  skills: {
-    type: [String],
-    default: [],
-  },
-  location: {
-    type: String,
-    default: '',
-  },
-  email: {
-    type: String,
-    default: '',
-  },
-  socialLinks: {
-    github: { type: String, default: '' },
-    twitter: { type: String, default: '' },
-    linkedin: { type: String, default: '' },
-    website: { type: String, default: '' },
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+export interface ProfileData {
+  id?: string;
+  name: string;
+  imageUrl: string;
+  skills: string[];
+  location?: string;
+  email?: string;
+  socialLinks?: {
+    github?: string;
+    linkedin?: string;
+    website?: string;
+  };
+}
 
-// Fix for "mongoose.models is undefined" error
-const Profile = (mongoose.models && mongoose.models.Profile) 
-  ? mongoose.models.Profile as mongoose.Model<ProfileDocument>
-  : mongoose.model<ProfileDocument>('Profile', ProfileSchema);
+export interface CreateProfileData {
+  name: string;
+  imageUrl: string;
+  skills: string[];
+  location?: string;
+  email?: string;
+  socialLinks?: {
+    github?: string;
+    linkedin?: string;
+    website?: string;
+  };
+}
 
-export default Profile; 
+// Type for updating a profile
+export interface UpdateProfileData {
+  name?: string;
+  image_url?: string;
+  skills?: string[];
+  location?: string;
+  email?: string;
+  bio?: string;
+  social_links?: {
+    github?: string;
+    twitter?: string;
+    linkedin?: string;
+    website?: string;
+  };
+} 

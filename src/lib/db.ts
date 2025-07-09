@@ -1,118 +1,125 @@
-import mongoose from 'mongoose';
+import { Pool, PoolConfig, PoolClient } from 'pg';
 
-// Get the MongoDB URI from environment variables
-const MONGODB_URI = process.env.MONGODB_URI;
-const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
-const DB_NAME = process.env.DB_NAME || 'personal_website';
-// Allow forced mock mode via environment variables
-const FORCE_MOCK_MODE = process.env.MOCK_DATA === 'true';
+// PostgreSQL connection configuration
+const config: PoolConfig = {
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  max: 20, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+};
 
-// Define types for cached mongoose connection
-interface MongooseConnection {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
-  mockMode: boolean;
+// Define types for cached PostgreSQL connection
+interface PostgreSQLConnection {
+  pool: Pool | null;
+  promise: Promise<Pool> | null;
 }
 
-// Add mongoose to the global type
+// Add PostgreSQL to the global type
 declare global {
-  var mongoose: MongooseConnection | undefined;
+  var postgresql: PostgreSQLConnection | undefined;
 }
 
-let cached: MongooseConnection = global.mongoose || { conn: null, promise: null, mockMode: false };
+let cached: PostgreSQLConnection = global.postgresql || { pool: null, promise: null };
 
-// Initialize mock mode early if forced via environment
-if (FORCE_MOCK_MODE) {
-  console.log('🔶 Forced mock data mode enabled via environment variable');
-  cached.mockMode = true;
+if (!global.postgresql) {
+  global.postgresql = cached;
 }
 
-if (!global.mongoose) {
-  global.mongoose = cached;
-}
+// Database connection function
+async function dbConnect(): Promise<Pool> {
+  // If we already have a connection pool, return immediately
+  if (cached.pool) {
+    return cached.pool;
+  }
 
-async function dbConnect() {
-  // If we already have a connection or we're in mock mode, return immediately
-  if (cached.conn) {
-    return cached.conn;
+  // Database URL is required
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is required. Please define the DATABASE_URL environment variable inside .env.local');
+  }
+
+  // Create connection pool if we don't have one
+  if (!cached.promise) {
+    console.log('Attempting to connect to PostgreSQL with connection pooling...');
+    
+    cached.promise = new Promise(async (resolve, reject) => {
+      try {
+        const pool = new Pool(config);
+        
+        // Test the connection
+        const client = await pool.connect();
+        await client.query('SELECT NOW()');
+        client.release();
+        
+        console.log('PostgreSQL connection successful');
+        
+        // Handle pool errors
+        pool.on('error', (err) => {
+          console.error('Unexpected error on idle client', err);
+        });
+        
+        resolve(pool);
+      } catch (error) {
+        console.error('PostgreSQL connection failed:', error);
+        reject(error);
+      }
+    });
   }
   
-  // If mock mode is forced, skip connection attempt entirely
-  if (FORCE_MOCK_MODE) {
-    cached.conn = mongoose;
-    return cached.conn;
-  }
+  cached.pool = await cached.promise;
+  return cached.pool;
+}
 
-  // Check if we're in mock mode (no MongoDB URI in development)
-  if (!MONGODB_URI) {
-    if (IS_DEVELOPMENT) {
-      console.log('🔶 Development mode detected with no MongoDB URI - using mock data mode');
-      cached.mockMode = true;
-      // Return a mock mongoose instance
-      cached.conn = mongoose;
-      return cached.conn;
-    } else {
-      // In production, we should have a MongoDB URI
-      throw new Error('MongoDB URI is required in production. Please define the MONGODB_URI environment variable inside .env.local');
-    }
-  }
-
-  // Connect to MongoDB if we have a URI and aren't connected yet
-  if (!cached.promise) {
-    // Enhanced MongoDB connection options with proper pooling
-    const opts = {
-      bufferCommands: false,
-      dbName: DB_NAME,
-      // Connection pool settings
-      maxPoolSize: 10, // Maximum number of connections in the pool
-      minPoolSize: 2,  // Minimum number of connections to maintain in the pool
-      maxIdleTimeMS: 45000, // How long a connection can be idle before being closed
-      socketTimeoutMS: 30000, // How long to wait for socket operations
-      connectTimeoutMS: 10000, // How long to wait for an initial connection
-      // Heartbeat to keep connections alive 
-      heartbeatFrequencyMS: 10000,
-      // Auto reconnect settings
-      serverSelectionTimeoutMS: 5000, // Timeout for server selection
-      retryWrites: true,
-      retryReads: true
-    };
-
-    console.log('Attempting to connect to MongoDB with connection pooling...');
-    
-    cached.promise = mongoose.connect(MONGODB_URI, opts)
-      .then((mongoose) => {
-        console.log('MongoDB connection successful');
-        return mongoose;
-      })
-      .catch((error) => {
-        console.error('MongoDB connection error:', error);
-        if (IS_DEVELOPMENT) {
-          console.log('🔶 Falling back to mock data mode due to connection error');
-          cached.mockMode = true;
-          return mongoose;
-        }
-        throw error;
-      });
-  }
+// Database query function
+export async function query(text: string, params?: any[]) {
+  const pool = await dbConnect();
+  const start = Date.now();
   
   try {
-    cached.conn = await cached.promise;
-    return cached.conn;
-  } catch (error) {
-    console.error('Failed to establish MongoDB connection:', error);
-    if (IS_DEVELOPMENT) {
-      console.log('🔶 Falling back to mock data mode due to connection error');
-      cached.mockMode = true;
-      cached.conn = mongoose;
-      return cached.conn;
+    const res = await pool.query(text, params);
+    const duration = Date.now() - start;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Executed query', { text: text.substring(0, 100), duration, rows: res.rowCount });
     }
+    
+    return res;
+  } catch (error) {
+    console.error('Database query error:', error);
     throw error;
   }
 }
 
-// Helper function to check if we're using mock data
-export function isMockMode() {
-  return cached.mockMode || FORCE_MOCK_MODE || !MONGODB_URI;
+// Get a client from the pool for transactions
+export async function getClient(): Promise<PoolClient> {
+  const pool = await dbConnect();
+  return await pool.connect();
 }
 
+// Connection test function (for compatibility with existing code)
+export async function connectToDatabase() {
+  try {
+    const pool = await dbConnect();
+    return { pool, query };
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    throw new Error(`Failed to connect to PostgreSQL database: ${error}`);
+  }
+}
+
+// Graceful shutdown
+export async function closeDatabase() {
+  try {
+    if (cached.pool) {
+      await cached.pool.end();
+      cached.pool = null;
+      cached.promise = null;
+      console.log('Database connection pool closed');
+    }
+  } catch (error) {
+    console.error('Error closing database connection:', error);
+  }
+}
+
+// Export the default connection function
 export default dbConnect;

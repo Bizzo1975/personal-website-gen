@@ -391,10 +391,34 @@ function UserManagementPageContent() {
       const response = await fetch('/api/admin/users');
       if (response.ok) {
         const data = await response.json();
-        setUsers(data);
+        
+        // Extract users array from the API response and transform data
+        const transformedUsers = (data.users || []).map((user: any) => ({
+          id: user.id,
+          name: user.name || 'Unknown',
+          email: user.email,
+          role: user.role || 'subscriber',
+          status: user.accessLevels?.isActive ? 'active' : 'inactive',
+          lastLogin: null, // API doesn't provide this, could be added later
+          createdAt: user.createdAt,
+          avatar: null, // API doesn't provide this, could be added later
+          permissions: user.role === 'admin' 
+            ? ['system_admin', 'manage_users', 'manage_settings', 'manage_roles', 'view_analytics', 'manage_media', 'edit_posts', 'delete_posts', 'write_posts', 'read_posts']
+            : user.role === 'editor'
+            ? ['edit_posts', 'delete_posts', 'write_posts', 'read_posts', 'manage_media', 'manage_comments']
+            : user.role === 'author'
+            ? ['write_posts', 'read_posts', 'edit_posts']
+            : ['read_posts']
+        }));
+        
+        setUsers(transformedUsers);
+      } else {
+        console.error('Failed to fetch users:', response.status);
+        setUsers([]); // Set empty array on error
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
+      setUsers([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -557,7 +581,7 @@ function UserManagementPageContent() {
     }
   };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = (users || []).filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
@@ -649,7 +673,7 @@ function UserManagementPageContent() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{users.length}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{(users || []).length}</p>
                   </div>
                 </div>
               </CardBody>
@@ -664,7 +688,7 @@ function UserManagementPageContent() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {users.filter(u => u.status === 'active').length}
+                      {(users || []).filter(u => u.status === 'active').length}
                     </p>
                   </div>
                 </div>
@@ -680,7 +704,7 @@ function UserManagementPageContent() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Admins</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {users.filter(u => u.role === 'admin').length}
+                      {(users || []).filter(u => u.role === 'admin').length}
                     </p>
                   </div>
                 </div>
@@ -696,7 +720,7 @@ function UserManagementPageContent() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {users.filter(u => u.status === 'pending').length}
+                      {(users || []).filter(u => u.status === 'pending').length}
                     </p>
                   </div>
                 </div>

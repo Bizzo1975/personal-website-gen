@@ -1,157 +1,142 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
-import dbConnect from '@/lib/db';
-import Profile from '@/lib/models/Profile';
-import { ProfileData } from '@/lib/services/profile-service';
-
-// Default profile data to use when creating a new profile
-const defaultProfile: Omit<ProfileData, 'id'> = {
-  name: 'John Doe',
-  imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
-  skills: [
-    'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js',
-    'Express', 'MongoDB', 'PostgreSQL', 'HTML5', 'CSS3',
-    'Tailwind CSS', 'Git', 'Docker', 'AWS'
-  ],
-  location: 'New York, USA',
-  email: 'john@example.com',
-  socialLinks: {
-    github: 'https://github.com',
-    twitter: 'https://twitter.com',
-    linkedin: 'https://linkedin.com'
-  }
-};
-
-// Mock data storage key for Node.js global object
-const MOCK_PROFILE_KEY = 'mockProfileData';
-
-// Helper function to determine if we should use mock data
-const useMockData = () => {
-  return !process.env.MONGODB_URI || process.env.NODE_ENV === 'development';
-};
-
-// Function to initialize mock data (if it hasn't been initialized yet)
-const initMockProfile = () => {
-  // Check if we have already stored mock profile in the global object
-  if (!(global as any)[MOCK_PROFILE_KEY]) {
-    console.log('📋 Initializing mock profile data');
-    (global as any)[MOCK_PROFILE_KEY] = { ...defaultProfile, id: 'mock-profile-id' };
-  }
-  return (global as any)[MOCK_PROFILE_KEY];
-};
-
-// Function to get mock profile (from global store)
-const getMockProfile = () => {
-  return initMockProfile();
-};
-
-// Function to save mock profile (to global store)
-const saveMockProfile = (profile: any) => {
-  console.log('💾 Saving mock profile data');
-  (global as any)[MOCK_PROFILE_KEY] = profile;
-  return profile;
-};
+import { query } from '@/lib/db';
 
 export async function GET() {
   try {
-    // For development without MongoDB
-    if (useMockData()) {
-      const mockProfile = getMockProfile();
-      console.log('📖 Getting mock profile data');
-      return NextResponse.json(mockProfile);
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await dbConnect();
-    let profile = await Profile.findOne({});
+    // Fetch the actual profile data from database
+    const result = await query(
+      'SELECT * FROM profiles LIMIT 1'
+    );
+
+    if (result.rows.length === 0) {
+      // Return default profile structure if no profile exists
+      const defaultProfile = {
+        id: '1',
+        name: session.user?.name || '',
+        imageUrl: session.user?.image || '/images/placeholder-image.png',
+        skills: [],
+        location: '',
+        email: session.user?.email || '',
+        socialLinks: {
+          github: '',
+          linkedin: '',
+          website: ''
+        }
+      };
+      return NextResponse.json(defaultProfile);
+    }
+
+    const profile = result.rows[0];
     
-    // Create default profile if none exists
-    if (!profile) {
-      profile = await Profile.create(defaultProfile);
+    // Parse social_links JSONB field
+    let socialLinks = {};
+    try {
+      socialLinks = profile.social_links || {};
+    } catch (e) {
+      socialLinks = {};
     }
     
-    return NextResponse.json({
-      id: (profile._id as any).toString(),
-      name: profile.name,
-      imageUrl: profile.imageUrl,
-      skills: profile.skills,
-      location: profile.location,
-      email: profile.email,
-      socialLinks: profile.socialLinks
-    });
+    // Parse skills array
+    let skills = [];
+    try {
+      skills = profile.skills || [];
+    } catch (e) {
+      skills = [];
+    }
+    
+    // Format response to match frontend expectations
+    const formattedProfile = {
+      id: profile.id,
+      name: profile.name || '',
+      imageUrl: profile.image_url || '/images/placeholder-image.png',
+      skills: skills,
+      location: profile.location || '',
+      email: profile.email || '',
+      socialLinks: {
+        github: socialLinks.github || '',
+        linkedin: socialLinks.linkedin || '',
+        website: socialLinks.website || ''
+      }
+    };
+
+    return NextResponse.json(formattedProfile);
   } catch (error) {
-    console.error('Error fetching profile:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch profile data' },
-      { status: 500 }
-    );
+    console.error('Profile fetch error:', error);
+    return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
   }
 }
 
-export async function PUT(req: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
-    // Check authentication
     const session = await getServerSession(authOptions);
+    
     if (!session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const data = await req.json();
+    const data = await request.json();
     
-    // For development without MongoDB
-    if (useMockData()) {
-      const mockProfile = getMockProfile();
-      const updatedProfile = { ...mockProfile, ...data };
-      saveMockProfile(updatedProfile);
-      console.log('✅ Mock profile updated successfully');
-      return NextResponse.json(updatedProfile);
-    }
-
-    await dbConnect();
+    // Prepare social_links JSONB
+    const socialLinksJson = JSON.stringify({
+      github: data.socialLinks?.github || '',
+      linkedin: data.socialLinks?.linkedin || '',
+      website: data.socialLinks?.website || ''
+    });
     
-    // Find existing profile or create new one
-    let profile = await Profile.findOne({});
+    // Check if profile exists
+    const existingProfile = await query('SELECT id FROM profiles LIMIT 1');
     
-    if (profile) {
+    if (existingProfile.rows.length > 0) {
       // Update existing profile
-      profile = await Profile.findByIdAndUpdate(
-        profile._id,
-        { ...data, updatedAt: new Date() },
-        { new: true }
+      await query(
+        `UPDATE profiles SET 
+          name = $1, 
+          image_url = $2, 
+          skills = $3, 
+          location = $4, 
+          email = $5, 
+          social_links = $6,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $7`,
+        [
+          data.name,
+          data.imageUrl,
+          data.skills || [],
+          data.location || '',
+          data.email || '',
+          socialLinksJson,
+          existingProfile.rows[0].id
+        ]
       );
     } else {
-      // Create new profile
-      profile = await Profile.create({
-        ...defaultProfile,
-        ...data,
-        updatedAt: new Date()
-      });
-    }
-    
-    if (!profile) {
-      return NextResponse.json(
-        { error: 'Failed to save profile' },
-        { status: 500 }
+      // Insert new profile
+      await query(
+        `INSERT INTO profiles (
+          name, image_url, skills, location, email, social_links, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [
+          data.name,
+          data.imageUrl,
+          data.skills || [],
+          data.location || '',
+          data.email || '',
+          socialLinksJson
+        ]
       );
     }
     
-    return NextResponse.json({
-      id: (profile._id as any).toString(),
-      name: profile.name,
-      imageUrl: profile.imageUrl,
-      skills: profile.skills,
-      location: profile.location,
-      email: profile.email,
-      socialLinks: profile.socialLinks
-    });
+    // Return the updated profile data
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Error updating profile:', error);
-    return NextResponse.json(
-      { error: 'Failed to update profile data' },
-      { status: 500 }
-    );
+    console.error('Profile update error:', error);
+    return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
   }
 } 

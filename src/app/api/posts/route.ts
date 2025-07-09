@@ -1,71 +1,31 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth-config';
+import { PostService } from '@/lib/services/post-service';
+import { PermissionService } from '@/lib/services/permission-service';
 
-// Mock posts data store (replace with actual database in production)
-let mockPosts = [
-  {
-    id: '1',
-    title: 'Getting Started with Next.js and TypeScript',
-    slug: 'getting-started-with-nextjs-typescript',
-    content: '# Getting Started with Next.js and TypeScript\n\nNext.js 13+ with TypeScript provides an excellent development experience with type safety and modern React features...',
-    excerpt: 'Learn how to set up your first Next.js project with TypeScript and build modern applications with type safety.',
-    featuredImage: '/images/blog/nextjs-typescript.svg',
-    tags: ['Next.js', 'TypeScript', 'React', 'Web Development'],
-    published: true,
-    publishedAt: '2023-05-15T10:00:00Z',
-    createdAt: '2023-05-10T08:30:00Z',
-    updatedAt: '2023-05-15T09:45:00Z',
-    metaDescription: 'A comprehensive guide to getting started with Next.js and TypeScript for modern web development.',
-  },
-  {
-    id: '2',
-    title: 'Why I Switched to Tailwind CSS',
-    slug: 'why-i-switched-to-tailwind-css',
-    content: '# Why I Switched to Tailwind CSS\n\nTailwind CSS has revolutionized my development workflow with its utility-first approach...',
-    excerpt: 'Discover why Tailwind CSS has revolutionized my development workflow and how it can improve your styling approach.',
-    featuredImage: '/images/blog/tailwind-css.svg',
-    tags: ['CSS', 'Tailwind', 'Design', 'Development'],
-    published: true,
-    publishedAt: '2023-04-20T14:30:00Z',
-    createdAt: '2023-04-15T11:20:00Z',
-    updatedAt: '2023-04-20T13:15:00Z',
-    metaDescription: 'Learn why Tailwind CSS is becoming the go-to choice for modern web development.',
-  },
-  {
-    id: '3',
-    title: 'React Best Practices for 2024',
-    slug: 'react-best-practices-2024',
-    content: '# React Best Practices for 2024\n\nAs React continues to evolve, staying up-to-date with best practices is crucial for building maintainable applications...',
-    excerpt: 'Learn the latest React best practices, performance optimizations, and clean code techniques for modern development.',
-    featuredImage: '/images/blog/react-best-practices.svg',
-    tags: ['React', 'Performance', 'Best Practices', 'JavaScript'],
-    published: false,
-    createdAt: '2023-06-05T09:40:00Z',
-    updatedAt: '2023-06-07T16:25:00Z',
-    metaDescription: 'Essential React best practices for building high-quality applications in 2024.',
-  },
-  {
-    id: '4',
-    title: 'Modern Web Development Techniques',
-    slug: 'modern-web-development-techniques',
-    content: '# Modern Web Development Techniques\n\nThe web development landscape is constantly evolving with new tools, techniques, and methodologies...',
-    excerpt: 'Explore cutting-edge web development techniques, tools, and methodologies that are shaping the future of the web.',
-    featuredImage: '/images/blog/web-development.svg',
-    tags: ['Web Development', 'Performance', 'Tools', 'Architecture'],
-    published: true,
-    publishedAt: '2023-03-10T12:00:00Z',
-    createdAt: '2023-02-28T15:30:00Z',
-    updatedAt: '2023-03-10T11:45:00Z',
-    metaDescription: 'Practical techniques and tools for modern web development and architecture.',
-  }
-];
-
-// GET /api/posts - Get all posts
-export async function GET() {
+// GET /api/posts - Get all posts with permission filtering
+export async function GET(request: Request) {
   try {
-    // In a real application, fetch from database
-    return NextResponse.json(mockPosts);
+    // Get user session for permission filtering
+    const session = await getServerSession(authOptions);
+    const userEmail = session?.user?.email;
+
+    // Get posts with permission filtering
+    const posts = await PostService.getAllPosts(userEmail);
+
+    return NextResponse.json({
+      posts,
+      meta: {
+        total: posts.length,
+        filtered: userEmail ? true : false,
+        userContext: {
+          isAuthenticated: !!userEmail,
+          email: userEmail
+        }
+      }
+    });
   } catch (error) {
     console.error('Error fetching posts:', error);
     return NextResponse.json(
@@ -75,15 +35,24 @@ export async function GET() {
   }
 }
 
-// POST /api/posts - Create a new post
+// POST /api/posts - Create a new post (admin only)
 export async function POST(request: Request) {
   try {
     // Check authentication
-    const session = await getServerSession();
-    if (!session) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Authentication required' },
         { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    const isAdmin = await PermissionService.isUserAdmin(session.user.email);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
       );
     }
 
@@ -91,37 +60,23 @@ export async function POST(request: Request) {
     const postData = await request.json();
     
     // Validate required fields
-    if (!postData.title || !postData.slug || !postData.content || !postData.excerpt) {
+    if (!postData.title || !postData.slug || !postData.content) {
       return NextResponse.json(
-        { error: 'Missing required fields: title, slug, content, and excerpt are required' },
+        { error: 'Missing required fields: title, slug, and content are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate permission level
+    if (postData.permissionLevel && !PermissionService.isValidPermissionLevel(postData.permissionLevel)) {
+      return NextResponse.json(
+        { error: 'Invalid permission level. Must be one of: all, professional, personal' },
         { status: 400 }
       );
     }
     
-    // Check for duplicate slug
-    const slugExists = mockPosts.some(post => post.slug === postData.slug);
-    if (slugExists) {
-      return NextResponse.json(
-        { error: 'A post with this slug already exists' },
-        { status: 400 }
-      );
-    }
-    
-    const now = new Date().toISOString();
-    
-    // Create new post
-    const newPost = {
-      id: Date.now().toString(),
-      ...postData,
-      tags: postData.tags || [],
-      published: Boolean(postData.published),
-      createdAt: now,
-      updatedAt: now,
-      publishedAt: postData.published ? now : null,
-    };
-    
-    // In a real app, save to database
-    mockPosts.push(newPost);
+    // Create new post with PostService
+    const newPost = await PostService.createPost(postData, session.user.id || session.user.email);
     
     // Revalidate blog pages
     revalidatePath('/blog');
@@ -130,6 +85,15 @@ export async function POST(request: Request) {
     return NextResponse.json(newPost, { status: 201 });
   } catch (error) {
     console.error('Error creating post:', error);
+    
+    // Handle specific database errors
+    if (error.message.includes('duplicate') || error.message.includes('unique')) {
+      return NextResponse.json(
+        { error: 'A post with this slug already exists' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Failed to create post' },
       { status: 500 }

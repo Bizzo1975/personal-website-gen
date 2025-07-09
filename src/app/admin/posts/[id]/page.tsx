@@ -13,7 +13,15 @@ import { Checkbox } from '@/components/Checkbox';
 import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import { PostData } from '@/types/content';
 import { ContentPermissions } from '@/types/content/permissions';
-import { PermissionService } from '@/lib/services/permission-service';
+
+// Default permissions for public content
+const getDefaultPermissions = (): ContentPermissions => ({
+  level: 'all',
+  allowedRoles: ['admin', 'editor', 'author', 'subscriber', 'guest'],
+  allowedUsers: [],
+  restrictedUsers: [],
+  requiresAuth: false
+});
 
 interface PostEditFormData {
   title: string;
@@ -32,9 +40,7 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [permissions, setPermissions] = useState<ContentPermissions>(
-    PermissionService.getDefaultPermissions('all')
-  );
+  const [permissions, setPermissions] = useState<ContentPermissions>(getDefaultPermissions());
   const router = useRouter();
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<PostEditFormData>();
@@ -61,7 +67,7 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
         setValue('featuredImage', data.data.featuredImage || '');
         
         // Set permissions (use default if not present)
-        const postPermissions = data.data.permissions || PermissionService.getDefaultPermissions('all');
+        const postPermissions = data.data.permissions || getDefaultPermissions();
         setPermissions(postPermissions);
         setValue('permissions', postPermissions);
         

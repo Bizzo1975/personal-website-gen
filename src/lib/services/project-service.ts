@@ -1,227 +1,519 @@
-import dbConnect, { isMockMode } from '@/lib/db';
-import Project from '@/lib/models/Project';
-import { SortOrder } from 'mongoose';
+import { query } from '@/lib/db';
+import { Project, CreateProjectData, UpdateProjectData } from '@/types/project';
 
+export class ProjectService {
+  // Get all published projects with optional permission filtering
+  static async getAllProjects(userEmail?: string): Promise<Project[]> {
+    try {
+      let queryText = `
+        SELECT 
+          id,
+          title,
+          slug,
+          description,
+          content,
+          image,
+          technologies,
+          live_demo,
+          source_code,
+          featured,
+          permission_level,
+          status,
+          created_at,
+          updated_at
+        FROM projects 
+        WHERE status = 'published'
+        ORDER BY featured DESC, created_at DESC
+      `;
+      
+      const result = await query(queryText);
+      const projects = result.rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description,
+        content: row.content,
+        image: row.image,
+        technologies: row.technologies || [],
+        liveDemo: row.live_demo,
+        sourceCode: row.source_code,
+        featured: row.featured,
+        permissionLevel: row.permission_level,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+
+      // Filter by user permissions if userEmail is provided
+      if (userEmail) {
+        return await this.filterProjectsByPermissions(projects, userEmail);
+      }
+
+      // Return only public projects if no user context
+      return projects.filter(project => project.permissionLevel === 'all');
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      throw new Error('Failed to fetch projects from database');
+    }
+  }
+
+  // Get a single project by ID
+  static async getProjectById(id: string): Promise<Project | null> {
+    try {
+      const result = await query(
+        'SELECT * FROM projects WHERE id = $1',
+        [id]
+      );
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description,
+        content: row.content,
+        image: row.image,
+        technologies: row.technologies || [],
+        liveDemo: row.live_demo,
+        sourceCode: row.source_code,
+        featured: row.featured,
+        permissionLevel: row.permission_level,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    } catch (error) {
+      console.error('Failed to fetch project by ID:', error);
+      throw new Error('Failed to fetch project by ID from database');
+    }
+  }
+
+  // Get featured projects
+  static async getFeaturedProjects(userEmail?: string): Promise<Project[]> {
+    try {
+      const result = await query(
+        `SELECT * FROM projects 
+         WHERE featured = true AND status = 'published' 
+         ORDER BY created_at DESC`
+      );
+
+      const projects = result.rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description,
+        content: row.content,
+        image: row.image,
+        technologies: row.technologies || [],
+        liveDemo: row.live_demo,
+        sourceCode: row.source_code,
+        featured: row.featured,
+        permissionLevel: row.permission_level,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+
+      if (userEmail) {
+        return await this.filterProjectsByPermissions(projects, userEmail);
+      }
+
+      return projects.filter(project => project.permissionLevel === 'all');
+    } catch (error) {
+      console.error('Failed to fetch featured projects:', error);
+      throw new Error('Failed to fetch featured projects from database');
+    }
+  }
+
+  // Get a single project by slug
+  static async getProjectBySlug(slug: string, userEmail?: string): Promise<Project | null> {
+    try {
+      const result = await query(
+        'SELECT * FROM projects WHERE slug = $1 AND status = $2',
+        [slug, 'published']
+      );
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const row = result.rows[0];
+      const project: Project = {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description,
+        content: row.content,
+        image: row.image,
+        technologies: row.technologies || [],
+        liveDemo: row.live_demo,
+        sourceCode: row.source_code,
+        featured: row.featured,
+        permissionLevel: row.permission_level,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+
+      // Check if user has permission to view this project
+      if (project.permissionLevel !== 'all' && !userEmail) {
+        return null;
+      }
+
+      if (project.permissionLevel !== 'all' && userEmail) {
+        const hasPermission = await this.checkUserPermission(userEmail, project.permissionLevel);
+        if (!hasPermission) {
+          return null;
+        }
+      }
+
+      return project;
+    } catch (error) {
+      console.error('Failed to fetch project by slug:', error);
+      throw new Error('Failed to fetch project from database');
+    }
+  }
+
+  // Get projects by technology
+  static async getProjectsByTechnology(technology: string, userEmail?: string): Promise<Project[]> {
+    try {
+      const result = await query(
+        'SELECT * FROM projects WHERE $1 = ANY(technologies) AND status = $2 ORDER BY created_at DESC',
+        [technology, 'published']
+      );
+
+      const projects = result.rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description,
+        content: row.content,
+        image: row.image,
+        technologies: row.technologies || [],
+        liveDemo: row.live_demo,
+        sourceCode: row.source_code,
+        featured: row.featured,
+        permissionLevel: row.permission_level,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+
+      if (userEmail) {
+        return await this.filterProjectsByPermissions(projects, userEmail);
+      }
+
+      return projects.filter(project => project.permissionLevel === 'all');
+    } catch (error) {
+      console.error('Failed to fetch projects by technology:', error);
+      throw new Error('Failed to fetch projects by technology from database');
+    }
+  }
+
+  // Create a new project (admin only)
+  static async createProject(projectData: CreateProjectData, createdBy: string): Promise<Project> {
+    try {
+      const result = await query(
+        `INSERT INTO projects (
+          title, slug, description, content, image, technologies, 
+          live_demo, source_code, featured, permission_level, status, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+        RETURNING *`,
+        [
+          projectData.title,
+          projectData.slug,
+          projectData.description,
+          projectData.content,
+          projectData.image,
+          projectData.technologies,
+          projectData.liveDemo,
+          projectData.sourceCode,
+          projectData.featured || false,
+          projectData.permissionLevel || 'all',
+          projectData.status || 'draft',
+          createdBy
+        ]
+      );
+
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description,
+        content: row.content,
+        image: row.image,
+        technologies: row.technologies || [],
+        liveDemo: row.live_demo,
+        sourceCode: row.source_code,
+        featured: row.featured,
+        permissionLevel: row.permission_level,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      throw new Error('Failed to create project in database');
+    }
+  }
+
+  // Update a project (admin only)
+  static async updateProject(id: string, projectData: UpdateProjectData): Promise<Project> {
+    try {
+      const result = await query(
+        `UPDATE projects SET 
+          title = COALESCE($2, title),
+          slug = COALESCE($3, slug),
+          description = COALESCE($4, description),
+          content = COALESCE($5, content),
+          image = COALESCE($6, image),
+          technologies = COALESCE($7, technologies),
+          live_demo = COALESCE($8, live_demo),
+          source_code = COALESCE($9, source_code),
+          featured = COALESCE($10, featured),
+          permission_level = COALESCE($11, permission_level),
+          status = COALESCE($12, status),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 RETURNING *`,
+        [
+          id,
+          projectData.title,
+          projectData.slug,
+          projectData.description,
+          projectData.content,
+          projectData.image,
+          projectData.technologies,
+          projectData.liveDemo,
+          projectData.sourceCode,
+          projectData.featured,
+          projectData.permissionLevel,
+          projectData.status
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error('Project not found');
+      }
+
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description,
+        content: row.content,
+        image: row.image,
+        technologies: row.technologies || [],
+        liveDemo: row.live_demo,
+        sourceCode: row.source_code,
+        featured: row.featured,
+        permissionLevel: row.permission_level,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    } catch (error) {
+      console.error('Failed to update project:', error);
+      throw new Error('Failed to update project in database');
+    }
+  }
+
+  // Delete a project (admin only)
+  static async deleteProject(id: string): Promise<boolean> {
+    try {
+      const result = await query('DELETE FROM projects WHERE id = $1', [id]);
+      return result.rowCount > 0;
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      throw new Error('Failed to delete project from database');
+    }
+  }
+
+  // Get all projects for admin (including unpublished)
+  static async getAllProjectsForAdmin(): Promise<Project[]> {
+    try {
+      const result = await query(
+        'SELECT * FROM projects ORDER BY created_at DESC'
+      );
+
+      return result.rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description,
+        content: row.content,
+        image: row.image,
+        technologies: row.technologies || [],
+        liveDemo: row.live_demo,
+        sourceCode: row.source_code,
+        featured: row.featured,
+        permissionLevel: row.permission_level,
+        status: row.status,
+        createdBy: row.created_by,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+    } catch (error) {
+      console.error('Failed to fetch projects for admin:', error);
+      throw new Error('Failed to fetch projects for admin from database');
+    }
+  }
+
+  // Helper method to check user permissions
+  private static async checkUserPermission(email: string, requiredLevel: string): Promise<boolean> {
+    try {
+      const result = await query(
+        'SELECT has_professional_access, has_personal_access FROM user_access_levels WHERE email = $1 AND is_active = true',
+        [email]
+      );
+
+      if (result.rows.length === 0) {
+        return false;
+      }
+
+      const { has_professional_access, has_personal_access } = result.rows[0];
+
+      if (requiredLevel === 'professional' && has_professional_access) {
+        return true;
+      }
+
+      if (requiredLevel === 'personal' && has_personal_access) {
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Failed to check user permission:', error);
+      return false;
+    }
+  }
+
+  // Helper method to filter projects by user permissions
+  private static async filterProjectsByPermissions(projects: Project[], userEmail: string): Promise<Project[]> {
+    try {
+      const result = await query(
+        'SELECT has_professional_access, has_personal_access FROM user_access_levels WHERE email = $1 AND is_active = true',
+        [userEmail]
+      );
+
+      if (result.rows.length === 0) {
+        // User has no special access, return only public projects
+        return projects.filter(project => project.permissionLevel === 'all');
+      }
+
+      const { has_professional_access, has_personal_access } = result.rows[0];
+
+      return projects.filter(project => {
+        if (project.permissionLevel === 'all') return true;
+        if (project.permissionLevel === 'professional' && has_professional_access) return true;
+        if (project.permissionLevel === 'personal' && has_personal_access) return true;
+        return false;
+      });
+    } catch (error) {
+      console.error('Failed to filter projects by permissions:', error);
+      // Return only public projects on error
+      return projects.filter(project => project.permissionLevel === 'all');
+    }
+  }
+}
+
+// ProjectData interface for backward compatibility
 export interface ProjectData {
   id: string;
   title: string;
   slug: string;
   description: string;
+  content?: string;
   image?: string;
   technologies: string[];
   liveDemo?: string;
   sourceCode?: string;
   featured: boolean;
+  permissionLevel: 'all' | 'professional' | 'personal';
+  status: 'draft' | 'scheduled' | 'published';
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Helper to provide robust image paths with fallbacks
-export function getImagePath(imagePath: string | undefined): string {
-  if (!imagePath) return '/images/projects/placeholder.jpg';
-  
-  // For static image paths, always return the direct path
-  if (imagePath.startsWith('/')) {
-    // Clean up any potential double slashes
-    const cleanPath = imagePath.replace(/\/+/g, '/');
-    
-    // Add a development cache-busting parameter if in a local image path
-    if (process.env.NODE_ENV === 'development') {
-      return `${cleanPath}`;
-    }
-    
-    return cleanPath;
-  }
-  
-  // For external images, validate URL and return as is
-  try {
-    new URL(imagePath);
-    return imagePath;
-  } catch (e) {
-    console.warn(`Invalid image URL: ${imagePath}, using placeholder instead`);
-    return '/images/projects/placeholder.jpg';
-  }
-}
-
-// Mock data for development when MongoDB is not available
-const mockProjects: ProjectData[] = [
-  {
-    id: '1',
-    title: 'E-Commerce Platform',
-    slug: 'ecommerce-platform',
-    description: 'A full-featured online store with payment integration, user authentication, and admin dashboard.',
-    image: '/images/projects/ecommerce-platform.svg',
-    technologies: ['React', 'Node.js', 'MongoDB', 'Stripe'],
-    liveDemo: 'https://example-ecommerce.com',
-    sourceCode: 'https://github.com/johndoe/ecommerce-platform',
-    featured: true,
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2023-02-20')
-  },
-  {
-    id: '2',
-    title: 'Task Management App',
-    slug: 'task-management-app',
-    description: 'A productivity tool for managing tasks, projects, and team collaboration with real-time updates.',
-    image: '/images/projects/task-management.svg',
-    technologies: ['Next.js', 'TypeScript', 'Prisma', 'PostgreSQL'],
-    liveDemo: 'https://taskmaster-app.com',
-    sourceCode: 'https://github.com/johndoe/task-management',
-    featured: true,
-    createdAt: new Date('2023-03-10'),
-    updatedAt: new Date('2023-04-05')
-  },
-  {
-    id: '3',
-    title: 'AI Image Generator',
-    slug: 'ai-image-generator',
-    description: 'An application that generates images from text descriptions using AI models and APIs.',
-    image: '/images/projects/ai-image-generator.svg',
-    technologies: ['Python', 'TensorFlow', 'FastAPI', 'React'],
-    liveDemo: 'https://ai-imagine.com',
-    sourceCode: 'https://github.com/johndoe/ai-image-gen',
-    featured: true,
-    createdAt: new Date('2023-05-15'),
-    updatedAt: new Date('2023-06-01')
-  },
-  {
-    id: '4',
-    title: 'Weather Dashboard',
-    slug: 'weather-dashboard',
-    description: 'A responsive weather application with detailed forecasts and interactive charts.',
-    image: '/images/projects/weather-dashboard.svg',
-    technologies: ['JavaScript', 'React', 'Weather API', 'Chart.js'],
-    liveDemo: 'https://weather-dashboard.com',
-    sourceCode: 'https://github.com/johndoe/weather-dashboard',
-    featured: false,
-    createdAt: new Date('2023-07-10'),
-    updatedAt: new Date('2023-08-15')
-  }
-];
-
-export interface ProjectQuery {
-  featured?: boolean;
+// Simple function exports for backward compatibility
+export interface GetProjectsOptions {
   limit?: number;
-  slug?: string;
-  skip?: number;
-  sort?: Record<string, SortOrder>;
+  featured?: boolean;
+  technology?: string;
+  userEmail?: string;
 }
 
-// Helper function to determine if we should use mock data
-const useMockData = () => {
-  return isMockMode();
-};
-
-export async function getProjects(query: ProjectQuery = {}): Promise<ProjectData[]> {
-  // Use mock data if MongoDB is not available
-  if (useMockData()) {
-    const { featured, limit = 10, skip = 0 } = query;
-    
-    let filteredProjects = [...mockProjects];
-    
-    // Apply filters
-    if (featured !== undefined) {
-      filteredProjects = filteredProjects.filter(project => project.featured === featured);
-    }
-    
-    // Apply sorting - default to newest first
-    filteredProjects.sort((a, b) => {
-      return b.updatedAt.getTime() - a.updatedAt.getTime();
-    });
-    
-    // Process image paths to ensure they're robust
-    filteredProjects = filteredProjects.map(project => ({
-      ...project,
-      image: getImagePath(project.image)
-    }));
-    
-    // Apply pagination
-    return filteredProjects.slice(skip, skip + limit);
-  }
-  
-  // Otherwise, use MongoDB
+export async function getProjects(options: GetProjectsOptions = {}): Promise<ProjectData[]> {
   try {
-    await dbConnect();
+    const { limit, featured, technology, userEmail } = options;
     
-    const { featured, limit = 10, skip = 0, sort = { updatedAt: -1 } } = query;
+    let projects: Project[];
     
-    // Build query filter
-    const filter: Record<string, any> = {};
-    if (featured !== undefined) {
-      filter.featured = featured;
+    if (featured) {
+      projects = await ProjectService.getFeaturedProjects(userEmail);
+    } else if (technology) {
+      projects = await ProjectService.getProjectsByTechnology(technology, userEmail);
+    } else {
+      projects = await ProjectService.getAllProjects(userEmail);
     }
     
-    const projects = await Project.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
+    // Apply limit if specified
+    if (limit && limit > 0) {
+      projects = projects.slice(0, limit);
+    }
     
-    return projects.map((project: any) => ({
-      id: project._id.toString(),
+    // Convert to ProjectData format
+    return projects.map(project => ({
+      id: project.id,
       title: project.title,
       slug: project.slug,
       description: project.description,
-      image: getImagePath(project.image),
+      content: project.content,
+      image: project.image,
       technologies: project.technologies,
       liveDemo: project.liveDemo,
       sourceCode: project.sourceCode,
       featured: project.featured,
+      permissionLevel: project.permissionLevel,
+      status: project.status,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt
     }));
   } catch (error) {
-    console.error('Error fetching projects:', error);
-    // Return mock projects as fallback with processed image paths
-    return mockProjects.map(project => ({
-      ...project,
-      image: getImagePath(project.image)
-    }));
+    console.error('Error in getProjects:', error);
+    return [];
   }
 }
 
-export async function getProjectBySlug(slug: string): Promise<ProjectData | null> {
-  // Use mock data if MongoDB is not available
-  if (useMockData()) {
-    const project = mockProjects.find(p => p.slug === slug);
-    if (!project) return null;
-    
-    // Ensure the image path is robust
-    return {
-      ...project,
-      image: getImagePath(project.image)
-    };
-  }
-  
-  // Otherwise, use MongoDB
+export async function getProjectBySlug(slug: string, userEmail?: string): Promise<ProjectData | null> {
   try {
-    await dbConnect();
-    
-    const project = await Project.findOne({ slug });
+    const project = await ProjectService.getProjectBySlug(slug, userEmail);
     if (!project) return null;
     
     return {
-      id: (project as any)._id.toString(),
+      id: project.id,
       title: project.title,
       slug: project.slug,
       description: project.description,
-      image: getImagePath(project.image),
+      content: project.content,
+      image: project.image,
       technologies: project.technologies,
       liveDemo: project.liveDemo,
       sourceCode: project.sourceCode,
       featured: project.featured,
+      permissionLevel: project.permissionLevel,
+      status: project.status,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt
     };
   } catch (error) {
-    console.error('Error fetching project by slug:', error);
-    
-    // Fallback to mock data
-    const project = mockProjects.find(p => p.slug === slug);
-    if (!project) return null;
-    
-    return {
-      ...project,
-      image: getImagePath(project.image)
-    };
+    console.error('Error in getProjectBySlug:', error);
+    return null;
   }
-} 
+}  
+// ProjectData interface for backward compatibility 

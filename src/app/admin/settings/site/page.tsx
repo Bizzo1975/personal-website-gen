@@ -7,19 +7,40 @@ import AdminLayout from '../../components/AdminLayout';
 import AdminPageLayout from '../../components/AdminPageLayout';
 import AdminFormLayout from '../../components/AdminFormLayout';
 import { AdminInput, AdminTextarea } from '../../components/AdminFormField';
-import { SiteSettings, getSiteSettings, updateSiteSettings, uploadLogo } from '@/lib/services/site-settings-service';
+
+interface NavbarLink {
+  label: string;
+  url: string;
+  isExternal: boolean;
+}
+
+interface SiteSettings {
+  id?: string;
+  logoUrl: string;
+  logoText: string;
+  footerText: string;
+  bioText: string;
+  navbarStyle: string;
+  navbarLinks: NavbarLink[];
+}
 
 export default function SiteSettingsPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [settings, setSettings] = useState<SiteSettings>({
-    logoUrl: '/images/wizard-icon.svg',
-    logoText: 'John Doe',
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+    logoUrl: '/images/jlk-logo.png',
+    logoText: 'Jonathan L Keck',
     footerText: 'Built with Next.js and Tailwind CSS',
     bioText: 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.',
     navbarStyle: 'default',
-    navbarLinks: []
+    navbarLinks: [
+      { label: 'Home', url: '/', isExternal: false },
+      { label: 'About', url: '/about', isExternal: false },
+      { label: 'Projects', url: '/projects', isExternal: false },
+      { label: 'Blog', url: '/blog', isExternal: false },
+      { label: 'Contact', url: '/contact', isExternal: false },
+    ]
   });
   
   const [loading, setLoading] = useState(true);
@@ -28,12 +49,17 @@ export default function SiteSettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Fetch the site settings
+  // Fetch the site settings using client-side API call
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const data = await getSiteSettings();
-        setSettings(data);
+        const response = await fetch('/api/site-settings');
+        if (response.ok) {
+          const data = await response.json();
+          setSiteSettings(data);
+        } else {
+          throw new Error('Failed to fetch site settings');
+        }
         setLoading(false);
       } catch (err) {
         console.error('Error fetching site settings:', err);
@@ -47,8 +73,8 @@ export default function SiteSettingsPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setSettings({
-      ...settings,
+    setSiteSettings({
+      ...siteSettings,
       [name]: value,
     });
   };
@@ -58,19 +84,32 @@ export default function SiteSettingsPage() {
       const file = e.target.files[0];
       
       try {
-        setUploadProgress(1); // Start progress
-        const result = await uploadLogo(file);
-        setUploadProgress(100); // Complete progress
+        setUploadProgress(1);
         
-        setSettings({
-          ...settings,
-          logoUrl: result.path
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'logo');
+        
+        const response = await fetch('/api/admin/upload', {
+          method: 'POST',
+          body: formData,
         });
         
-        // Reset progress after a delay
-        setTimeout(() => {
-          setUploadProgress(0);
-        }, 1000);
+        if (response.ok) {
+          const result = await response.json();
+          setUploadProgress(100);
+          
+          setSiteSettings({
+            ...siteSettings,
+            logoUrl: result.path
+          });
+          
+          setTimeout(() => {
+            setUploadProgress(0);
+          }, 1000);
+        } else {
+          throw new Error('Upload failed');
+        }
       } catch (error) {
         console.error('Error uploading logo:', error);
         setError('Failed to upload logo');
@@ -92,14 +131,22 @@ export default function SiteSettingsPage() {
     setSaveSuccess(false);
     
     try {
-      await updateSiteSettings(settings);
+      const response = await fetch('/api/site-settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(siteSettings),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save site settings');
+      }
       
       // Revalidate the pages that use site settings
       try {
-        // Array of paths to revalidate
         const pathsToRevalidate = ['/', '/about', '/contact', '/blog', '/projects'];
         
-        // Revalidate all paths sequentially
         for (const path of pathsToRevalidate) {
           const revalidateResponse = await fetch(`/api/revalidate?path=${path}`, {
             method: 'POST',
@@ -170,7 +217,7 @@ export default function SiteSettingsPage() {
                   
                   <div className="w-32 h-32 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden relative mb-3">
                     <Image
-                      src={settings.logoUrl}
+                      src={siteSettings.logoUrl}
                       alt="Website Logo"
                       fill
                       style={{ objectFit: 'contain' }}
@@ -200,108 +247,41 @@ export default function SiteSettingsPage() {
                   id="logoText"
                   label="Logo Text"
                   name="logoText"
-                  value={settings.logoText}
+                  value={siteSettings.logoText}
                   onChange={handleInputChange}
-                  placeholder="Enter the text to display next to your logo"
-                  required
+                  placeholder="Enter your name or brand"
                 />
                 
-                <div className="mb-4">
-                  <label htmlFor="footerText" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Footer Text
-                  </label>
-                  <textarea
-                    id="footerText"
-                    name="footerText"
-                    value={settings.footerText}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-md resize-y bg-white dark:bg-slate-800"
-                    placeholder="Enter the text to display in the footer. This can be a longer paragraph describing your site, copyright info, etc."
-                    required
-                  />
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    This text appears in the footer of every page. You can include a brief description or copyright information.
-                  </p>
-                </div>
-                
-                <div className="mb-4">
-                  <label htmlFor="bioText" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Bio Text
-                  </label>
-                  <textarea
-                    id="bioText"
-                    name="bioText"
-                    value={settings.bioText}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-md resize-y bg-white dark:bg-slate-800"
-                    placeholder="Enter your bio or about text to display in the footer. This should be a brief professional description."
-                    required
-                  />
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    This bio appears in the footer and describes you or your business. Keep it concise but informative.
-                  </p>
-                </div>
+                <AdminTextarea
+                  id="bioText"
+                  label="Bio Text"
+                  name="bioText"
+                  value={siteSettings.bioText}
+                  onChange={handleInputChange}
+                  placeholder="Brief description about yourself"
+                  rows={3}
+                />
               </div>
             </div>
           </div>
           
           <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4">Navigation Style</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {['default', 'transparent', 'sticky'].map((style) => (
-                <div 
-                  key={style}
-                  onClick={() => setSettings({ ...settings, navbarStyle: style })}
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    settings.navbarStyle === style 
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
-                      : 'border-slate-200 dark:border-slate-700 hover:border-primary-200 dark:hover:border-primary-800'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium capitalize">{style}</h4>
-                    {settings.navbarStyle === style && (
-                      <span className="text-primary-600 dark:text-primary-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </span>
-                    )}
-                  </div>
-                  <div className="bg-slate-100 dark:bg-slate-800 h-12 rounded-md overflow-hidden relative">
-                    <div className={`absolute top-0 left-0 right-0 h-10 ${
-                      style === 'transparent' 
-                        ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur' 
-                        : style === 'sticky' 
-                        ? 'bg-white dark:bg-slate-900 shadow-md' 
-                        : 'bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800'
-                    }`}>
-                      <div className="mx-2 h-full flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-primary-500"></div>
-                        <div className="h-1.5 w-10 bg-slate-300 dark:bg-slate-700 rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <h3 className="text-lg font-semibold mb-4">Footer Settings</h3>
+            <AdminInput
+              id="footerText"
+              label="Footer Text"
+              name="footerText"
+              value={siteSettings.footerText}
+              onChange={handleInputChange}
+              placeholder="e.g., Built with Next.js and Tailwind CSS"
+            />
           </div>
           
-          <div className="flex justify-end space-x-4">
-            <button
-              type="button"
-              className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-              onClick={() => router.back()}
-              disabled={saving}
-            >
-              Cancel
-            </button>
+          <div className="flex justify-end">
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white rounded-md transition-colors"
               disabled={saving}
+              className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Settings'}
             </button>

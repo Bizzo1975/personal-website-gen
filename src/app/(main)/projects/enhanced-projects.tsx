@@ -614,12 +614,11 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
       <section className="section-modern bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
         <div className="container-modern">
           <NewsletterSignup
-            variant="inline"
+            variant="compact"
             title="Get Project Updates"
-            description="Stay updated with my latest projects, case studies, and development insights. Join fellow developers and get exclusive behind-the-scenes content."
-            incentive="💡 Plus early access to new projects, code snippets, and development tutorials"
+            description="Subscribe to be notified when new projects are released."
             showSocialProof={true}
-            subscriberCount={1847}
+            subscriberCount={127}
           />
         </div>
       </section>
@@ -629,11 +628,10 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
         <div className="container-modern">
           <NewsletterSignup
             variant="inline"
-            title="Get Project Updates"
-            description="Stay updated with my latest projects, case studies, and development insights. Join fellow developers and get exclusive behind-the-scenes content."
-            incentive="💡 Plus early access to new projects, code snippets, and development tutorials"
+            title="Stay Updated"
+            description="Get notified about new projects and development insights delivered to your inbox."
             showSocialProof={true}
-            subscriberCount={1847}
+            subscriberCount={127}
           />
         </div>
       </section>

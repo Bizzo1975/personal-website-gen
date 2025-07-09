@@ -53,127 +53,151 @@ function checkRateLimit(ip: string): boolean {
 
 // This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
-  // Get the pathname of the request
-  const path = request.nextUrl.pathname;
+  const { pathname } = request.nextUrl;
+
+  // Skip middleware for certain paths
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/favicon.ico') ||
+    pathname.startsWith('/images/') ||
+    pathname.startsWith('/uploads/') ||
+    pathname.includes('.') ||
+    pathname === '/api/test' ||
+    pathname === '/api/health' ||
+    pathname === '/api/rss'
+  ) {
+    return NextResponse.next();
+  }
+
+  // Enhanced security headers
+  const response = NextResponse.next();
   
-  // Auth routes that should be publicly accessible
-  const isAuthRoute = path === '/admin/login' || path === '/admin/signup' || path === '/admin';
-  const isApiAuthRoute = path.startsWith('/api/auth/');
-  
-  // Check if the request is for the admin section but not a public auth route
-  if (path.startsWith('/admin') && !isAuthRoute && !isApiAuthRoute) {
-    console.log(`Checking auth for protected route: ${path}`);
+  // Development mode - more relaxed CSP for hot reloading
+  if (process.env.NODE_ENV === 'development') {
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; " +
+      "font-src 'self' data:; " +
+      "connect-src 'self' ws: wss:; " +
+      "frame-ancestors 'none';"
+    );
+  } else {
+    // Production CSP
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; " +
+      "font-src 'self' data:; " +
+      "connect-src 'self'; " +
+      "frame-ancestors 'none';"
+    );
+  }
+
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+  // Check for admin routes (EXCLUDE login page from auth check)
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    console.log(`Checking auth for protected route: ${pathname}`);
     
-    // Check if the user is authenticated
-    const session = await getToken({ 
-      req: request, 
+    const token = await getToken({ 
+      req: request,
       secret: process.env.NEXTAUTH_SECRET 
     });
-    
-    console.log(`Auth check result: ${session ? 'Authenticated' : 'Not authenticated'}`);
-    
-    if (!session) {
-      // Redirect to login page if not authenticated
+
+    if (!token) {
+      console.log('Auth check result: Not authenticated');
+      const loginUrl = new URL('/admin/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (token.role !== 'admin') {
+      console.log('Auth check result: Insufficient permissions');
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
-    
-    // Role-based access control for admin routes
-    // If we're accessing admin routes, verify user has admin role
-    // Skip this check for the dashboard which all authenticated users can access
-    if (path.startsWith('/admin') && 
-        !path.startsWith('/admin/dashboard') && 
-        path !== '/admin' && 
-        session.role !== 'admin') {
-      console.log(`Access denied to: ${path} - User role: ${session.role || 'undefined'}`);
-      
-      // Redirect to dashboard with access denied message
-      const redirectUrl = new URL('/admin/dashboard', request.url);
-      redirectUrl.searchParams.set('error', 'access_denied');
-      return NextResponse.redirect(redirectUrl);
-    }
+
+    console.log('Auth check result: Authenticated');
   }
-  
-  // Add CSRF protection for API routes that handle state changes
-  if (path.startsWith('/api/') && 
-      !path.startsWith('/api/auth') && 
-      (request.method === 'POST' || 
-       request.method === 'PUT' || 
-       request.method === 'DELETE')) {
-    
-    // Apply rate limiting for API endpoints
-    const ip = request.ip || 'unknown';
-    if (!checkRateLimit(ip)) {
+
+  // API route protection for write operations
+  if (pathname.startsWith('/api/') && ['POST', 'PUT', 'DELETE'].includes(request.method)) {
+    // Skip auth check for certain public APIs
+    if (
+      pathname === '/api/contact' ||
+      pathname === '/api/newsletter' ||
+      pathname === '/api/comments' ||
+      pathname.startsWith('/api/auth/')
+    ) {
+      return response;
+    }
+
+    // Check authentication for write operations
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET 
+    });
+
+    if (!token) {
       return new NextResponse(
-        JSON.stringify({ error: 'Too many requests, please try again later' }),
-        { 
-          status: 429,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Retry-After': '60'
-          }
-        }
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    
-    // Verify the referer header to prevent CSRF attacks
-    const referer = request.headers.get('referer');
-    const host = request.headers.get('host');
-    
-    // If referer is missing or doesn't match our host, reject the request
-    if (!referer || !host || !referer.includes(host)) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Invalid cross-site request' }),
-        { 
-          status: 403,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-    }
-    
-    // For admin API routes, verify user has admin role
-    if (path.startsWith('/api/admin')) {
-      const session = await getToken({ 
-        req: request, 
-        secret: process.env.NEXTAUTH_SECRET 
-      });
-      
-      if (!session || session.role !== 'admin') {
+
+    // Admin-only operations
+    if (['admin', 'users', 'pages', 'posts', 'projects', 'settings', 'media'].some(path => 
+      pathname.includes(`/api/${path}`) || pathname.includes(`/api/admin/`)
+    )) {
+      if (token.role !== 'admin') {
         return new NextResponse(
-          JSON.stringify({ error: 'Unauthorized access to admin API' }),
-          { 
-            status: 401,
-            headers: { 'Content-Type': 'application/json' }
-          }
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
         );
       }
     }
-  }
-  
-  // Add security headers for sensitive endpoints
-  if (path.startsWith('/api/auth') || 
-      path.includes('/admin') || 
-      path.includes('/login') ||
-      path.includes('/signup')) {
-    const response = NextResponse.next();
-    
-    // Add security headers
-    response.headers.set('X-Frame-Options', 'DENY');
-    response.headers.set('X-Content-Type-Options', 'nosniff');
-    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-    response.headers.set('Content-Security-Policy', 
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+
+    // Verify the referer header to prevent CSRF attacks
+    const referer = request.headers.get('referer');
+    const host = request.headers.get('host');
+
+    // Enhanced referer check - allow same-origin requests and localhost
+    const isLocalhost = host?.includes('localhost') || host?.includes('127.0.0.1');
+    const isValidReferer = referer && host && (
+      referer.includes(host) || 
+      (isLocalhost && referer.includes('localhost')) ||
+      (isLocalhost && referer.includes('127.0.0.1'))
     );
-    
-    return response;
+
+    if (!referer || !host || !isValidReferer) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Invalid cross-site request' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
   }
-  
-  return NextResponse.next();
+
+  return response;
 }
 
 // Specify which routes this middleware should run for
 export const config = {
   matcher: [
-    // Apply to all routes except static files and api auth routes
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }; 

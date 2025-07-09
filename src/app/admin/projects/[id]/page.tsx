@@ -13,7 +13,15 @@ import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
 import { BiSave } from 'react-icons/bi';
 import { ContentPermissions } from '@/types/content/permissions';
-import { PermissionService } from '@/lib/services/permission-service';
+
+// Default permissions for public content
+const getDefaultPermissions = (): ContentPermissions => ({
+  level: 'all',
+  allowedRoles: ['admin', 'editor', 'author', 'subscriber', 'guest'],
+  allowedUsers: [],
+  restrictedUsers: [],
+  requiresAuth: false
+});
 
 interface ProjectData {
   id: string;
@@ -47,9 +55,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [permissions, setPermissions] = useState<ContentPermissions>(
-    PermissionService.getDefaultPermissions('all')
-  );
+  const [permissions, setPermissions] = useState<ContentPermissions>(getDefaultPermissions());
   const router = useRouter();
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<ProjectEditFormData>();
@@ -76,7 +82,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
         setValue('featured', data.featured || data.data?.featured || false);
         
         // Set permissions (use default if not present)
-        const projectPermissions = data.permissions || data.data?.permissions || PermissionService.getDefaultPermissions('all');
+        const projectPermissions = data.permissions || data.data?.permissions || getDefaultPermissions();
         setPermissions(projectPermissions);
         setValue('permissions', projectPermissions);
         

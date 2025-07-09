@@ -1,120 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import dbConnect, { isMockMode } from '@/lib/db';
-import Post from '@/lib/models/Post';
-import Project from '@/lib/models/Project';
+import { authOptions } from '@/lib/auth-config';
+import { PostService } from '@/lib/services/post-service';
+import { ProjectService } from '@/lib/services/project-service';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await dbConnect();
+    const { searchParams } = new URL(request.url);
+    const statusFilter = searchParams.get('status') || 'draft';
 
-    if (isMockMode()) {
-      // Return mock content items with lastModified field
-      const mockContentItems = [
-        {
-          id: '1',
-          title: 'Getting Started with Next.js 14',
-          slug: 'getting-started-nextjs-14',
-          type: 'post',
-          status: 'published',
-          publishedAt: '2024-01-15T10:00:00Z',
-          lastModified: '2024-01-15T15:30:00Z',
-          tags: ['Next.js', 'React', 'JavaScript'],
-          author: 'Admin User'
-        },
-        {
-          id: '2',
-          title: 'Advanced TypeScript Patterns',
-          slug: 'advanced-typescript-patterns',
-          type: 'post',
-          status: 'draft',
-          lastModified: '2024-01-14T16:45:00Z',
-          tags: ['TypeScript', 'Patterns', 'Development'],
-          author: 'Admin User'
-        },
-        {
-          id: '3',
-          title: 'E-commerce Platform',
-          slug: 'ecommerce-platform',
-          type: 'project',
-          status: 'published',
-          publishedAt: '2024-01-10T14:30:00Z',
-          lastModified: '2024-01-10T14:30:00Z',
-          tags: ['React', 'Node.js', 'MongoDB'],
-          author: 'Admin User'
-        },
-        {
-          id: '4',
-          title: 'Portfolio Website',
-          slug: 'portfolio-website',
-          type: 'project',
-          status: 'published',
-          publishedAt: '2024-01-05T09:15:00Z',
-          lastModified: '2024-01-05T09:15:00Z',
-          tags: ['Next.js', 'Tailwind CSS'],
-          author: 'Admin User'
-        },
-        {
-          id: '5',
-          title: 'About Page',
-          slug: 'about',
-          type: 'page',
-          status: 'published',
-          publishedAt: '2024-01-01T12:00:00Z',
-          lastModified: '2024-01-01T12:00:00Z',
-          tags: [],
-          author: 'Admin User'
-        }
-      ];
-
-      return NextResponse.json(mockContentItems);
-    }
-
-    // Get all posts and projects
-    const [posts, projects] = await Promise.all([
-      Post.find({}).select('title slug published date tags updatedAt'),
-      Project.find({}).select('title slug featured technologies createdAt')
+    // Fetch all posts and projects for admin
+    const [allPosts, allProjects] = await Promise.all([
+      PostService.getAllPostsForAdmin(),
+      ProjectService.getAllProjectsForAdmin()
     ]);
 
-    const contentItems = [
-      ...posts.map(post => ({
-        id: (post._id as any).toString(),
-        title: post.title,
-        slug: post.slug,
-        type: 'post',
-        status: post.published ? 'published' : 'draft',
-        publishedAt: post.published ? post.date : null,
-        lastModified: post.updatedAt || new Date().toISOString(),
-        tags: post.tags || [],
-        author: 'Admin User'
-      })),
-      ...projects.map(project => ({
-        id: (project._id as any).toString(),
-        title: project.title,
-        slug: project.slug,
-        type: 'project',
-        status: 'published', // Projects don't have published field, assume all are published
-        publishedAt: project.createdAt,
-        lastModified: project.createdAt || new Date().toISOString(),
-        tags: project.technologies || [],
-        author: 'Admin User'
-      }))
-    ];
+    // Filter by status and format for content management page
+    const filteredPosts = allPosts.filter(post => post.status === statusFilter);
+    const filteredProjects = allProjects.filter(project => project.status === statusFilter);
 
-    return NextResponse.json(contentItems);
+    // Format posts for content management page
+    const formattedPosts = filteredPosts.map(post => ({
+      id: post.id,
+      title: post.title,
+      type: 'post' as const,
+      author: post.author || 'Unknown',
+      lastModified: post.updatedAt.toISOString(),
+      status: post.status || (post.published ? 'published' : 'draft'),
+      collaborators: [], // TODO: Implement collaborators if needed
+      template: undefined, // TODO: Implement templates if needed
+      comments: 0 // TODO: Implement comments count if needed
+    }));
 
+    // Format projects for content management page
+    const formattedProjects = filteredProjects.map(project => ({
+      id: project.id,
+      title: project.title,
+      type: 'project' as const,
+      author: 'Admin', // TODO: Add createdBy field to ProjectService
+      lastModified: project.updatedAt.toISOString(),
+      status: project.status,
+      collaborators: [], // TODO: Implement collaborators if needed
+      template: undefined, // TODO: Implement templates if needed
+      comments: 0 // TODO: Implement comments count if needed
+    }));
+
+    // Combine and sort by last modified date
+    const allContentItems = [...formattedPosts, ...formattedProjects]
+      .sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
+
+    return NextResponse.json(allContentItems);
   } catch (error) {
     console.error('Content items API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch content items' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 
 

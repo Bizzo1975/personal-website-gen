@@ -9,7 +9,6 @@ import {
   DEFAULT_PERMISSION_TEMPLATES,
   PermissionTemplate
 } from '@/types/content/permissions';
-import { PermissionService } from '@/lib/services/permission-service';
 import Button from '@/components/Button';
 import { 
   PlusIcon, 
@@ -21,6 +20,68 @@ import {
   UserIcon,
   ClockIcon
 } from '@heroicons/react/24/outline';
+
+// Client-side utility functions to replace server-side PermissionService
+const validatePermissions = (permissions: ContentPermissions): string[] => {
+  const errors: string[] = [];
+  
+  if (!permissions.level) {
+    errors.push('Permission level is required');
+  }
+  
+  if (!permissions.allowedRoles || permissions.allowedRoles.length === 0) {
+    errors.push('At least one role must be allowed');
+  }
+  
+  if (permissions.level === 'personal' && !permissions.requiresAuth) {
+    errors.push('Personal content must require authentication');
+  }
+  
+  return errors;
+};
+
+const createPermissionsFromTemplate = (templateId: string): ContentPermissions => {
+  const template = DEFAULT_PERMISSION_TEMPLATES.find(t => t.id === templateId);
+  if (!template) {
+    return {
+      level: 'all',
+      allowedRoles: ['admin', 'editor', 'author', 'subscriber', 'guest'],
+      allowedUsers: [],
+      restrictedUsers: [],
+      requiresAuth: false
+    };
+  }
+  
+  return {
+    level: template.level,
+    allowedRoles: template.defaultRoles,
+    allowedUsers: [],
+    restrictedUsers: [],
+    requiresAuth: template.requiresAuth
+  };
+};
+
+const getPermissionSummary = (permissions: ContentPermissions): string => {
+  const { level, allowedRoles, requiresAuth } = permissions;
+  
+  if (level === 'all' && !requiresAuth) {
+    return 'Public (Everyone)';
+  }
+  
+  if (level === 'all' && requiresAuth) {
+    return 'Authenticated Users';
+  }
+  
+  if (level === 'professional') {
+    return 'Professional Access';
+  }
+  
+  if (level === 'personal') {
+    return 'Personal Access';
+  }
+  
+  return `${allowedRoles.length} Role(s)`;
+};
 
 interface PermissionsEditorProps {
   permissions: ContentPermissions;
@@ -41,7 +102,7 @@ const PermissionsEditor: React.FC<PermissionsEditorProps> = ({
 
   // Validate permissions whenever they change
   useEffect(() => {
-    const errors = PermissionService.validatePermissions(permissions);
+    const errors = validatePermissions(permissions);
     setValidationErrors(errors);
   }, [permissions]);
 
@@ -117,7 +178,7 @@ const PermissionsEditor: React.FC<PermissionsEditorProps> = ({
   };
 
   const applyTemplate = (template: PermissionTemplate) => {
-    const newPermissions = PermissionService.createPermissionsFromTemplate(template.id);
+    const newPermissions = createPermissionsFromTemplate(template.id);
     onChange(newPermissions);
     setShowTemplateSelector(false);
   };
@@ -150,7 +211,7 @@ const PermissionsEditor: React.FC<PermissionsEditorProps> = ({
               Use Template
             </Button>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              {PermissionService.getPermissionSummary(permissions)}
+              {getPermissionSummary(permissions)}
             </div>
           </div>
         </div>

@@ -2,14 +2,28 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { BiHomeAlt, BiFile, BiNews, BiCodeBlock, BiCog, BiEnvelope, BiUser, BiPlus, BiImage, BiUserCircle, BiCalendarCheck, BiSelectMultiple, BiHistory, BiFolder, BiShield, BiUserPlus, BiPalette } from 'react-icons/bi';
+import { BiHomeAlt, BiFile, BiNews, BiCodeBlock, BiCog, BiEnvelope, BiUser, BiPlus, BiImage, BiUserCircle, BiCalendarCheck, BiFolder, BiShield, BiUserPlus } from 'react-icons/bi';
 import Header from '@/components/Header';
 import { ProfileData } from '@/lib/services/profile-service';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
   title: string;
+}
+
+interface SiteSettings {
+  logoUrl: string;
+  logoText: string;
+  footerText: string;
+  bioText: string;
+  navbarStyle: string;
+  navbarLinks: Array<{
+    label: string;
+    url: string;
+    isExternal: boolean;
+  }>;
 }
 
 // Import the footer component here to avoid circular dependencies
@@ -23,21 +37,38 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     skills: [],
   });
   
-  // Fetch profile data on component mount
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+    logoUrl: '/images/jlk-logo.png',
+    logoText: 'Jonathan L Keck',
+    footerText: 'Built with Next.js and Tailwind CSS',
+    bioText: 'Full-stack developer specializing in modern web technologies',
+    navbarStyle: 'default',
+    navbarLinks: []
+  });
+  
+  // Fetch profile data and site settings on component mount
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/profile');
-        if (response.ok) {
-          const data = await response.json();
-          setProfileData(data);
+        // Fetch profile data
+        const profileResponse = await fetch('/api/profile');
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          setProfileData(profileData);
+        }
+        
+        // Fetch site settings
+        const settingsResponse = await fetch('/api/site-settings');
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json();
+          setSiteSettings(settingsData);
         }
       } catch (error) {
-        console.error('Failed to fetch profile data:', error);
+        console.error('Failed to fetch data:', error);
       }
     };
     
-    fetchProfile();
+    fetchData();
   }, []);
   
   const navItems = [
@@ -57,12 +88,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     // Advanced Content Management
     { href: '/admin/content-management', label: 'Content Management', icon: <BiFile className="w-5 h-5" /> },
     { href: '/admin/content-scheduler', label: 'Content Scheduler', icon: <BiCalendarCheck className="w-5 h-5" /> },
-    { href: '/admin/bulk-operations', label: 'Bulk Operations', icon: <BiSelectMultiple className="w-5 h-5" /> },
-    { href: '/admin/content-versioning', label: 'Content Versioning', icon: <BiHistory className="w-5 h-5" /> },
     { href: '/admin/media-library', label: 'Media Library', icon: <BiFolder className="w-5 h-5" /> },
-    
-    // Brand & Design Management
-    { href: '/admin/brand-management', label: 'Brand Management', icon: <BiPalette className="w-5 h-5" /> },
     
     // User Management
     { href: '/admin/users', label: 'User Management', icon: <BiUser className="w-5 h-5" /> },
@@ -84,14 +110,33 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Global Header */}
-      <Header profileName={profileData.name} />
+      <Header siteSettings={siteSettings} />
       
       {/* Admin Content */}
       <div className="flex-grow flex flex-col md:flex-row">
         {/* Sidebar */}
         <div className="w-full md:w-64 md:sticky md:top-[76px] md:h-[calc(100vh-76px)] bg-slate-800 text-white flex flex-col">
           <div className="p-4 border-b border-slate-700">
-            <h1 className="text-xl font-bold">Admin Panel</h1>
+            <Link href="/admin/dashboard" className="flex items-center space-x-3 group">
+              <div className="w-14 h-14 relative">
+                <Image 
+                  src={siteSettings.logoUrl} 
+                  alt="Logo" 
+                  fill 
+                  sizes="56px" 
+                  style={{ objectFit: 'contain' }}
+                  className="transition-transform group-hover:scale-110"
+                />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-white group-hover:text-primary-300 transition-colors">
+                  {siteSettings.logoText}
+                </h1>
+                <p className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
+                  Admin Dashboard
+                </p>
+              </div>
+            </Link>
           </div>
           
           {/* Navigation Menu */}
@@ -148,9 +193,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
       </div>
       
       {/* Footer */}
-      <div className="mt-auto">
-        <AdminFooter profileData={profileData} />
-      </div>
+      <AdminFooter />
     </div>
   );
 } 

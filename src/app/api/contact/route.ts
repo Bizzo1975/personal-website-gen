@@ -34,16 +34,6 @@ const getAutoResponderTemplate = (name: string, category: string) => {
       <h2>Thank you for reaching out, ${name}!</h2>
       <p>I'm always interested in collaboration opportunities. I'll review your proposal and get back to you soon.</p>
       <p>Feel free to connect with me on <a href="https://linkedin.com/in/your-profile">LinkedIn</a> as well.</p>
-    `,
-    'support': `
-      <h2>Thank you for contacting support, ${name}!</h2>
-      <p>I've received your support request and will investigate the issue promptly. I'll get back to you within 24 hours with a solution or update.</p>
-      <p>For urgent issues, you can also reach me directly at ${process.env.CONTACT_EMAIL}.</p>
-    `,
-    'access-request': `
-      <h2>Thank you for your access request, ${name}!</h2>
-      <p>I've received your request for platform access. I'll review your application and get back to you within 2-3 business days.</p>
-      <p>Please ensure you've provided all necessary information to expedite the review process.</p>
     `
   };
 
@@ -52,13 +42,6 @@ const getAutoResponderTemplate = (name: string, category: string) => {
 
 // Admin notification email template
 const getAdminNotificationTemplate = (formData: any, attachments: string[]) => {
-  const priorityColors = {
-    urgent: '#dc2626',
-    high: '#ea580c',
-    medium: '#2563eb',
-    low: '#16a34a'
-  };
-
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
@@ -67,11 +50,8 @@ const getAdminNotificationTemplate = (formData: any, attachments: string[]) => {
       
       <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <div style="display: flex; align-items: center; margin-bottom: 15px;">
-          <span style="background: ${priorityColors[formData.priority as keyof typeof priorityColors]}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
-            ${formData.priority} Priority
-          </span>
-          <span style="background: #e5e7eb; color: #374151; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px;">
-            ${formData.category.replace('-', ' ').toUpperCase()}
+          <span style="background: #2563eb; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
+            ${formData.category.replace('-', ' ')}
           </span>
         </div>
         
@@ -94,16 +74,6 @@ const getAdminNotificationTemplate = (formData: any, attachments: string[]) => {
           <tr>
             <td style="padding: 8px 0; font-weight: bold; color: #374151;">Phone:</td>
             <td style="padding: 8px 0; color: #1f2937;">${formData.phone}</td>
-          </tr>
-          ` : ''}
-          <tr>
-            <td style="padding: 8px 0; font-weight: bold; color: #374151;">Preferred Contact:</td>
-            <td style="padding: 8px 0; color: #1f2937;">${formData.preferredContact}</td>
-          </tr>
-          ${formData.accessLevel ? `
-          <tr>
-            <td style="padding: 8px 0; font-weight: bold; color: #374151;">Access Level:</td>
-            <td style="padding: 8px 0; color: #1f2937;">${formData.accessLevel}</td>
           </tr>
           ` : ''}
           ${formData.timeline ? `
@@ -199,139 +169,131 @@ export async function POST(request: NextRequest) {
     
     const formData = await request.formData();
     
-    // Extract form fields
+    // Extract form data
     const contactData = {
       name: formData.get('name') as string,
       email: formData.get('email') as string,
       subject: formData.get('subject') as string,
       message: formData.get('message') as string,
-      priority: formData.get('priority') as string,
       category: formData.get('category') as string,
-      accessLevel: formData.get('accessLevel') as string,
       company: formData.get('company') as string,
       phone: formData.get('phone') as string,
-      preferredContact: formData.get('preferredContact') as string,
       timeline: formData.get('timeline') as string,
       budget: formData.get('budget') as string,
       newsletter: formData.get('newsletter') === 'true',
       terms: formData.get('terms') === 'true',
-      ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown',
-      userAgent: request.headers.get('user-agent') || 'Unknown',
-      timestamp: new Date().toISOString()
+      ipAddress: ip,
+      userAgent: request.headers.get('user-agent') || '',
     };
 
-    // Validate required fields
+    // Basic validation
     if (!contactData.name || !contactData.email || !contactData.subject || !contactData.message) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate category
+    const validCategories = ['general', 'project', 'collaboration'];
+    if (!validCategories.includes(contactData.category)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid category' },
         { status: 400 }
       );
     }
 
     // Handle file attachments
-    const attachments: string[] = [];
+    const attachmentFiles: string[] = [];
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'contact');
     
+    // Create upload directory if it doesn't exist
     try {
       await mkdir(uploadDir, { recursive: true });
     } catch (error) {
-      console.warn('Upload directory already exists or could not be created');
+      console.error('Error creating upload directory:', error);
     }
 
-    // Process attachments
-    for (const [key, value] of formData.entries()) {
-      if (key.startsWith('attachment_') && value instanceof File) {
-        const file = value as File;
-        const fileExtension = path.extname(file.name);
-        const fileName = `${uuidv4()}${fileExtension}`;
-        const filePath = path.join(uploadDir, fileName);
-        
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        
-        await writeFile(filePath, buffer);
-        attachments.push(fileName);
+    // Process uploaded files
+    const attachmentKeys = Array.from(formData.keys()).filter(key => key.startsWith('attachment_'));
+    
+    for (const key of attachmentKeys) {
+      const file = formData.get(key) as File;
+      if (file && file.size > 0) {
+        try {
+          const fileName = `${uuidv4()}_${file.name}`;
+          const filePath = path.join(uploadDir, fileName);
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          
+          await writeFile(filePath, buffer);
+          attachmentFiles.push(fileName);
+        } catch (error) {
+          console.error('Error saving attachment:', error);
+        }
       }
     }
 
     // Send admin notification email
-    const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
-    if (adminEmail) {
-      await transporter.sendMail({
+    try {
+      const adminEmailHtml = getAdminNotificationTemplate(contactData, attachmentFiles);
+      
+      const adminMailOptions = {
         from: process.env.SMTP_USER,
-        to: adminEmail,
-        subject: `[${contactData.priority.toUpperCase()}] New Contact: ${contactData.subject}`,
-        html: getAdminNotificationTemplate(contactData, attachments),
-        attachments: attachments.map(fileName => ({
-          filename: fileName,
-          path: path.join(uploadDir, fileName)
-        }))
-      });
+        to: process.env.ADMIN_EMAIL || process.env.SMTP_USER,
+        subject: `New Contact Form Submission - ${contactData.category.toUpperCase()}`,
+        html: adminEmailHtml,
+      };
+
+      await transporter.sendMail(adminMailOptions);
+    } catch (error) {
+      console.error('Error sending admin notification:', error);
     }
 
-    // Send auto-responder email to user
-    await transporter.sendMail({
-      from: process.env.SMTP_USER,
-      to: contactData.email,
-      subject: `Thank you for contacting me - ${contactData.subject}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          ${getAutoResponderTemplate(contactData.name, contactData.category)}
-          
-          <div style="margin-top: 30px; padding: 20px; background: #f9fafb; border-radius: 8px;">
-            <h3 style="color: #1f2937; margin-bottom: 15px;">Your Message Summary:</h3>
-            <p style="margin: 5px 0;"><strong>Subject:</strong> ${contactData.subject}</p>
-            <p style="margin: 5px 0;"><strong>Category:</strong> ${contactData.category.replace('-', ' ')}</p>
-            <p style="margin: 5px 0;"><strong>Priority:</strong> ${contactData.priority}</p>
-            ${attachments.length > 0 ? `<p style="margin: 5px 0;"><strong>Attachments:</strong> ${attachments.length} file(s)</p>` : ''}
+    // Send auto-responder email
+    try {
+      const autoResponderHtml = getAutoResponderTemplate(contactData.name, contactData.category);
+      
+      const autoResponderOptions = {
+        from: process.env.SMTP_USER,
+        to: contactData.email,
+        subject: 'Thank you for your message!',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            ${autoResponderHtml}
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px;">
+              <p>This is an automated response. Please do not reply to this email.</p>
+              <p>If you need immediate assistance, please contact me directly at ${process.env.CONTACT_EMAIL || process.env.SMTP_USER}.</p>
+            </div>
           </div>
-          
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; text-align: center;">
-            <p>This is an automated response. Please do not reply to this email.</p>
-            <p>If you need immediate assistance, please call ${process.env.CONTACT_PHONE || 'our office'} or visit our website.</p>
-          </div>
-        </div>
-      `
-    });
+        `,
+      };
 
-    // Log contact submission for analytics
-    console.log('Contact form submission:', {
-      timestamp: contactData.timestamp,
-      category: contactData.category,
-      priority: contactData.priority,
-      hasAttachments: attachments.length > 0,
-      ipAddress: contactData.ipAddress
-    });
-
-    // Add to newsletter if requested
-    if (contactData.newsletter) {
-      // Integrate with your newsletter service (e.g., Mailchimp, ConvertKit)
-      console.log('Newsletter subscription requested for:', contactData.email);
+      await transporter.sendMail(autoResponderOptions);
+    } catch (error) {
+      console.error('Error sending auto-responder:', error);
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Message sent successfully',
-      autoResponderSent: true,
-      attachmentsProcessed: attachments.length
+    // Store in database (if you have a database setup)
+    // await storeContactSubmission(contactData, attachmentFiles);
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Message sent successfully!' 
     });
 
   } catch (error) {
     console.error('Contact form error:', error);
-    
     return NextResponse.json(
-      { 
-        error: 'Failed to send message',
-        details: process.env.NODE_ENV === 'development' ? error : undefined
-      },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
-// Handle OPTIONS request for CORS
+// Handle preflight requests for CORS
 export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
+  return new Response(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',

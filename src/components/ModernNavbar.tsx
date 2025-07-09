@@ -3,11 +3,24 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSession, signOut } from 'next-auth/react';
-import ThemeSwitcher from './ThemeSwitcher';
 import { usePathname } from 'next/navigation';
-import { SiteSettings, NavbarLink } from '@/lib/services/site-settings-service';
-import { getProfileData, ProfileData } from '@/lib/services/profile-service';
+
+// Define interfaces locally to avoid database import issues
+interface NavbarLink {
+  label: string;
+  url: string;
+  isExternal: boolean;
+}
+
+interface SiteSettings {
+  id?: string;
+  logoUrl: string;
+  logoText: string;
+  footerText: string;
+  bioText: string;
+  navbarStyle: string;
+  navbarLinks: NavbarLink[];
+}
 
 interface ModernNavbarProps {
   siteSettings: SiteSettings;
@@ -16,29 +29,7 @@ interface ModernNavbarProps {
 const ModernNavbar: React.FC<ModernNavbarProps> = ({ siteSettings }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { data: session, status } = useSession();
   const pathname = usePathname();
-  const isAdmin = session?.user?.role === 'admin';
-  const isAuthenticated = status === 'authenticated';
-  const [profileData, setProfileData] = useState<ProfileData>({
-    name: 'John Doe',
-    imageUrl: '',
-    skills: [],
-  });
-
-  // Fetch profile data for the name
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        const data = await getProfileData();
-        setProfileData(data);
-      } catch (error) {
-        console.error('Failed to fetch profile data:', error);
-      }
-    };
-    
-    fetchProfileData();
-  }, []);
 
   // Handle scroll events to add backdrop and shadow when scrolled
   useEffect(() => {
@@ -84,7 +75,7 @@ const ModernNavbar: React.FC<ModernNavbarProps> = ({ siteSettings }) => {
         <div className="flex justify-between items-center">
           {/* Logo and Brand */}
           <Link href="/" className="flex items-center space-x-2 group">
-            <div className="w-9 h-9 relative overflow-hidden transition-transform duration-300 group-hover:scale-110">
+            <div className="w-16 h-16 relative overflow-hidden transition-transform duration-300 group-hover:scale-110">
               <Image
                 src={siteSettings.logoUrl}
                 alt="Logo"
@@ -94,7 +85,7 @@ const ModernNavbar: React.FC<ModernNavbarProps> = ({ siteSettings }) => {
               />
             </div>
             <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600 dark:from-primary-400 dark:to-indigo-400">
-              {profileData.name}
+              {siteSettings.logoText}
             </span>
           </Link>
 
@@ -131,50 +122,12 @@ const ModernNavbar: React.FC<ModernNavbarProps> = ({ siteSettings }) => {
                     )}
                   </li>
                 ))}
-                {isAdmin && (
-                  <li>
-                    <Link
-                      href="/admin/dashboard"
-                      className="px-4 py-2 rounded-full text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                    >
-                      Admin
-                    </Link>
-                  </li>
-                )}
               </ul>
             </nav>
-            
-            <div className="flex items-center space-x-4">
-              <ThemeSwitcher />
-              {isAuthenticated ? (
-                <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
-                  className="px-4 py-2 text-sm font-medium rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Logout
-                </button>
-              ) : (
-                <div className="flex space-x-2">
-                  <Link
-                    href="/admin/login"
-                    className="px-4 py-2 text-sm font-medium rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/contact"
-                    className="px-4 py-2 text-sm font-medium rounded-full bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white transition-colors"
-                  >
-                    Register
-                  </Link>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center space-x-4">
-            <ThemeSwitcher />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="text-slate-700 dark:text-slate-300"
@@ -228,51 +181,6 @@ const ModernNavbar: React.FC<ModernNavbarProps> = ({ siteSettings }) => {
                   )}
                 </li>
               ))}
-              {isAdmin && (
-                <li>
-                  <Link
-                    href="/admin/dashboard"
-                    className="block px-4 py-2 rounded-lg text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Admin Dashboard
-                  </Link>
-                </li>
-              )}
-              {isAuthenticated ? (
-                <li>
-                  <button
-                    onClick={() => {
-                      signOut({ callbackUrl: '/' });
-                      setMobileMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    Logout
-                  </button>
-                </li>
-              ) : (
-                <>
-                  <li>
-                    <Link
-                      href="/admin/login"
-                      className="block px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Login
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/contact"
-                      className="block px-4 py-2 rounded-lg text-sm font-medium bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Register
-                    </Link>
-                  </li>
-                </>
-              )}
             </ul>
           </nav>
         )}

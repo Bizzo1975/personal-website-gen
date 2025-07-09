@@ -57,7 +57,6 @@ const Profile = mongoose.models.Profile || mongoose.model('Profile', new mongoos
   email: String,
   socialLinks: {
     github: String,
-    twitter: String,
     linkedin: String,
     website: String
   },
@@ -174,7 +173,6 @@ async function seedDatabase() {
       email: "john@example.com",
       socialLinks: {
         github: "https://github.com/johndoe",
-        twitter: "https://twitter.com/johndoe",
         linkedin: "https://linkedin.com/in/johndoe",
         website: "https://johndoe.com"
       },

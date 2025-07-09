@@ -36,7 +36,7 @@ FROM base AS development
 WORKDIR /app
 
 ENV NODE_ENV development
-ENV FRONTEND_PORT 3006
+ENV FRONTEND_PORT 3000
 ENV NEXT_TELEMETRY_DISABLED 1
 
 # Install dependencies
@@ -57,24 +57,26 @@ RUN adduser --system --uid 1001 nextjs
 
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
-USER nextjs
+
+# Run as root in development to avoid permission issues with volumes
+# USER nextjs
 
 EXPOSE 3006
 
-ENV PORT 3006
+ENV PORT 3000
 
 # Windows & Docker compatibility settings
 ENV NEXT_WEBPACK_USEPOLLING 1
 ENV WATCHPACK_POLLING true
 
-CMD ["npm", "run", "dev:docker:safe"]
+CMD ["npm", "run", "dev:docker"]
 
 # Production image, copy all the files and run next start
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
-ENV FRONTEND_PORT 3006
+ENV FRONTEND_PORT 3000
 ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN addgroup --system --gid 1001 nodejs
@@ -95,7 +97,7 @@ USER nextjs
 
 EXPOSE 3006
 
-ENV PORT 3006
+ENV PORT 3000
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output

@@ -12,7 +12,15 @@ import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
 import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import { BiUpload, BiSave } from 'react-icons/bi';
 import { ContentPermissions } from '@/types/content/permissions';
-import { PermissionService } from '@/lib/services/permission-service';
+
+// Client-side default permissions function
+const getDefaultPermissions = (): ContentPermissions => ({
+  level: 'all',
+  allowedRoles: ['admin', 'editor', 'author', 'subscriber', 'guest'],
+  allowedUsers: [],
+  restrictedUsers: [],
+  requiresAuth: false
+});
 
 interface NewProjectFormData {
   title: string;
@@ -41,7 +49,7 @@ export default function NewProjectPage() {
     image: '',
     liveDemo: '',
     sourceCode: '',
-    permissions: PermissionService.getDefaultPermissions('all') // Default to public access
+    permissions: getDefaultPermissions() // Default to public access
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);

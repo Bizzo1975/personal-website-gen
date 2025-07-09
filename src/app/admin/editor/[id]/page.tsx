@@ -442,15 +442,6 @@ Next.js continues to be an excellent choice for modern web development, offering
                     variant="outline"
                     size="sm"
                     className="w-full justify-start"
-                    onClick={() => window.open(`/admin/content-versioning?content=${content.id}`, '_blank')}
-                  >
-                    <BiHistory className="h-4 w-4 mr-2" />
-                    View History
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
                   >
                     <BiCog className="h-4 w-4 mr-2" />
                     Settings

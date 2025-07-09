@@ -1,163 +1,92 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSession } from 'next-auth/react';
-import { updateSiteSettings } from '@/lib/services/site-settings-service';
 
-interface FooterProps {
-  profileName?: string;
-  footerText?: string;
-  logoUrl?: string;
-  bioText: string;
+// Define interfaces for site settings
+interface NavbarLink {
+  label: string;
+  url: string;
+  isExternal: boolean;
 }
 
-const Footer: React.FC<FooterProps> = ({ 
-  profileName = 'John Doe',
-  footerText = 'Built with Next.js and Tailwind CSS',
-  logoUrl = '/images/wizard-icon.svg',
-  bioText = 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.'
-}) => {
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === 'admin';
-  const [isEditingFooter, setIsEditingFooter] = useState(false);
-  const [isEditingBio, setIsEditingBio] = useState(false);
-  const [editedFooterText, setEditedFooterText] = useState(footerText);
-  const [editedBioText, setEditedBioText] = useState(bioText);
+interface SiteSettings {
+  id?: string;
+  logoUrl: string;
+  logoText: string;
+  footerText: string;
+  bioText: string;
+  navbarStyle: string;
+  navbarLinks: NavbarLink[];
+}
 
-  const handleFooterTextSave = async () => {
-    try {
-      await updateSiteSettings({ footerText: editedFooterText });
-      setIsEditingFooter(false);
-    } catch (error) {
-      console.error('Failed to save footer text:', error);
-    }
-  };
+interface FooterProps {
+  siteSettings?: SiteSettings;
+}
 
-  const handleBioTextSave = async () => {
-    try {
-      await updateSiteSettings({ bioText: editedBioText });
-      setIsEditingBio(false);
-    } catch (error) {
-      console.error('Failed to save bio text:', error);
-    }
-  };
+const Footer: React.FC<FooterProps> = ({ siteSettings }) => {
+  // Use site settings or fallback values
+  const logoUrl = siteSettings?.logoUrl || '/images/jlk-logo.png';
+  const logoText = siteSettings?.logoText || 'Jonathan L Keck';
+  const footerText = siteSettings?.footerText || 'Built with Next.js and Tailwind CSS';
+  const bioText = siteSettings?.bioText || 'Full-stack developer specializing in modern web technologies.';
 
   return (
     <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-8">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="col-span-1 md:col-span-2">
+        <div className="flex flex-col md:flex-row items-center justify-between">
+          <div className="mb-6 md:mb-0">
             <Link href="/" className="text-xl font-bold text-primary-600 dark:text-primary-400 flex items-center space-x-2">
-              <div className="w-6 h-6 relative">
+              <div className="w-10 h-10 relative">
                 <Image 
-                  src={logoUrl} 
-                  alt="Logo" 
-                  fill 
-                  style={{ objectFit: 'contain' }} 
+                  src={logoUrl}
+                  alt="Logo"
+                  fill
+                  sizes="40px"
+                  style={{ objectFit: 'contain' }}
                 />
               </div>
-              <span>{profileName}</span>
+              <span>{logoText}</span>
             </Link>
-            {isAdmin && isEditingBio ? (
-              <div className="mt-3 flex items-start">
-                <textarea
-                  value={editedBioText}
-                  onChange={(e) => setEditedBioText(e.target.value)}
-                  className="w-full p-2 border rounded-md text-sm text-slate-600 dark:text-slate-400 dark:bg-slate-800 dark:border-slate-700"
-                  rows={3}
-                />
-                <button 
-                  onClick={handleBioTextSave}
-                  className="ml-2 text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
-                >
-                  Save
-                </button>
-              </div>
-            ) : (
-              <p className="mt-3 text-slate-600 dark:text-slate-400 max-w-md relative group">
-                {bioText}
-                {isAdmin && (
-                  <button
-                    onClick={() => setIsEditingBio(true)}
-                    className="ml-2 text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 opacity-0 group-hover:opacity-100 transition-opacity absolute right-0"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                )}
-              </p>
-            )}
-            <div className="mt-4 flex space-x-4">
-              <a href="https://github.com" className="text-slate-500 hover:text-primary-600 dark:hover:text-primary-400" aria-label="GitHub">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
-                </svg>
-              </a>
-              <a href="https://twitter.com" className="text-slate-500 hover:text-primary-600 dark:hover:text-primary-400" aria-label="Twitter">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
-                </svg>
-              </a>
-              <a href="https://linkedin.com" className="text-slate-500 hover:text-primary-600 dark:hover:text-primary-400" aria-label="LinkedIn">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                </svg>
-              </a>
-            </div>
+            <p className="mt-3 text-slate-600 dark:text-slate-400 max-w-md">
+              {bioText}
+            </p>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Legal</h3>
-            <ul className="mt-4 space-y-3">
-              <li>
-                <Link href="/privacy" className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
-                  Terms of Service
-                </Link>
-              </li>
-            </ul>
+
+          <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-8">
+            <nav>
+              <ul className="flex space-x-6">
+                <li>
+                  <Link href="/about" className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/projects" className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                    Projects
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/blog" className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                    Blog
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                    Contact
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+            <div className="text-slate-600 dark:text-slate-400 text-sm">
+              <p>{footerText}</p>
+            </div>
           </div>
         </div>
-        <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            &copy; {new Date().getFullYear()} {profileName}. All rights reserved.
-          </p>
-          {isAdmin && isEditingFooter ? (
-            <div className="text-sm mt-2 sm:mt-0 flex items-center">
-              <textarea
-                value={editedFooterText}
-                onChange={(e) => setEditedFooterText(e.target.value)}
-                className="px-2 py-1 border rounded-md text-sm dark:bg-slate-800 dark:border-slate-700"
-                rows={2}
-              />
-              <button 
-                onClick={handleFooterTextSave}
-                className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 ml-2"
-              >
-                Save
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 sm:mt-0 flex items-center">
-              {footerText}
-              {isAdmin && (
-                <button 
-                  onClick={() => setIsEditingFooter(true)}
-                  className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 ml-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
-              )}
-            </p>
-          )}
+
+        <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800 text-center text-slate-600 dark:text-slate-400 text-sm">
+          <p>&copy; {new Date().getFullYear()} {logoText}. All rights reserved.</p>
         </div>
       </div>
     </footer>

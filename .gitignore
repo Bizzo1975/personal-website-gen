@@ -38,3 +38,14 @@ next-env.d.ts
 # windsurf rules
 .windsurfrules
 src/components/TextArea.tsx
+
+# Production Environment Files (NEVER COMMIT)
+.env.production
+.env.secrets
+.env.local
+.env
+
+# Production logs and data
+logs/
+backups/
+uploads/

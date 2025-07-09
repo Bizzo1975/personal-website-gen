@@ -1,1 +1,0 @@
-// Admin pages test script

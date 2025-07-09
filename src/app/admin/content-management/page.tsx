@@ -47,51 +47,15 @@ function ContentManagementPageContent() {
 
   const fetchDrafts = async () => {
     try {
-      // Mock data for demonstration
-      const mockDrafts: DraftItem[] = [
-        {
-          id: '1',
-          title: 'Building Modern Web Applications with Next.js',
-          type: 'post',
-          author: 'admin@example.com',
-          lastModified: '2024-01-15T10:30:00Z',
-          status: 'draft',
-          collaborators: ['editor@example.com', 'reviewer@example.com'],
-          template: 'blog-post-template',
-          comments: 3
-        },
-        {
-          id: '2',
-          title: 'E-commerce Platform Project',
-          type: 'project',
-          author: 'admin@example.com',
-          lastModified: '2024-01-14T16:45:00Z',
-          status: 'review',
-          collaborators: ['reviewer@example.com', 'designer@example.com'],
-          comments: 7
-        },
-        {
-          id: '3',
-          title: 'About Us Page Redesign',
-          type: 'page',
-          author: 'editor@example.com',
-          lastModified: '2024-01-13T09:15:00Z',
-          status: 'approved',
-          collaborators: ['admin@example.com'],
-          comments: 2
-        },
-        {
-          id: '4',
-          title: 'AI and Machine Learning Trends',
-          type: 'post',
-          author: 'editor@example.com',
-          lastModified: '2024-01-12T14:20:00Z',
-          status: 'published',
-          collaborators: [],
-          comments: 0
-        }
-      ];
-      setDrafts(mockDrafts);
+      // Fetch real drafts from API
+      const response = await fetch('/api/admin/content-items?status=draft');
+      if (response.ok) {
+        const data = await response.json();
+        setDrafts(data);
+      } else {
+        console.error('Failed to fetch drafts');
+        setDrafts([]);
+      }
     } catch (error) {
       console.error('Failed to fetch drafts:', error);
     } finally {
@@ -101,50 +65,15 @@ function ContentManagementPageContent() {
 
   const fetchTemplates = async () => {
     try {
-      // Mock data for demonstration
-      const mockTemplates: ContentTemplate[] = [
-        {
-          id: '1',
-          name: 'Technical Blog Post',
-          type: 'post',
-          description: 'Template for technical blog posts with code examples and explanations',
-          content: '# {{title}}\n\n## Introduction\n\n{{introduction}}\n\n## Technical Details\n\n```javascript\n{{code_example}}\n```\n\n## Explanation\n\n{{explanation}}\n\n## Conclusion\n\n{{conclusion}}',
-          createdAt: '2024-01-10T00:00:00Z',
-          usageCount: 24,
-          author: 'admin@example.com'
-        },
-        {
-          id: '2',
-          name: 'Project Showcase',
-          type: 'project',
-          description: 'Comprehensive template for showcasing development projects',
-          content: '# {{project_name}}\n\n## Project Overview\n\n{{overview}}\n\n## Technologies Used\n\n{{technologies}}\n\n## Key Features\n\n- {{feature_1}}\n- {{feature_2}}\n- {{feature_3}}\n\n## Live Demo\n\n[View Demo]({{demo_link}})\n\n## Screenshots\n\n{{screenshots}}\n\n## Challenges & Solutions\n\n{{challenges}}',
-          createdAt: '2024-01-09T00:00:00Z',
-          usageCount: 15,
-          author: 'admin@example.com'
-        },
-        {
-          id: '3',
-          name: 'Service Landing Page',
-          type: 'page',
-          description: 'Marketing landing page with hero section, features, and CTA',
-          content: '# {{page_title}}\n\n## Hero Section\n\n{{hero_content}}\n\n## Key Benefits\n\n- {{benefit_1}}\n- {{benefit_2}}\n- {{benefit_3}}\n\n## Features\n\n{{features}}\n\n## Call to Action\n\n{{cta_content}}',
-          createdAt: '2024-01-08T00:00:00Z',
-          usageCount: 18,
-          author: 'editor@example.com'
-        },
-        {
-          id: '4',
-          name: 'Tutorial Guide',
-          type: 'post',
-          description: 'Step-by-step tutorial template with numbered sections',
-          content: '# {{title}}\n\n## What You\'ll Learn\n\n{{learning_objectives}}\n\n## Prerequisites\n\n{{prerequisites}}\n\n## Step 1: {{step_1_title}}\n\n{{step_1_content}}\n\n## Step 2: {{step_2_title}}\n\n{{step_2_content}}\n\n## Step 3: {{step_3_title}}\n\n{{step_3_content}}\n\n## Conclusion\n\n{{conclusion}}',
-          createdAt: '2024-01-07T00:00:00Z',
-          usageCount: 12,
-          author: 'admin@example.com'
-        }
-      ];
-      setTemplates(mockTemplates);
+      // Fetch real templates from API
+      const response = await fetch('/api/admin/templates');
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data);
+      } else {
+        console.error('Failed to fetch templates');
+        setTemplates([]);
+      }
     } catch (error) {
       console.error('Failed to fetch templates:', error);
     }
@@ -601,14 +530,6 @@ function ContentManagementPageContent() {
                         >
                           <BiEdit className="h-4 w-4 mr-1" />
                           Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.open(`/admin/content-versioning?content=${draft.id}`, '_blank')}
-                        >
-                          <BiHistory className="h-4 w-4 mr-1" />
-                          History
                         </Button>
                       </div>
                     </div>

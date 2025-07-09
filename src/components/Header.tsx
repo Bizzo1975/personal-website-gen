@@ -4,55 +4,69 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import ThemeSwitcher from './ThemeSwitcher';
+import Image from 'next/image';
+
+// Define interfaces for site settings
+interface NavbarLink {
+  label: string;
+  url: string;
+  isExternal: boolean;
+}
+
+interface SiteSettings {
+  id?: string;
+  logoUrl: string;
+  logoText: string;
+  footerText: string;
+  bioText: string;
+  navbarStyle: string;
+  navbarLinks: NavbarLink[];
+}
 
 interface HeaderProps {
   profileName?: string;
+  siteSettings?: SiteSettings;
 }
 
-const Header: React.FC<HeaderProps> = ({ profileName = 'John Doe' }) => {
+const Header: React.FC<HeaderProps> = ({ profileName, siteSettings }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.role === 'admin';
   const isAuthenticated = status === 'authenticated';
+
+  // Use site settings or fallback values
+  const displayName = profileName || siteSettings?.logoText || 'Jonathan L Keck';
+  const logoUrl = siteSettings?.logoUrl || '/images/jlk-logo.png';
+  const navbarLinks = siteSettings?.navbarLinks || [
+    { label: 'Home', url: '/', isExternal: false },
+    { label: 'About', url: '/about', isExternal: false },
+    { label: 'Projects', url: '/projects', isExternal: false },
+    { label: 'Blog', url: '/blog', isExternal: false },
+    { label: 'Contact', url: '/contact', isExternal: false },
+  ];
 
   return (
     <header className="py-6 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm bg-white/70 dark:bg-slate-900/80 sticky top-0 z-40">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-primary-600 dark:text-primary-400 flex items-center space-x-2">
-            <img src="/images/wizard-icon.svg" alt="Wizard Icon" className="w-8 h-8" />
-            <span>{profileName}</span>
+            <div className="w-14 h-14 relative">
+              <Image src={logoUrl} alt="Logo" fill sizes="56px" style={{ objectFit: 'contain' }} />
+            </div>
+            <span>{displayName}</span>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <nav>
               <ul className="flex space-x-8">
-                <li>
-                  <Link href="/" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/about" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/projects" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">
-                    Projects
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/blog" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">
-                    Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">
-                    Contact
-                  </Link>
-                </li>
+                {navbarLinks.map((link, index) => (
+                  <li key={index}>
+                    <Link href={link.url} className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
                 {isAdmin && (
                   <li>
                     <Link href="/admin/dashboard" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-500 transition-colors font-medium">
@@ -72,20 +86,12 @@ const Header: React.FC<HeaderProps> = ({ profileName = 'John Doe' }) => {
                   Logout
                 </button>
               ) : (
-                <>
-                  <Link 
-                    href="/admin/login" 
-                    className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
-                  >
-                    Login
-                  </Link>
-                  <Link 
-                    href="/contact" 
-                    className="bg-primary-600 dark:bg-primary-500 text-white py-2 px-4 rounded hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors"
-                  >
-                    Register
-                  </Link>
-                </>
+                <Link 
+                  href="/admin/login" 
+                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
+                >
+                  Login
+                </Link>
               )}
             </div>
           </div>
@@ -115,51 +121,17 @@ const Header: React.FC<HeaderProps> = ({ profileName = 'John Doe' }) => {
         {mobileMenuOpen && (
           <nav className="md:hidden mt-4 pb-4">
             <ul className="flex flex-col space-y-4">
-              <li>
-                <Link 
-                  href="/" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium block"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href="/about" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium block"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href="/projects" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium block"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Projects
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href="/blog" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium block"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href="/contact" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium block"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Contact
-                </Link>
-              </li>
+              {navbarLinks.map((link, index) => (
+                <li key={index}>
+                  <Link 
+                    href={link.url} 
+                    className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium block"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
               {isAdmin && (
                 <li>
                   <Link 
@@ -192,15 +164,6 @@ const Header: React.FC<HeaderProps> = ({ profileName = 'John Doe' }) => {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Login
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href="/contact" 
-                      className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-500 transition-colors font-medium block"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Register
                     </Link>
                   </li>
                 </>

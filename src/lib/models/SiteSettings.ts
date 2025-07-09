@@ -1,47 +1,38 @@
-import mongoose, { Schema } from 'mongoose';
+// PostgreSQL SiteSettings interface
+export interface SiteSettings {
+  id: string;
+  logo_url: string;
+  logo_text: string;
+  footer_text: string;
+  bio_text: string;
+  navbar_style: string;
+  navbar_links: NavbarLink[];
+  created_at: Date;
+  updated_at: Date;
+}
 
-const SiteSettingsSchema = new Schema({
-  logoUrl: {
-    type: String,
-    default: '/images/wizard-icon.svg',
-  },
-  logoText: {
-    type: String,
-    default: 'John Doe',
-  },
-  footerText: {
-    type: String,
-    default: 'Built with Next.js and Tailwind CSS',
-  },
-  bioText: {
-    type: String,
-    default: 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.',
-  },
-  navbarStyle: {
-    type: String,
-    default: 'default', // default, transparent, sticky, etc.
-  },
-  navbarLinks: {
-    type: [{
-      label: String,
-      url: String,
-      isExternal: Boolean,
-    }],
-    default: [
-      { label: 'Home', url: '/', isExternal: false },
-      { label: 'About', url: '/about', isExternal: false },
-      { label: 'Projects', url: '/projects', isExternal: false },
-      { label: 'Blog', url: '/blog', isExternal: false },
-      { label: 'Contact', url: '/contact', isExternal: false },
-    ],
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+export interface NavbarLink {
+  label: string;
+  url: string;
+  is_external: boolean;
+}
 
-// Fix for "mongoose.models is undefined" error
-export default (mongoose.models && mongoose.models.SiteSettings) 
-  ? mongoose.models.SiteSettings 
-  : mongoose.model('SiteSettings', SiteSettingsSchema); 
+// Type for creating site settings
+export interface CreateSiteSettingsData {
+  logo_url?: string;
+  logo_text?: string;
+  footer_text?: string;
+  bio_text?: string;
+  navbar_style?: string;
+  navbar_links?: NavbarLink[];
+}
+
+// Type for updating site settings
+export interface UpdateSiteSettingsData {
+  logo_url?: string;
+  logo_text?: string;
+  footer_text?: string;
+  bio_text?: string;
+  navbar_style?: string;
+  navbar_links?: NavbarLink[];
+} 

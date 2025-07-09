@@ -1,98 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
-import { getAllPages, createPage, getPageBySlug } from '@/lib/services/page-service';
-import { isMockMode } from '@/lib/db';
+import { getPageBySlug, getAllPages, createPage } from '@/lib/services/page-service';
 
-// Default values for pages when not found in mock mode
+// Default pages for fallback
 const DEFAULT_PAGES = {
-  'blog': {
-    name: 'Blog Page',
-    title: 'Blog',
-    slug: 'blog',
-    content: '# My Blog\n\nWelcome to my blog.',
-    metaDescription: 'My development blog',
-    headerTitle: 'Blog & Articles',
-    headerSubtitle: 'Thoughts, tutorials, and insights on web development, design, and technology.',
-    heroHeading: '',
+  home: {
+    id: 'home',
+    title: 'Home',
+    slug: 'home',
+    content: 'Welcome to my personal website. I\'m a developer passionate about creating amazing web experiences.',
+    metaTitle: 'Home - Personal Website',
+    metaDescription: 'Welcome to my personal website showcasing my projects, blog posts, and professional experience.',
+    status: 'published' as const,
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
-  'projects': {
-    name: 'Projects Page',
-    title: 'My Projects',
-    slug: 'projects',
-    content: '# My Projects\n\nShowcase of my work.',
-    metaDescription: 'My portfolio of projects',
-    headerTitle: 'Projects & Portfolio',
-    headerSubtitle: 'Explore my latest work and personal projects. Each project represents my passion for creating elegant solutions to complex problems.',
-    heroHeading: '',
-  },
-  'contact': {
-    name: 'Contact Page',
-    title: 'Contact Me',
-    slug: 'contact',
-    content: '# Contact Me\n\nGet in touch.',
-    metaDescription: 'Contact information',
-    headerTitle: 'Contact Me',
-    headerSubtitle: 'Have a question or want to work together? Get in touch with me using the form below or through any of my social channels.',
-    heroHeading: '',
-  },
-  'about': {
-    name: 'About Page',
+  about: {
+    id: 'about',
     title: 'About Me',
     slug: 'about',
-    content: '# About Me\n\nMy story and background.',
-    metaDescription: 'About me and my background',
-    headerTitle: 'About Me',
-    headerSubtitle: 'Learn more about my background, skills, and experience in web development.',
-    heroHeading: '',
-  },
+    content: 'I\'m a passionate developer with experience in modern web technologies including React, Next.js, and TypeScript.',
+    metaTitle: 'About - Personal Website',
+    metaDescription: 'Learn more about my background, experience, and the technologies I work with.',
+    status: 'published' as const,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
 };
 
 // GET: Fetch all pages or a specific page by slug
 export async function GET(request: NextRequest) {
   try {
-    // Check if slug query parameter is provided
-    const url = new URL(request.url);
-    const slug = url.searchParams.get('slug');
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get('slug');
 
     if (slug) {
-      // If slug is provided, return the specific page
-      console.log(`🔍 API: Getting page by slug: ${slug}`);
-      const page = await getPageBySlug(slug);
-      
-      if (!page) {
-        // In mock mode, provide default values for common pages
-        if (isMockMode() && DEFAULT_PAGES[slug as keyof typeof DEFAULT_PAGES]) {
-          console.log(`⚠️ Page "${slug}" not found in database, using default values in mock mode`);
-          const defaultPage = DEFAULT_PAGES[slug as keyof typeof DEFAULT_PAGES];
-          const mockPage = {
-            _id: `mock-${Date.now()}`,
-            ...defaultPage,
-            updatedAt: new Date()
-          };
-          
-          return NextResponse.json({ page: mockPage });
+      // Get specific page by slug
+      try {
+        const page = await getPageBySlug(slug);
+        if (page) {
+          return NextResponse.json(page);
         }
-        
-        return NextResponse.json(
-          { error: 'Page not found', slug }, 
-          { status: 404 }
-        );
+      } catch (error) {
+        console.error('Error fetching page:', error);
       }
-      
-      return NextResponse.json({ page });
+
+      // Fallback to default pages
+      if (DEFAULT_PAGES[slug as keyof typeof DEFAULT_PAGES]) {
+        return NextResponse.json(DEFAULT_PAGES[slug as keyof typeof DEFAULT_PAGES]);
+      }
+
+      return NextResponse.json({ error: 'Page not found' }, { status: 404 });
     } else {
-      // Otherwise, return all pages
-      console.log('📚 API: Getting all pages');
-      const pages = await getAllPages();
-      return NextResponse.json(pages);
+      // Get all pages
+      try {
+        const pages = await getAllPages();
+        return NextResponse.json(pages);
+      } catch (error) {
+        console.error('Error fetching pages:', error);
+        // Return default pages as fallback
+        return NextResponse.json(Object.values(DEFAULT_PAGES));
+      }
     }
   } catch (error) {
-    console.error('Error in GET /api/pages:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch pages' }, 
-      { status: 500 }
-    );
+    console.error('Pages API error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -110,28 +83,51 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { name, title, slug, content, metaDescription, headerTitle, headerSubtitle, heroHeading } = body;
+    const { 
+      name, 
+      title, 
+      slug, 
+      content, 
+      metaDescription, 
+      headerTitle, 
+      headerSubtitle, 
+      heroHeading,
+      connectSectionTitle,
+      connectSectionContent,
+      formSectionTitle,
+      formDescription
+    } = body;
     
-    // Validate required fields
-    if (!name || !title || !slug || !content) {
+    // Validate required fields - content is optional for contact pages
+    if (!name || !title || !slug) {
       return NextResponse.json(
         { error: 'Missing required fields' }, 
         { status: 400 }
       );
     }
     
-    // Check if slug is unique (additional validation)
+    // For non-contact pages, require content
+    if (slug !== 'contact' && !content) {
+      return NextResponse.json(
+        { error: 'Missing required fields' }, 
+        { status: 400 }
+      );
+    }
     
     // Create the page
     const newPage = await createPage({
       name,
       title,
       slug,
-      content,
+      content: content || '',
       metaDescription: metaDescription || '',
       headerTitle: headerTitle || title,
       headerSubtitle: headerSubtitle || '',
       heroHeading: heroHeading || 'Building the Modern Web',
+      connectSectionTitle: connectSectionTitle || undefined,
+      connectSectionContent: connectSectionContent || undefined,
+      formSectionTitle: formSectionTitle || undefined,
+      formDescription: formDescription || undefined,
     });
     
     if (!newPage) {
