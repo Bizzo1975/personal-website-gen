@@ -14,6 +14,7 @@ import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
 import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import { BiUpload, BiSave } from 'react-icons/bi';
 import { ContentPermissions } from '@/types/content/permissions';
+import ImageField from '@/components/admin/ImageField';
 
 // Default permissions for public content
 const getDefaultPermissions = (): ContentPermissions => ({
@@ -30,7 +31,8 @@ interface NewPostFormData {
   content: string;
   excerpt: string;
   tags: string[];
-  published: boolean;
+  status: 'draft' | 'published' | 'scheduled';
+  featured: boolean;
   metaDescription?: string;
   featuredImage?: string;
   permissions: ContentPermissions;
@@ -38,7 +40,6 @@ interface NewPostFormData {
 
 export default function NewPostPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -48,15 +49,14 @@ export default function NewPostPage() {
     content: '',
     excerpt: '',
     tags: [],
-    published: false,
+    status: 'draft', // Default to draft
+    featured: false,
     metaDescription: '',
     featuredImage: '',
     permissions: getDefaultPermissions() // Default to public access
   });
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
@@ -78,24 +78,6 @@ export default function NewPostPage() {
   const handlePermissionsChange = (permissions: ContentPermissions) => {
     setFormData(prev => ({ ...prev, permissions }));
   };
-  
-  const handleImageUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,8 +88,7 @@ export default function NewPostPage() {
       // Ensure slug is URL-friendly
       const formattedData = {
         ...formData,
-        slug: formData.slug.trim().toLowerCase().replace(/\s+/g, '-'),
-        featuredImage: imagePreview || formData.featuredImage // Use preview if available
+        slug: formData.slug.trim().toLowerCase().replace(/\s+/g, '-')
       };
 
       const response = await fetch('/api/posts', {
@@ -125,9 +106,16 @@ export default function NewPostPage() {
 
       setSuccessMessage('Post created successfully!');
       
+      // Show additional guidance for scheduled posts
+      if (formattedData.status === 'scheduled') {
+        setTimeout(() => {
+          setSuccessMessage('Post created! Visit the Content Scheduler to set the publish date.');
+        }, 800);
+      }
+      
       // Wait 1.5 seconds before redirecting
       setTimeout(() => {
-        router.push('/admin/posts');
+        router.push('/admin/content-management?tab=posts');
       }, 1500);
       
     } catch (err) {
@@ -143,7 +131,7 @@ export default function NewPostPage() {
           <h1 className="text-2xl font-bold">Create New Blog Post</h1>
           <Button 
             variant="outline" 
-            onClick={() => router.push('/admin/posts')}
+            onClick={() => router.push('/admin/content-management?tab=posts')}
           >
             Cancel
           </Button>
@@ -209,57 +197,14 @@ export default function NewPostPage() {
               />
               
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-                <h3 className="font-medium mb-4">Featured Image</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      accept="image/*"
-                      className="hidden"
-                    />
-                    
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleImageUploadClick}
-                      icon={<BiUpload />}
-                      className="mb-2"
-                    >
-                      Upload Image
-                    </Button>
-                    
-                    <div className="text-sm text-slate-500 dark:text-slate-400">
-                      Or enter a URL:
-                    </div>
-                    
-                    <Input
-                      name="featuredImage"
-                      value={formData.featuredImage || ''}
-                      onChange={handleChange}
-                      placeholder="https://example.com/image.jpg"
-                      wrapperClassName="mt-2 mb-0"
-                    />
-                  </div>
-                  
-                  <div>
-                    {imagePreview ? (
-                      <div className="relative w-full h-40 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                        <div className="absolute inset-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${imagePreview})` }}></div>
-                      </div>
-                    ) : formData.featuredImage ? (
-                      <div className="relative w-full h-40 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                        <div className="absolute inset-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${formData.featuredImage})` }}></div>
-                      </div>
-                    ) : (
-                      <div className="w-full h-40 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500">
-                        No image selected
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ImageField
+                  label="Featured Image"
+                  value={formData.featuredImage || ''}
+                  onChange={(url) => setFormData(prev => ({ ...prev, featuredImage: url }))}
+                  contentType="post"
+                  placeholder="No featured image selected"
+                  helpText="Select an image to display as the featured image for this post"
+                />
               </div>
               
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
@@ -296,14 +241,39 @@ export default function NewPostPage() {
               </div>
               
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-                <Checkbox
-                  label="Published"
-                  checked={formData.published}
-                  onChange={(checked) => setFormData(prev => ({ ...prev, published: checked }))}
-                />
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  When checked, this post will be visible to visitors. Otherwise, it will be saved as a draft.
-                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Status *
+                    </label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="draft">📝 Draft - Hidden from public</option>
+                      <option value="published">✅ Published - Live immediately</option>
+                      <option value="scheduled">⏰ Scheduled - Publish later</option>
+                    </select>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {formData.status === 'draft' && 'Draft posts are hidden from public view. You can schedule them later in Content Scheduler.'}
+                      {formData.status === 'published' && 'Published posts are visible to readers immediately'}
+                      {formData.status === 'scheduled' && 'Scheduled posts will be published at a future date (set in Content Scheduler)'}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Checkbox
+                      label="Featured Post"
+                      checked={formData.featured}
+                      onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
+                    />
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      Featured posts will be highlighted on the blog page
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardBody>
             
@@ -311,7 +281,7 @@ export default function NewPostPage() {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => router.push('/admin/posts')}
+                onClick={() => router.push('/admin/content-management?tab=posts')}
               >
                 Cancel
               </Button>

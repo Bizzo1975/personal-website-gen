@@ -1,5 +1,5 @@
 import { query } from '@/lib/db';
-import { Project, CreateProjectData, UpdateProjectData } from '@/types/project';
+import { Project, CreateProjectData, UpdateProjectData } from '@/lib/models/Project';
 
 export class ProjectService {
   // Get all published projects with optional permission filtering
@@ -35,13 +35,13 @@ export class ProjectService {
         content: row.content,
         image: row.image,
         technologies: row.technologies || [],
-        liveDemo: row.live_demo,
-        sourceCode: row.source_code,
+        live_demo: row.live_demo,
+        source_code: row.source_code,
         featured: row.featured,
-        permissionLevel: row.permission_level,
+        permission_level: row.permission_level,
         status: row.status,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        created_at: row.created_at,
+        updated_at: row.updated_at
       }));
 
       // Filter by user permissions if userEmail is provided
@@ -50,7 +50,7 @@ export class ProjectService {
       }
 
       // Return only public projects if no user context
-      return projects.filter(project => project.permissionLevel === 'all');
+      return projects.filter(project => project.permission_level === 'all');
     } catch (error) {
       console.error('Failed to fetch projects:', error);
       throw new Error('Failed to fetch projects from database');
@@ -78,13 +78,13 @@ export class ProjectService {
         content: row.content,
         image: row.image,
         technologies: row.technologies || [],
-        liveDemo: row.live_demo,
-        sourceCode: row.source_code,
+        live_demo: row.live_demo,
+        source_code: row.source_code,
         featured: row.featured,
-        permissionLevel: row.permission_level,
+        permission_level: row.permission_level,
         status: row.status,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        created_at: row.created_at,
+        updated_at: row.updated_at
       };
     } catch (error) {
       console.error('Failed to fetch project by ID:', error);
@@ -109,20 +109,20 @@ export class ProjectService {
         content: row.content,
         image: row.image,
         technologies: row.technologies || [],
-        liveDemo: row.live_demo,
-        sourceCode: row.source_code,
+        live_demo: row.live_demo,
+        source_code: row.source_code,
         featured: row.featured,
-        permissionLevel: row.permission_level,
+        permission_level: row.permission_level,
         status: row.status,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        created_at: row.created_at,
+        updated_at: row.updated_at
       }));
 
       if (userEmail) {
         return await this.filterProjectsByPermissions(projects, userEmail);
       }
 
-      return projects.filter(project => project.permissionLevel === 'all');
+      return projects.filter(project => project.permission_level === 'all');
     } catch (error) {
       console.error('Failed to fetch featured projects:', error);
       throw new Error('Failed to fetch featured projects from database');
@@ -150,22 +150,22 @@ export class ProjectService {
         content: row.content,
         image: row.image,
         technologies: row.technologies || [],
-        liveDemo: row.live_demo,
-        sourceCode: row.source_code,
+        live_demo: row.live_demo,
+        source_code: row.source_code,
         featured: row.featured,
-        permissionLevel: row.permission_level,
+        permission_level: row.permission_level,
         status: row.status,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        created_at: row.created_at,
+        updated_at: row.updated_at
       };
 
       // Check if user has permission to view this project
-      if (project.permissionLevel !== 'all' && !userEmail) {
+      if (project.permission_level !== 'all' && !userEmail) {
         return null;
       }
 
-      if (project.permissionLevel !== 'all' && userEmail) {
-        const hasPermission = await this.checkUserPermission(userEmail, project.permissionLevel);
+      if (project.permission_level !== 'all' && userEmail) {
+        const hasPermission = await this.checkUserPermission(userEmail, project.permission_level);
         if (!hasPermission) {
           return null;
         }
@@ -174,6 +174,41 @@ export class ProjectService {
       return project;
     } catch (error) {
       console.error('Failed to fetch project by slug:', error);
+      throw new Error('Failed to fetch project from database');
+    }
+  }
+
+  // Get a single project by slug for admin preview (includes draft content)
+  static async getProjectBySlugForPreview(slug: string): Promise<Project | null> {
+    try {
+      const result = await query(
+        'SELECT * FROM projects WHERE slug = $1',
+        [slug]
+      );
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        description: row.description,
+        content: row.content,
+        image: row.image,
+        technologies: row.technologies || [],
+        live_demo: row.live_demo,
+        source_code: row.source_code,
+        featured: row.featured,
+        permission_level: row.permission_level,
+        status: row.status,
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      };
+    } catch (error) {
+      console.error('Failed to fetch project by slug for preview:', error);
       throw new Error('Failed to fetch project from database');
     }
   }
@@ -194,20 +229,20 @@ export class ProjectService {
         content: row.content,
         image: row.image,
         technologies: row.technologies || [],
-        liveDemo: row.live_demo,
-        sourceCode: row.source_code,
+        live_demo: row.live_demo,
+        source_code: row.source_code,
         featured: row.featured,
-        permissionLevel: row.permission_level,
+        permission_level: row.permission_level,
         status: row.status,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        created_at: row.created_at,
+        updated_at: row.updated_at
       }));
 
       if (userEmail) {
         return await this.filterProjectsByPermissions(projects, userEmail);
       }
 
-      return projects.filter(project => project.permissionLevel === 'all');
+      return projects.filter(project => project.permission_level === 'all');
     } catch (error) {
       console.error('Failed to fetch projects by technology:', error);
       throw new Error('Failed to fetch projects by technology from database');
@@ -230,10 +265,10 @@ export class ProjectService {
           projectData.content,
           projectData.image,
           projectData.technologies,
-          projectData.liveDemo,
-          projectData.sourceCode,
+          projectData.live_demo,
+          projectData.source_code,
           projectData.featured || false,
-          projectData.permissionLevel || 'all',
+          projectData.permission_level || 'all',
           projectData.status || 'draft',
           createdBy
         ]
@@ -248,13 +283,13 @@ export class ProjectService {
         content: row.content,
         image: row.image,
         technologies: row.technologies || [],
-        liveDemo: row.live_demo,
-        sourceCode: row.source_code,
+        live_demo: row.live_demo,
+        source_code: row.source_code,
         featured: row.featured,
-        permissionLevel: row.permission_level,
+        permission_level: row.permission_level,
         status: row.status,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        created_at: row.created_at,
+        updated_at: row.updated_at
       };
     } catch (error) {
       console.error('Failed to create project:', error);
@@ -288,10 +323,10 @@ export class ProjectService {
           projectData.content,
           projectData.image,
           projectData.technologies,
-          projectData.liveDemo,
-          projectData.sourceCode,
+          projectData.live_demo,
+          projectData.source_code,
           projectData.featured,
-          projectData.permissionLevel,
+          projectData.permission_level,
           projectData.status
         ]
       );
@@ -309,13 +344,13 @@ export class ProjectService {
         content: row.content,
         image: row.image,
         technologies: row.technologies || [],
-        liveDemo: row.live_demo,
-        sourceCode: row.source_code,
+        live_demo: row.live_demo,
+        source_code: row.source_code,
         featured: row.featured,
-        permissionLevel: row.permission_level,
+        permission_level: row.permission_level,
         status: row.status,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        created_at: row.created_at,
+        updated_at: row.updated_at
       };
     } catch (error) {
       console.error('Failed to update project:', error);
@@ -327,7 +362,7 @@ export class ProjectService {
   static async deleteProject(id: string): Promise<boolean> {
     try {
       const result = await query('DELETE FROM projects WHERE id = $1', [id]);
-      return result.rowCount > 0;
+      return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('Failed to delete project:', error);
       throw new Error('Failed to delete project from database');
@@ -349,14 +384,13 @@ export class ProjectService {
         content: row.content,
         image: row.image,
         technologies: row.technologies || [],
-        liveDemo: row.live_demo,
-        sourceCode: row.source_code,
+        live_demo: row.live_demo,
+        source_code: row.source_code,
         featured: row.featured,
-        permissionLevel: row.permission_level,
+        permission_level: row.permission_level,
         status: row.status,
-        createdBy: row.created_by,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        created_at: row.created_at,
+        updated_at: row.updated_at
       }));
     } catch (error) {
       console.error('Failed to fetch projects for admin:', error);
@@ -403,21 +437,21 @@ export class ProjectService {
 
       if (result.rows.length === 0) {
         // User has no special access, return only public projects
-        return projects.filter(project => project.permissionLevel === 'all');
+        return projects.filter(project => project.permission_level === 'all');
       }
 
       const { has_professional_access, has_personal_access } = result.rows[0];
 
       return projects.filter(project => {
-        if (project.permissionLevel === 'all') return true;
-        if (project.permissionLevel === 'professional' && has_professional_access) return true;
-        if (project.permissionLevel === 'personal' && has_personal_access) return true;
+        if (project.permission_level === 'all') return true;
+        if (project.permission_level === 'professional' && has_professional_access) return true;
+        if (project.permission_level === 'personal' && has_personal_access) return true;
         return false;
       });
     } catch (error) {
       console.error('Failed to filter projects by permissions:', error);
       // Return only public projects on error
-      return projects.filter(project => project.permissionLevel === 'all');
+      return projects.filter(project => project.permission_level === 'all');
     }
   }
 }
@@ -476,13 +510,13 @@ export async function getProjects(options: GetProjectsOptions = {}): Promise<Pro
       content: project.content,
       image: project.image,
       technologies: project.technologies,
-      liveDemo: project.liveDemo,
-      sourceCode: project.sourceCode,
+      liveDemo: project.live_demo,
+      sourceCode: project.source_code,
       featured: project.featured,
-      permissionLevel: project.permissionLevel,
+      permissionLevel: project.permission_level,
       status: project.status,
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt
+      createdAt: project.created_at,
+      updatedAt: project.updated_at
     }));
   } catch (error) {
     console.error('Error in getProjects:', error);
@@ -503,13 +537,13 @@ export async function getProjectBySlug(slug: string, userEmail?: string): Promis
       content: project.content,
       image: project.image,
       technologies: project.technologies,
-      liveDemo: project.liveDemo,
-      sourceCode: project.sourceCode,
+      liveDemo: project.live_demo,
+      sourceCode: project.source_code,
       featured: project.featured,
-      permissionLevel: project.permissionLevel,
+      permissionLevel: project.permission_level,
       status: project.status,
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt
+      createdAt: project.created_at,
+      updatedAt: project.updated_at
     };
   } catch (error) {
     console.error('Error in getProjectBySlug:', error);

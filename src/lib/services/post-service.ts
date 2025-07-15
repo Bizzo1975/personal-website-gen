@@ -1,5 +1,24 @@
+import { Post as DBPost, CreatePostData, UpdatePostData } from '@/lib/models/Post';
 import { query } from '@/lib/db';
-import { Post, CreatePostData, UpdatePostData } from '@/lib/models/Post';
+
+// Frontend Post interface with camelCase properties
+export interface Post {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string;
+  featuredImage?: string;
+  tags: string[];
+  author: string;
+  readTime: number;
+  date: Date;
+  permissionLevel: 'all' | 'professional' | 'personal';
+  status?: 'draft' | 'scheduled' | 'published';
+  published: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // PostData interface for backward compatibility
 export interface PostData {
@@ -8,7 +27,7 @@ export interface PostData {
   slug: string;
   content: string;
   excerpt: string;
-  image?: string;
+  featuredImage?: string;
   tags: string[];
   author: string;
   readTime: number;
@@ -37,10 +56,12 @@ export class PostService {
           date,
           permission_level,
           published,
+          status,
+          featured,
           created_at,
           updated_at
         FROM posts 
-        WHERE published = true
+        WHERE (published = true OR status = 'published')
         ORDER BY date DESC
       `;
       
@@ -51,13 +72,15 @@ export class PostService {
         slug: row.slug,
         content: row.content,
         excerpt: row.excerpt,
-        image: row.featured_image,
+        featuredImage: row.featured_image,
         tags: row.tags || [],
         author: row.author,
         readTime: row.read_time,
         date: row.date,
         permissionLevel: row.permission_level,
+        status: row.status,
         published: row.published,
+        featured: row.featured || false,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       }));
@@ -94,12 +117,13 @@ export class PostService {
         slug: row.slug,
         content: row.content,
         excerpt: row.excerpt,
-        image: row.featured_image,
+        featuredImage: row.featured_image,
         tags: row.tags || [],
         author: row.author,
         readTime: row.read_time,
         date: row.date,
         permissionLevel: row.permission_level,
+        status: row.status,
         published: row.published,
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -114,8 +138,8 @@ export class PostService {
   static async getPostBySlug(slug: string, userEmail?: string): Promise<Post | null> {
     try {
       const result = await query(
-        'SELECT * FROM posts WHERE slug = $1 AND published = true',
-        [slug]
+        'SELECT * FROM posts WHERE slug = $1 AND (status = $2 OR published = true)',
+        [slug, 'published']
       );
 
       if (result.rows.length === 0) {
@@ -129,12 +153,13 @@ export class PostService {
         slug: row.slug,
         content: row.content,
         excerpt: row.excerpt,
-        image: row.featured_image,
+        featuredImage: row.featured_image,
         tags: row.tags || [],
         author: row.author,
         readTime: row.read_time,
         date: row.date,
         permissionLevel: row.permission_level,
+        status: row.status,
         published: row.published,
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -159,6 +184,42 @@ export class PostService {
     }
   }
 
+  // Get a single post by slug for admin preview (includes draft content)
+  static async getPostBySlugForPreview(slug: string): Promise<Post | null> {
+    try {
+      const result = await query(
+        'SELECT * FROM posts WHERE slug = $1',
+        [slug]
+      );
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        content: row.content,
+        excerpt: row.excerpt,
+        featuredImage: row.featured_image,
+        tags: row.tags || [],
+        author: row.author,
+        readTime: row.read_time,
+        date: row.date,
+        permissionLevel: row.permission_level,
+        status: row.status,
+        published: row.published,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    } catch (error) {
+      console.error('Failed to fetch post by slug for preview:', error);
+      throw new Error('Failed to fetch post from database');
+    }
+  }
+
   // Get posts by category
   static async getPostsByCategory(category: string, userEmail?: string): Promise<Post[]> {
     try {
@@ -173,7 +234,7 @@ export class PostService {
         slug: row.slug,
         content: row.content,
         excerpt: row.excerpt,
-        image: row.featured_image,
+        featuredImage: row.featured_image,
         tags: row.tags || [],
         author: row.author,
         readTime: row.read_time,
@@ -209,12 +270,12 @@ export class PostService {
           postData.slug,
           postData.content,
           postData.excerpt,
-          postData.image,
+          postData.featured_image,
           postData.tags,
           postData.author,
-          postData.readTime,
+          postData.read_time,
           postData.date,
-          postData.permissionLevel || 'all',
+          postData.permission_level || 'all',
           postData.published || false,
           createdBy
         ]
@@ -227,7 +288,7 @@ export class PostService {
         slug: row.slug,
         content: row.content,
         excerpt: row.excerpt,
-        image: row.featured_image,
+        featuredImage: row.featured_image,
         tags: row.tags || [],
         author: row.author,
         readTime: row.read_time,
@@ -247,35 +308,27 @@ export class PostService {
   static async updatePost(id: string, postData: UpdatePostData): Promise<Post> {
     try {
       const result = await query(
-        `UPDATE posts SET 
-          title = COALESCE($2, title),
-          slug = COALESCE($3, slug),
-          content = COALESCE($4, content),
-          excerpt = COALESCE($5, excerpt),
-          featured_image = COALESCE($6, featured_image),
-          tags = COALESCE($7, tags),
-          author = COALESCE($8, author),
-          read_time = COALESCE($9, read_time),
-          date = COALESCE($10, date),
-          permission_level = COALESCE($11, permission_level),
-          published = COALESCE($12, published),
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 RETURNING *`,
-        [
-          id,
-          postData.title,
-          postData.slug,
-          postData.content,
-          postData.excerpt,
-          postData.image,
-          postData.tags,
-          postData.author,
-          postData.readTime,
-          postData.date,
-          postData.permissionLevel,
-          postData.published
-        ]
-      );
+        `UPDATE posts 
+           SET title = $1, slug = $2, content = $3, excerpt = $4, featured_image = $5, 
+               tags = $6, author = $7, read_time = $8, date = $9, permission_level = $10, 
+               published = $11, updated_at = CURRENT_TIMESTAMP 
+           WHERE id = $12 
+           RETURNING *`,
+          [
+            postData.title,
+            postData.slug,
+            postData.content,
+            postData.excerpt,
+            postData.featured_image,
+            postData.tags,
+            postData.author,
+            postData.read_time,
+            postData.date,
+            postData.permission_level,
+            postData.published,
+            id
+          ]
+        );
 
       if (result.rows.length === 0) {
         throw new Error('Post not found');
@@ -288,7 +341,7 @@ export class PostService {
         slug: row.slug,
         content: row.content,
         excerpt: row.excerpt,
-        image: row.featured_image,
+        featuredImage: row.featured_image,
         tags: row.tags || [],
         author: row.author,
         readTime: row.read_time,
@@ -308,7 +361,7 @@ export class PostService {
   static async deletePost(id: string): Promise<boolean> {
     try {
       const result = await query('DELETE FROM posts WHERE id = $1', [id]);
-      return result.rowCount > 0;
+      return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('Failed to delete post:', error);
       throw new Error('Failed to delete post from database');
@@ -328,7 +381,7 @@ export class PostService {
         slug: row.slug,
         content: row.content,
         excerpt: row.excerpt,
-        image: row.featured_image,
+        featuredImage: row.featured_image,
         tags: row.tags || [],
         author: row.author,
         readTime: row.read_time,
@@ -410,7 +463,7 @@ export interface PostData {
   slug: string;
   content: string;
   excerpt: string;
-  image?: string;
+  featuredImage?: string;
   tags: string[];
   author: string;
   readTime: number;
@@ -451,8 +504,8 @@ export async function getPosts(options: GetPostsOptions = {}): Promise<PostData[
       title: post.title,
       slug: post.slug,
       content: post.content,
-      excerpt: post.excerpt,
-      image: post.image,
+      excerpt: post.excerpt || '',
+      featuredImage: post.featuredImage,
       tags: post.tags,
       author: post.author,
       readTime: post.readTime,
@@ -478,8 +531,8 @@ export async function getPostBySlug(slug: string, userEmail?: string): Promise<P
       title: post.title,
       slug: post.slug,
       content: post.content,
-      excerpt: post.excerpt,
-      image: post.image,
+      excerpt: post.excerpt || '',
+      featuredImage: post.featuredImage,
       tags: post.tags,
       author: post.author,
       readTime: post.readTime,

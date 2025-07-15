@@ -9,9 +9,9 @@ const DEFAULT_PAGES = {
     id: 'home',
     title: 'Home',
     slug: 'home',
-    content: 'Welcome to my personal website. I\'m a developer passionate about creating amazing web experiences.',
+    content: 'I am a **passionate Full Stack Developer** with extensive experience in building modern, scalable web applications that deliver exceptional user experiences. My expertise spans the complete development lifecycle, from conceptualization and design to deployment and optimization, using cutting-edge technologies including React, Next.js, TypeScript, Node.js, and cloud platforms. I am committed to writing clean, maintainable code while staying current with industry best practices and emerging technologies. Whether working on complex enterprise solutions or innovative startup projects, I bring a detail-oriented approach and genuine enthusiasm for creating digital solutions that make a meaningful impact. I welcome opportunities to collaborate on challenging projects and am always excited to discuss how technology can solve real-world problems.',
     metaTitle: 'Home - Personal Website',
-    metaDescription: 'Welcome to my personal website showcasing my projects, blog posts, and professional experience.',
+    metaDescription: 'Professional Full Stack Developer specializing in modern web technologies, React, Next.js, and scalable application development.',
     status: 'published' as const,
     createdAt: new Date(),
     updatedAt: new Date()

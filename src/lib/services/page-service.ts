@@ -1,8 +1,23 @@
 import { query } from '../db';
-import { PageData } from '../../types/content';
 
-// Re-export PageData for convenience
-export { PageData };
+// Define PageData interface directly here to avoid export issues
+export interface PageData {
+  id: string;
+  name?: string;
+  title: string;
+  slug: string;
+  content: string;
+  metaDescription?: string;
+  headerTitle?: string;
+  headerSubtitle?: string;
+  heroHeading?: string;
+  connectSectionTitle?: string;
+  connectSectionContent?: string;
+  formSectionTitle?: string;
+  formDescription?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // Convert database row to PageData interface
 export function convertToPageData(row: any): PageData {
@@ -179,7 +194,7 @@ export async function updatePage(id: string, pageData: Partial<PageData>): Promi
 export async function deletePage(id: string): Promise<boolean> {
   try {
     const result = await query('DELETE FROM pages WHERE id = $1', [id]);
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   } catch (error) {
     console.error('Error deleting page:', error);
     return false;

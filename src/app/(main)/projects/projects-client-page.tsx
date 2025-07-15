@@ -24,7 +24,7 @@ import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 // Enhanced project interface with additional fields
 interface EnhancedProject extends ProjectData {
   category?: string;
-  status?: 'completed' | 'in-progress' | 'planned';
+  projectStatus?: 'completed' | 'in-progress' | 'planned';
   startDate?: string;
   endDate?: string;
   duration?: string;
@@ -38,7 +38,7 @@ interface EnhancedProject extends ProjectData {
     author: string;
     position: string;
     company: string;
-    avatar?: string;
+    avatar: string;
   };
   metrics?: {
     users?: number;
@@ -65,7 +65,7 @@ export default function ProjectsClientPage({ projects, pageData }: ProjectsClien
     const mockEnhancements = [
       {
         category: 'E-commerce',
-        status: 'completed' as const,
+        projectStatus: 'completed' as const,
         startDate: '2023-08-01',
         endDate: '2023-12-15',
         duration: '4.5 months',
@@ -91,7 +91,7 @@ export default function ProjectsClientPage({ projects, pageData }: ProjectsClien
       },
       {
         category: 'SaaS Platform',
-        status: 'completed' as const,
+        projectStatus: 'completed' as const,
         startDate: '2023-03-01',
         endDate: '2023-07-30',
         duration: '5 months',
@@ -117,7 +117,7 @@ export default function ProjectsClientPage({ projects, pageData }: ProjectsClien
       },
       {
         category: 'Portfolio Website',
-        status: 'completed' as const,
+        projectStatus: 'completed' as const,
         startDate: '2023-01-15',
         endDate: '2023-02-28',
         duration: '1.5 months',
@@ -130,7 +130,7 @@ export default function ProjectsClientPage({ projects, pageData }: ProjectsClien
       },
       {
         category: 'Mobile App',
-        status: 'in-progress' as const,
+        projectStatus: 'in-progress' as const,
         startDate: '2024-01-01',
         duration: '3 months (ongoing)',
         client: 'HealthTech Inc.',
@@ -141,7 +141,7 @@ export default function ProjectsClientPage({ projects, pageData }: ProjectsClien
       },
       {
         category: 'Analytics Dashboard',
-        status: 'completed' as const,
+        projectStatus: 'completed' as const,
         startDate: '2022-10-01',
         endDate: '2023-01-15',
         duration: '3.5 months',
@@ -185,7 +185,7 @@ export default function ProjectsClientPage({ projects, pageData }: ProjectsClien
   const filteredProjects = enhancedProjects.filter(project => {
     const matchesTech = !filter || project.technologies.includes(filter);
     const matchesCategory = categoryFilter === 'all' || project.category === categoryFilter;
-    const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || project.projectStatus === statusFilter;
     
     return matchesTech && matchesCategory && matchesStatus;
   });

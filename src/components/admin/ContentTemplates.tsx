@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AccessibleButton } from '@/components/AccessibilityEnhancements';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import Button from '@/components/Button';
-import { BiPlus, BiEdit, BiTrash, BiCopy, BiEye } from 'react-icons/bi';
+import { BiPlus, BiEdit, BiTrash, BiCopy, BiShow } from 'react-icons/bi';
 
 interface Template {
   id: string;
@@ -49,8 +49,8 @@ interface ContentTemplate {
 }
 
 interface ContentTemplatesProps {
-  onTemplateSelect?: (template: ContentTemplate) => void;
-  onTemplateCreate?: (template: Omit<ContentTemplate, 'id' | 'usageCount' | 'createdAt' | 'updatedAt'>) => void;
+  onTemplateSelect?: (template: Template) => void;
+  onTemplateCreate?: (template: Omit<Template, 'id' | 'usageCount' | 'createdAt' | 'updatedAt'>) => void;
   selectedType?: 'post' | 'page' | 'project' | 'all';
   className?: string;
 }
@@ -110,27 +110,25 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
   const filteredTemplates = templates
     .filter(template => {
       const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+                           template.description.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesType = selectedType === 'all' || template.type === selectedType;
-      const matchesCategory = filterCategory === 'all' || template.category === filterCategory;
       
-      return matchesSearch && matchesType && matchesCategory;
+      return matchesSearch && matchesType;
     })
     .sort((a, b) => {
       switch (sortBy) {
         case 'usage':
           return b.usageCount - a.usageCount;
         case 'created':
-          return b.createdAt.getTime() - a.createdAt.getTime();
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         default:
           return a.name.localeCompare(b.name);
       }
     });
 
-  // Get unique categories
-  const categories = ['all', ...Array.from(new Set(templates.map(t => t.category)))];
+  // Get unique categories - removing since Template doesn't have category
+  const categories = ['all'];
 
   const handleTemplateSelect = (template: Template) => {
     onTemplateSelect?.(template);
@@ -170,8 +168,8 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
       const newTemplate = {
         ...template,
         id: Date.now().toString(),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       setTemplates(prev => [...prev, newTemplate]);
       onTemplateCreate?.(template);
@@ -281,17 +279,9 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
                     {template.name}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-full">
+                    <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full">
                       {template.type}
                     </span>
-                    <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full">
-                      {template.category}
-                    </span>
-                    {template.isDefault && (
-                      <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 rounded-full">
-                        Default
-                      </span>
-                    )}
                   </div>
                 </div>
                 
@@ -301,55 +291,19 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
               </div>
 
               {/* Description */}
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+              <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 line-clamp-2">
                 {template.description}
               </p>
 
-              {/* Tags */}
-              <div className="flex flex-wrap gap-1 mb-3">
-                {template.tags.slice(0, 3).map(tag => (
-                  <span
-                    key={tag}
-                    className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-                {template.tags.length > 3 && (
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    +{template.tags.length - 3} more
-                  </span>
-                )}
-              </div>
-
-              {/* Structure Preview */}
+              {/* Usage count */}
               <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                <div className="font-medium mb-1">Structure:</div>
-                <div className="space-y-1">
-                  {template.template.structure.sections.slice(0, 3).map((section, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        section.type === 'header' ? 'bg-blue-400' :
-                        section.type === 'paragraph' ? 'bg-green-400' :
-                        section.type === 'list' ? 'bg-yellow-400' :
-                        section.type === 'code' ? 'bg-purple-400' :
-                        section.type === 'image' ? 'bg-pink-400' : 'bg-gray-400'
-                      }`}></div>
-                      <span>{section.title}</span>
-                    </div>
-                  ))}
-                  {template.template.structure.sections.length > 3 && (
-                    <div className="text-slate-400 dark:text-slate-500">
-                      +{template.template.structure.sections.length - 3} more sections
-                    </div>
-                  )}
-                </div>
+                Used {template.usageCount} times
               </div>
 
               {/* Footer */}
               <div className="text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-200 dark:border-slate-600">
-                <div>Created by {template.createdBy}</div>
-                <div>Updated {formatDate(template.updatedAt)}</div>
+                <div>Template • {template.type}</div>
+                <div>Updated {formatDate(new Date(template.updatedAt))}</div>
               </div>
             </div>
           ))}
@@ -416,9 +370,12 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
                       <input
                         type="text"
                         value={selectedTemplate.name}
-                        onChange={(e) => setSelectedTemplate({...selectedTemplate, name: e.target.value})}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                        required
+                        onChange={(e) => setSelectedTemplate({
+                          ...selectedTemplate,
+                          name: e.target.value
+                        })}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white"
+                        placeholder="Template title"
                       />
                     </div>
 
@@ -458,10 +415,10 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={selectedTemplate.template.title}
+                      value={selectedTemplate.name}
                       onChange={(e) => setSelectedTemplate({
                         ...selectedTemplate,
-                        template: { ...selectedTemplate.template, title: e.target.value }
+                        name: e.target.value
                       })}
                       className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       placeholder="Template title with placeholders [like this]"
@@ -473,10 +430,10 @@ const ContentTemplates: React.FC<ContentTemplatesProps> = ({
                       Template Content
                     </label>
                     <textarea
-                      value={selectedTemplate.template.content}
+                      value={selectedTemplate.content}
                       onChange={(e) => setSelectedTemplate({
                         ...selectedTemplate,
-                        template: { ...selectedTemplate.template, content: e.target.value }
+                        content: e.target.value
                       })}
                       rows={12}
                       className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-mono text-sm"

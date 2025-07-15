@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { ProjectService } from '@/lib/services/project-service';
 import { PermissionService } from '@/lib/services/permission-service';
+import { query } from '@/lib/db';
 
 // GET /api/projects - Get all projects with permission filtering
 export async function GET(request: Request) {
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
       projects = await ProjectService.getAllProjectsForAdmin();
     } else {
       // Regular users get only published projects with permission filtering
-      projects = await ProjectService.getAllProjects(userEmail);
+      projects = await ProjectService.getAllProjects(userEmail || undefined);
     }
 
     return NextResponse.json({
@@ -67,6 +68,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get the user's ID from the database
+    const userQuery = await query(
+      'SELECT id FROM users WHERE email = $1',
+      [session.user.email]
+    );
+
+    if (userQuery.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    const userId = userQuery.rows[0].id;
+
     // Parse request body
     const projectData = await request.json();
     
@@ -79,15 +95,31 @@ export async function POST(request: Request) {
     }
 
     // Validate permission level
-    if (projectData.permissionLevel && !PermissionService.isValidPermissionLevel(projectData.permissionLevel)) {
+    const permissionLevel = projectData.permissionLevel || projectData.permission_level || 'all';
+    if (!PermissionService.isValidPermissionLevel(permissionLevel)) {
       return NextResponse.json(
         { error: 'Invalid permission level. Must be one of: all, professional, personal' },
         { status: 400 }
       );
     }
     
+    // Convert camelCase to database format
+    const dbProjectData = {
+      title: projectData.title,
+      slug: projectData.slug,
+      description: projectData.description,
+      content: projectData.content || '',
+      image: projectData.image,
+      technologies: projectData.technologies || [],
+      live_demo: projectData.liveDemo || projectData.live_demo,
+      source_code: projectData.sourceCode || projectData.source_code,
+      featured: projectData.featured || false,
+      permission_level: permissionLevel,
+      status: projectData.status || 'draft'
+    };
+    
     // Create new project with ProjectService
-    const newProject = await ProjectService.createProject(projectData, session.user.id || session.user.email);
+    const newProject = await ProjectService.createProject(dbProjectData, userId);
     
     // Revalidate projects page
     revalidatePath('/projects');
@@ -98,7 +130,9 @@ export async function POST(request: Request) {
     console.error('Error creating project:', error);
     
     // Handle specific database errors
-    if (error.message.includes('duplicate') || error.message.includes('unique')) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    if (errorMessage.includes('duplicate') || errorMessage.includes('unique')) {
       return NextResponse.json(
         { error: 'A project with this slug already exists' },
         { status: 400 }

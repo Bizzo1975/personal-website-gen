@@ -9,22 +9,22 @@ interface NewsletterContent {
   title: string;
   description: string;
   incentive: string;
-  subscriberCount: number;
 }
 
 export default function NewsletterContentPage() {
   const [content, setContent] = useState<NewsletterContent>({
     title: '',
     description: '',
-    incentive: '',
-    subscriberCount: 0
+    incentive: ''
   });
+  const [subscriberCount, setSubscriberCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     fetchContent();
+    fetchSubscriberCount();
   }, []);
 
   const fetchContent = async () => {
@@ -39,6 +39,18 @@ export default function NewsletterContentPage() {
       console.error('Error fetching newsletter content:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSubscriberCount = async () => {
+    try {
+      const response = await fetch('/api/newsletter/admin/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriberCount(data.totalSubscribers || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching subscriber count:', error);
     }
   };
 
@@ -70,7 +82,7 @@ export default function NewsletterContentPage() {
     const { name, value } = e.target;
     setContent(prev => ({
       ...prev,
-      [name]: name === 'subscriberCount' ? parseInt(value) || 0 : value
+      [name]: value
     }));
   };
 
@@ -94,6 +106,19 @@ export default function NewsletterContentPage() {
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
             Manage the newsletter signup content that appears throughout your website
+          </p>
+        </div>
+
+        {/* Subscriber Count Display */}
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+            Current Subscriber Count
+          </h3>
+          <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+            {subscriberCount.toLocaleString()} subscribers
+          </div>
+          <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+            This count is automatically updated from your database
           </p>
         </div>
 
@@ -147,21 +172,6 @@ export default function NewsletterContentPage() {
                 />
               </div>
 
-              <div>
-                <label htmlFor="subscriberCount" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Subscriber Count (for social proof)
-                </label>
-                <input
-                  type="number"
-                  id="subscriberCount"
-                  name="subscriberCount"
-                  value={content.subscriberCount}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  min="0"
-                />
-              </div>
-
               <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex items-center space-x-2">
                   {saved && (
@@ -194,7 +204,7 @@ export default function NewsletterContentPage() {
             {content.incentive && (
               <p className="mt-1 italic">{content.incentive}</p>
             )}
-            <p className="mt-2 text-xs">Subscribers: {content.subscriberCount}</p>
+            <p className="mt-2 text-xs">Subscribers: {subscriberCount.toLocaleString()}</p>
           </div>
         </div>
       </div>

@@ -22,6 +22,12 @@ interface SiteSettings {
   bioText: string;
   navbarStyle: string;
   navbarLinks: NavbarLink[];
+  sendgridApiKey?: string;
+  sendgridFromEmail?: string;
+  sendgridFromName?: string;
+  sendgridReplyTo?: string;
+  newsletterEnabled?: boolean;
+  newsletterDoubleOptin?: boolean;
 }
 
 export default function SiteSettingsPage() {
@@ -275,6 +281,121 @@ export default function SiteSettingsPage() {
               onChange={handleInputChange}
               placeholder="e.g., Built with Next.js and Tailwind CSS"
             />
+          </div>
+
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4">Newsletter Settings</h3>
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-6 mb-6">
+              <div className="mb-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name="newsletterEnabled"
+                    checked={siteSettings.newsletterEnabled ?? true}
+                    onChange={(e) => setSiteSettings({
+                      ...siteSettings,
+                      newsletterEnabled: e.target.checked
+                    })}
+                    className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Enable Newsletter System
+                  </span>
+                </label>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Allow visitors to subscribe to your newsletter
+                </p>
+              </div>
+              
+              <div className="mb-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name="newsletterDoubleOptin"
+                    checked={siteSettings.newsletterDoubleOptin ?? false}
+                    onChange={(e) => setSiteSettings({
+                      ...siteSettings,
+                      newsletterDoubleOptin: e.target.checked
+                    })}
+                    className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Double Opt-in Required
+                  </span>
+                </label>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Require email confirmation before activating subscriptions
+                </p>
+              </div>
+            </div>
+
+            <h4 className="text-md font-semibold mb-4">SendGrid Configuration</h4>
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="text-sm">
+                  <p className="text-blue-800 dark:text-blue-200 font-medium">SendGrid Setup Required</p>
+                  <p className="text-blue-700 dark:text-blue-300 mt-1">
+                    To enable newsletter functionality, you need to configure SendGrid API credentials. 
+                    <a href="https://sendgrid.com/docs/for-developers/sending-email/api-getting-started/" 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       className="underline hover:no-underline">
+                      Learn how to get your API key
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <AdminInput
+                id="sendgridApiKey"
+                label="SendGrid API Key"
+                name="sendgridApiKey"
+                type="password"
+                value={siteSettings.sendgridApiKey || ''}
+                onChange={handleInputChange}
+                placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                helpText="Your SendGrid API key for sending emails"
+              />
+              
+              <AdminInput
+                id="sendgridFromEmail"
+                label="From Email Address"
+                name="sendgridFromEmail"
+                type="email"
+                value={siteSettings.sendgridFromEmail || ''}
+                onChange={handleInputChange}
+                placeholder="noreply@yoursite.com"
+                helpText="Email address newsletters will be sent from"
+              />
+              
+              <AdminInput
+                id="sendgridFromName"
+                label="From Name"
+                name="sendgridFromName"
+                value={siteSettings.sendgridFromName || ''}
+                onChange={handleInputChange}
+                placeholder="Your Site Newsletter"
+                helpText="Name that appears in the 'From' field"
+              />
+              
+              <AdminInput
+                id="sendgridReplyTo"
+                label="Reply-To Email"
+                name="sendgridReplyTo"
+                type="email"
+                value={siteSettings.sendgridReplyTo || ''}
+                onChange={handleInputChange}
+                placeholder="contact@yoursite.com"
+                helpText="Email address for subscriber replies"
+              />
+            </div>
           </div>
           
           <div className="flex justify-end">

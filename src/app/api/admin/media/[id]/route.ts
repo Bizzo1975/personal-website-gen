@@ -92,11 +92,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const deleteResult = await MediaService.deleteFile(params.id);
+    const deleteResult = await MediaService.deleteMediaFile(params.id);
 
-    if (!deleteResult.success) {
+    if (!deleteResult) {
       return NextResponse.json(
-        { error: deleteResult.error },
+        { error: 'Failed to delete media file' },
         { status: 400 }
       );
     }

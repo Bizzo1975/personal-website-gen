@@ -16,30 +16,17 @@ export interface SiteSettings {
   navbarLinks: NavbarLink[];
 }
 
-// Timeout wrapper for database queries
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => 
-      setTimeout(() => reject(new Error(`Database query timed out after ${timeoutMs}ms`)), timeoutMs)
-    )
-  ]);
-};
-
 /**
  * Fetch the site settings from database (server-side)
  */
 export async function getSiteSettings(): Promise<SiteSettings> {
   try {
-    // Add timeout protection to prevent hanging
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Site settings query timeout')), 3000);
-    });
+    console.log('🔄 Fetching site settings from database...');
     
-    const queryPromise = query('SELECT setting_key, setting_value FROM site_settings');
+    // Fetch all site settings from database (same logic as API endpoint)
+    const result = await query('SELECT setting_key, setting_value FROM site_settings');
     
-    // Race the query against timeout
-    const result = await Promise.race([queryPromise, timeoutPromise]);
+    console.log('📋 Site settings query result:', result.rows.length, 'rows');
     
     // Convert to object format
     const settings: any = {};
@@ -50,6 +37,8 @@ export async function getSiteSettings(): Promise<SiteSettings> {
         settings[row.setting_key] = row.setting_value;
       }
     });
+    
+    console.log('⚙️ Parsed settings:', Object.keys(settings));
     
     // Apply defaults for missing settings
     const defaultSettings = {
@@ -68,9 +57,11 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       ...settings
     };
     
+    console.log('🏠 Final site settings - Logo URL:', defaultSettings.logoUrl);
+    
     return defaultSettings;
   } catch (error) {
-    console.warn('Error fetching site settings (using fallback):', error);
+    console.error('❌ Error fetching site settings (using fallback):', error);
     // Return safe defaults as fallback
     return {
       logoUrl: '/images/jlk-logo.png',

@@ -1,27 +1,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  ChartBarIcon,
-  EyeIcon,
+import { 
+  EyeIcon, 
+  UserMinusIcon, 
   CursorArrowRaysIcon,
-  UserMinusIcon,
-  ExclamationTriangleIcon,
+  EnvelopeIcon,
+  UserPlusIcon,
+  ChartBarIcon,
   ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon
+  ArrowTrendingDownIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import AdminLayout from '@/app/admin/components/AdminLayout';
 import Card, { CardBody, CardHeader } from '@/components/Card';
-import { 
-  BiBarChart, 
-  BiTrendingUp,
-  BiUsers,
-  BiMail,
-  BiShow,
-  BiMousePointer,
-  BiCalendar,
-  BiTime
-} from 'react-icons/bi';
 
 interface AnalyticsData {
   overview: {

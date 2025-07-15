@@ -18,16 +18,28 @@ import { Newsletter, NewsletterSubscriber, NewsletterAnalytics } from '@/types/n
 import AdminLayout from '@/app/admin/components/AdminLayout';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import Button from '@/components/Button';
-import { 
-  BiPlus, 
-  BiMail, 
-  BiUsers, 
-  BiCalendar, 
+import {
+  BiPlus,
+  BiEnvelope,
+  BiUser,
+  BiCalendar,
   BiBarChart,
-  BiEdit,
-  BiSend,
   BiCog,
-  BiTrendingUp
+  BiTrendingUp,
+  BiDownload,
+  BiSend,
+  BiEdit,
+  BiTrash,
+  BiDuplicate,
+  BiPause,
+  BiPlay,
+  BiStop,
+  BiArchive,
+  BiCheck,
+  BiX,
+  BiTime,
+  BiStats,
+  BiRefresh
 } from 'react-icons/bi';
 import AdminPageLayout from '../components/AdminPageLayout';
 import { AdminInput, AdminTextarea, AdminSelect } from '../components/AdminFormField';
@@ -54,7 +66,6 @@ interface NewsletterContent {
   title: string;
   description: string;
   incentive: string;
-  subscriberCount: number;
   footerText: string;
   weeklyArticlesIcon: string;
   weeklyArticlesTitle: string;
@@ -83,7 +94,6 @@ const NewsletterAdminPage: React.FC = () => {
     title: 'Stay in the Loop',
     description: 'Get notified about new projects, blog posts, and insights on modern web development.',
     incentive: '🚀 Plus exclusive tips, early access to new content, and behind-the-scenes updates',
-    subscriberCount: 127,
     footerText: 'By subscribing, you agree to receive our newsletter and promotional emails.',
     weeklyArticlesIcon: 'book',
     weeklyArticlesTitle: 'Weekly Articles',
@@ -395,6 +405,7 @@ const NewsletterAdminPage: React.FC = () => {
                 </h3>
                 <div className="space-y-6">
                   <AdminInput
+                    id="newsletter-title"
                     label="Newsletter Title"
                     value={content.title}
                     onChange={(e) => setContent({ ...content, title: e.target.value })}
@@ -402,6 +413,7 @@ const NewsletterAdminPage: React.FC = () => {
                   />
 
                   <AdminTextarea
+                    id="newsletter-description"
                     label="Description"
                     value={content.description}
                     onChange={(e) => setContent({ ...content, description: e.target.value })}
@@ -410,26 +422,20 @@ const NewsletterAdminPage: React.FC = () => {
                   />
 
                   <AdminInput
+                    id="newsletter-incentive"
                     label="Incentive Text"
                     value={content.incentive}
                     onChange={(e) => setContent({ ...content, incentive: e.target.value })}
-                    placeholder="e.g., 🚀 Plus exclusive tips and early access"
-                  />
-
-                  <AdminInput
-                    label="Subscriber Count"
-                    type="number"
-                    value={content.subscriberCount.toString()}
-                    onChange={(e) => setContent({ ...content, subscriberCount: parseInt(e.target.value) || 0 })}
-                    min="0"
+                    placeholder="e.g., Get exclusive tips and insights"
                   />
 
                   <AdminTextarea
+                    id="newsletter-footer-text"
                     label="Footer Text"
                     value={content.footerText}
                     onChange={(e) => setContent({ ...content, footerText: e.target.value })}
-                    rows={2}
-                    placeholder="Privacy policy and subscription terms"
+                    rows={4}
+                    placeholder="Footer text and unsubscribe information..."
                   />
                 </div>
               </div>
@@ -446,17 +452,20 @@ const NewsletterAdminPage: React.FC = () => {
                       Weekly Articles
                     </h4>
                     <AdminSelect
+                      id="weekly-articles-icon"
                       label="Icon"
                       value={content.weeklyArticlesIcon}
                       onChange={(e) => setContent({ ...content, weeklyArticlesIcon: e.target.value })}
                       options={iconOptions}
                     />
                     <AdminInput
+                      id="weekly-articles-title"
                       label="Title"
                       value={content.weeklyArticlesTitle}
                       onChange={(e) => setContent({ ...content, weeklyArticlesTitle: e.target.value })}
                     />
                     <AdminTextarea
+                      id="weekly-articles-description"
                       label="Description"
                       value={content.weeklyArticlesDescription}
                       onChange={(e) => setContent({ ...content, weeklyArticlesDescription: e.target.value })}
@@ -470,17 +479,20 @@ const NewsletterAdminPage: React.FC = () => {
                       Exclusive Tips
                     </h4>
                     <AdminSelect
+                      id="exclusive-tips-icon"
                       label="Icon"
                       value={content.exclusiveTipsIcon}
                       onChange={(e) => setContent({ ...content, exclusiveTipsIcon: e.target.value })}
                       options={iconOptions}
                     />
                     <AdminInput
+                      id="exclusive-tips-title"
                       label="Title"
                       value={content.exclusiveTipsTitle}
                       onChange={(e) => setContent({ ...content, exclusiveTipsTitle: e.target.value })}
                     />
                     <AdminTextarea
+                      id="exclusive-tips-description"
                       label="Description"
                       value={content.exclusiveTipsDescription}
                       onChange={(e) => setContent({ ...content, exclusiveTipsDescription: e.target.value })}
@@ -494,17 +506,20 @@ const NewsletterAdminPage: React.FC = () => {
                       Early Access
                     </h4>
                     <AdminSelect
+                      id="early-access-icon"
                       label="Icon"
                       value={content.earlyAccessIcon}
                       onChange={(e) => setContent({ ...content, earlyAccessIcon: e.target.value })}
                       options={iconOptions}
                     />
                     <AdminInput
+                      id="early-access-title"
                       label="Title"
                       value={content.earlyAccessTitle}
                       onChange={(e) => setContent({ ...content, earlyAccessTitle: e.target.value })}
                     />
                     <AdminTextarea
+                      id="early-access-description"
                       label="Description"
                       value={content.earlyAccessDescription}
                       onChange={(e) => setContent({ ...content, earlyAccessDescription: e.target.value })}

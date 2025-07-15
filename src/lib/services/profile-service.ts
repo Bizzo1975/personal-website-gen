@@ -5,6 +5,7 @@ export interface ProfileData {
   name: string;
   imageUrl: string;
   skills: string[];
+  homePageSkills?: string[]; // Skills to display on home page Professional Skills card
   location?: string;
   email?: string;
   socialLinks?: {
@@ -20,32 +21,64 @@ export const profileService = {
       const result = await query('SELECT * FROM profiles LIMIT 1');
 
       if (result.rows.length === 0) {
+        console.log('No profile found in database');
         return null;
       }
 
       const profile = result.rows[0];
+      console.log('Raw profile data from database:', profile);
       
       // Parse social_links JSONB field
-      let socialLinks = {};
+      let socialLinks: { github?: string; linkedin?: string; website?: string } = {};
       try {
-        socialLinks = profile.social_links || {};
+        if (profile.social_links) {
+          if (typeof profile.social_links === 'string') {
+            socialLinks = JSON.parse(profile.social_links);
+          } else {
+            socialLinks = profile.social_links;
+          }
+        }
       } catch (e) {
+        console.error('Error parsing social_links:', e);
         socialLinks = {};
       }
       
       // Parse skills array
       let skills = [];
       try {
-        skills = profile.skills || [];
+        if (profile.skills) {
+          if (Array.isArray(profile.skills)) {
+            skills = profile.skills;
+          } else if (typeof profile.skills === 'string') {
+            skills = JSON.parse(profile.skills);
+          }
+        }
       } catch (e) {
+        console.error('Error parsing skills:', e);
         skills = [];
       }
       
-      return {
+      // Parse home page skills array
+      let homePageSkills = [];
+      try {
+        if (profile.home_page_skills) {
+          if (Array.isArray(profile.home_page_skills)) {
+            homePageSkills = profile.home_page_skills;
+          } else if (typeof profile.home_page_skills === 'string') {
+            homePageSkills = JSON.parse(profile.home_page_skills);
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing home_page_skills:', e);
+        homePageSkills = [];
+      }
+      
+      const profileData = {
         id: profile.id,
-        name: profile.name || '',
+        name: profile.name || 'Developer',
         imageUrl: profile.image_url || '/images/placeholder-image.png',
         skills: skills,
+        homePageSkills: homePageSkills,
         location: profile.location || '',
         email: profile.email || '',
         socialLinks: {
@@ -54,9 +87,12 @@ export const profileService = {
           website: socialLinks.website || ''
         }
       };
+      
+      console.log('Processed profile data:', profileData);
+      return profileData;
     } catch (error) {
       console.error('Error fetching profile:', error);
-      throw error;
+      return null;
     }
   },
 
@@ -79,15 +115,17 @@ export const profileService = {
             name = $1, 
             image_url = $2, 
             skills = $3, 
-            location = $4, 
-            email = $5, 
-            social_links = $6,
+            home_page_skills = $4,
+            location = $5, 
+            email = $6, 
+            social_links = $7,
             updated_at = CURRENT_TIMESTAMP
-          WHERE id = $7`,
+          WHERE id = $8`,
           [
             data.name,
             data.imageUrl,
             data.skills || [],
+            JSON.stringify(data.homePageSkills || []),
             data.location || '',
             data.email || '',
             socialLinksJson,
@@ -98,12 +136,13 @@ export const profileService = {
         // Insert new profile
         await query(
           `INSERT INTO profiles (
-            name, image_url, skills, location, email, social_links, created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+            name, image_url, skills, home_page_skills, location, email, social_links, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
           [
             data.name,
             data.imageUrl,
             data.skills || [],
+            JSON.stringify(data.homePageSkills || []),
             data.location || '',
             data.email || '',
             socialLinksJson

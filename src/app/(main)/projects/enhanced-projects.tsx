@@ -22,11 +22,12 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
+import TiltProjectCard from '@/components/TiltProjectCard';
 
 // Enhanced project interface with additional fields
 interface EnhancedProject extends ProjectData {
   category?: string;
-  status?: 'completed' | 'in-progress' | 'planned';
+  projectStatus?: 'completed' | 'in-progress' | 'planned';
   startDate?: string;
   endDate?: string;
   duration?: string;
@@ -40,7 +41,7 @@ interface EnhancedProject extends ProjectData {
     author: string;
     position: string;
     company: string;
-    avatar?: string;
+    avatar: string;
   };
   metrics?: {
     users?: number;
@@ -67,7 +68,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
     const mockEnhancements = [
       {
         category: 'E-commerce',
-        status: 'completed' as const,
+        projectStatus: 'completed' as const,
         startDate: '2023-08-01',
         endDate: '2023-12-15',
         duration: '4.5 months',
@@ -93,7 +94,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
       },
       {
         category: 'SaaS Platform',
-        status: 'completed' as const,
+        projectStatus: 'completed' as const,
         startDate: '2023-03-01',
         endDate: '2023-07-30',
         duration: '5 months',
@@ -119,7 +120,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
       },
       {
         category: 'Portfolio Website',
-        status: 'completed' as const,
+        projectStatus: 'completed' as const,
         startDate: '2023-01-15',
         endDate: '2023-02-28',
         duration: '1.5 months',
@@ -132,7 +133,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
       },
       {
         category: 'Mobile App',
-        status: 'in-progress' as const,
+        projectStatus: 'in-progress' as const,
         startDate: '2024-01-01',
         duration: '3 months (ongoing)',
         client: 'HealthTech Inc.',
@@ -143,7 +144,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
       },
       {
         category: 'Analytics Dashboard',
-        status: 'completed' as const,
+        projectStatus: 'completed' as const,
         startDate: '2022-10-01',
         endDate: '2023-01-15',
         duration: '3.5 months',
@@ -187,7 +188,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
   const filteredProjects = enhancedProjects.filter(project => {
     const matchesTech = !filter || project.technologies.includes(filter);
     const matchesCategory = categoryFilter === 'all' || project.category === categoryFilter;
-    const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || project.projectStatus === statusFilter;
     
     return matchesTech && matchesCategory && matchesStatus;
   });
@@ -376,136 +377,11 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
           ) : viewMode === 'grid' ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredProjects.map((project, index) => (
-                <div key={project.id} className="card-project group h-full flex flex-col relative">
-                  {/* Featured Badge */}
-                  {project.featured && (
-                    <div className="absolute top-4 right-4 z-10">
-                      <span className="bg-yellow-500 text-white px-2 py-1 text-xs font-bold rounded-full">
-                        FEATURED
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Status Badge */}
-                  {project.status && (
-                    <div className="absolute top-4 left-4 z-10">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(project.status)}`}>
-                        {project.status.replace('-', ' ').toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="img-hover-zoom h-48 relative">
-                    <FallbackImage
-                      src={project.image || '/images/projects/placeholder.jpg'}
-                      alt={project.title}
-                      width={600}
-                      height={400}
-                      className="w-full h-full object-cover"
-                      fallbackSrc="/images/projects/placeholder.jpg"
-                      priority={index < 3}
-                    />
-                  </div>
-                  
-                  <div className="p-6 flex flex-col flex-grow">
-                    {/* Project Meta */}
-                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mb-3">
-                      {project.category && (
-                        <div className="flex items-center">
-                          <TagIcon className="h-3 w-3 mr-1" />
-                          <span>{project.category}</span>
-                        </div>
-                      )}
-                      {project.duration && (
-                        <div className="flex items-center">
-                          <ClockIcon className="h-3 w-3 mr-1" />
-                          <span>{project.duration}</span>
-                        </div>
-                      )}
-                      {project.client && project.client !== 'Personal Project' && (
-                        <div className="flex items-center">
-                          <BuildingOfficeIcon className="h-3 w-3 mr-1" />
-                          <span>{project.client}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <h2 className="text-xl font-bold mb-3">{project.title}</h2>
-                    <p className="text-slate-600 dark:text-slate-300 mb-4 flex-grow">
-                      {project.description}
-                    </p>
-
-                    {/* Metrics */}
-                    {project.metrics && (
-                      <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
-                        {project.metrics.users && (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
-                            <div className="font-semibold text-blue-600 dark:text-blue-400">
-                              {project.metrics.users.toLocaleString()}
-                            </div>
-                            <div className="text-gray-600 dark:text-gray-400">Users</div>
-                          </div>
-                        )}
-                        {project.metrics.satisfaction && (
-                          <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded">
-                            <div className="font-semibold text-green-600 dark:text-green-400 flex items-center">
-                              {project.metrics.satisfaction}/5
-                              <StarSolidIcon className="h-3 w-3 ml-1" />
-                            </div>
-                            <div className="text-gray-600 dark:text-gray-400">Rating</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    <div className="mt-auto">
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {project.technologies.map((tech, index) => (
-                          <span 
-                            key={index} 
-                            className="bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer transition-colors"
-                            onClick={() => setFilter(tech)}
-                          >
-                            {tech}
-                          </span>
-                        ))}
-                      </div>
-                      
-                      <div className="flex gap-4 mb-3">
-                        {project.liveDemo && (
-                          <a 
-                            href={project.liveDemo} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium inline-flex items-center"
-                          >
-                            <GlobeAltIcon className="h-4 w-4 mr-1" />
-                            Live Demo
-                          </a>
-                        )}
-                        
-                        {project.sourceCode && (
-                          <a 
-                            href={project.sourceCode} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium inline-flex items-center"
-                          >
-                            <CodeBracketIcon className="h-4 w-4 mr-1" />
-                            Source Code
-                          </a>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => setSelectedProject(project)}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        View Case Study
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <TiltProjectCard 
+                  key={project.id} 
+                  project={project} 
+                  index={index}
+                />
               ))}
             </div>
           ) : (
@@ -518,8 +394,8 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
                   <div key={project.id} className="relative flex items-start">
                     {/* Timeline Dot */}
                     <div className={`absolute left-6 w-4 h-4 rounded-full border-4 border-white dark:border-gray-900 ${
-                      project.status === 'completed' ? 'bg-green-500' :
-                      project.status === 'in-progress' ? 'bg-blue-500' : 'bg-yellow-500'
+                      project.projectStatus === 'completed' ? 'bg-green-500' :
+                      project.projectStatus === 'in-progress' ? 'bg-blue-500' : 'bg-yellow-500'
                     }`}></div>
                     
                     {/* Timeline Content */}
@@ -551,8 +427,8 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
                             )}
                           </div>
                         </div>
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(project.status)}`}>
-                          {project.status?.replace('-', ' ').toUpperCase()}
+                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(project.projectStatus)}`}>
+                          {project.projectStatus?.replace('-', ' ').toUpperCase()}
                         </span>
                       </div>
                       
@@ -618,20 +494,6 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
             title="Get Project Updates"
             description="Subscribe to be notified when new projects are released."
             showSocialProof={true}
-            subscriberCount={127}
-          />
-        </div>
-      </section>
-
-      {/* Newsletter Signup Section */}
-      <section className="section-modern bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-        <div className="container-modern">
-          <NewsletterSignup
-            variant="inline"
-            title="Stay Updated"
-            description="Get notified about new projects and development insights delivered to your inbox."
-            showSocialProof={true}
-            subscriberCount={127}
           />
         </div>
       </section>

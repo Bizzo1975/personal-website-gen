@@ -11,7 +11,7 @@ import Button from '@/components/Button';
 import { ProfileData } from '@/lib/services/profile-service';
 
 interface ContactPageData {
-  _id: string;
+  id: string;
   name: string;
   title: string;
   slug: string;
@@ -76,10 +76,22 @@ export default function AdminContactPage() {
           throw new Error(`Failed to fetch contact page data: ${pageResponse.status} ${pageResponse.statusText}`);
         }
         
-        const pagesData = await pageResponse.json();
-        // Check if contact page exists - API returns { page: {...} }
-        if (pagesData && pagesData.page) {
-          setPageData(pagesData.page);
+        const contactPageData = await pageResponse.json();
+        // Fix: Handle the response correctly
+        if (contactPageData && contactPageData.id) {
+          setPageData({
+            id: contactPageData.id,
+            name: contactPageData.name || 'Contact',
+            title: contactPageData.title || 'Contact Me',
+            slug: contactPageData.slug || 'contact',
+            metaDescription: contactPageData.metaDescription || 'Get in touch with me',
+            headerTitle: contactPageData.headerTitle || 'Get in Touch',
+            headerSubtitle: contactPageData.headerSubtitle || 'Have a question or want to work together? Send me a message!',
+            connectSectionTitle: contactPageData.connectSectionTitle || 'Let\'s Connect',
+            connectSectionContent: contactPageData.connectSectionContent || 'I am always open to discussing new opportunities, collaborations, or just having a conversation about technology and development.',
+            formSectionTitle: contactPageData.formSectionTitle || 'Send Me a Message or Request Access',
+            formDescription: contactPageData.formDescription || 'Use the form below to either send a general message or request access to register on the platform. For access requests, please select the appropriate access level and provide details about your intended use.'
+          });
         }
         
         // Fetch profile data
@@ -120,9 +132,9 @@ export default function AdminContactPage() {
     
     try {
       // Check if we're updating or creating
-      const isUpdate = !!pageData._id;
+      const isUpdate = !!pageData.id;
       const method = isUpdate ? 'PUT' : 'POST';
-      const url = isUpdate ? `/api/pages/${pageData._id}` : '/api/pages';
+      const url = isUpdate ? `/api/pages/${pageData.id}` : '/api/pages';
       
       console.log(`${isUpdate ? 'Updating' : 'Creating'} contact page with data:`, pageData);
       const response = await fetch(url, {
@@ -147,8 +159,11 @@ export default function AdminContactPage() {
       setSaveSuccess(true);
       
       // If it was a creation, update the ID
-      if (!isUpdate && result.page) {
-        setPageData(result.page);
+      if (!isUpdate && result.page?.id) {
+        setPageData({
+          ...pageData,
+          id: result.page.id
+        });
       }
       
       // Revalidate the contact page
@@ -163,7 +178,8 @@ export default function AdminContactPage() {
       }, 3000);
     } catch (err: any) {
       console.error('Error saving contact page:', err);
-      setError(err.message || 'Failed to save contact page');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save contact page';
+      setError(errorMessage);
       setSaving(false);
     }
   };

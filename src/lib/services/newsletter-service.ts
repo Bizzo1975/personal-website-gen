@@ -231,9 +231,9 @@ export class NewsletterService {
    * Delete a newsletter campaign
    */
   static async deleteCampaign(id: string): Promise<boolean> {
-    try {
-      const result = await query('DELETE FROM newsletter_campaigns WHERE id = $1', [id]);
-      return result.rowCount > 0;
+        try {
+      const result = await query('DELETE FROM newsletter_campaigns WHERE id = $1', [id]);        
+      return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('Error deleting newsletter campaign:', error);
       throw error;
@@ -249,7 +249,7 @@ export class NewsletterService {
   }> {
     try {
       const recipients = new Set<string>();
-      const breakdown = {};
+      const breakdown: Record<string, number> = {};
 
       // If targeting 'all' users, get all users
       if (targetAccessLevels.includes('all')) {
@@ -399,7 +399,7 @@ export class NewsletterService {
         'UPDATE newsletter_subscribers SET is_active = false WHERE unsubscribe_token = $1',
         [token]
       );
-      return result.rowCount > 0;
+      return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('Error unsubscribing:', error);
       throw error;

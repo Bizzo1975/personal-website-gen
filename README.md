@@ -17,16 +17,16 @@ A modern, responsive personal website built with Next.js, TypeScript, and Tailwi
 
 ## Tech Stack
 
-- **Frontend Framework**: Next.js 14 with App Router
+- **Frontend Framework**: Next.js 15.4.1 with App Router
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS with dark/light mode
 - **Content Management**: MDX for blog posts
-- **Database**: MongoDB with Mongoose
-- **Authentication**: NextAuth.js
+- **Database**: PostgreSQL with pg
+- **Authentication**: NextAuth.js 4.24.11
 - **Testing**: Jest for unit tests, Cypress for E2E tests
 - **Containerization**: Docker with Docker Compose
 - **CI/CD**: GitHub Actions
-- **Deployment**: Vercel (primary) / Netlify (alternative)
+- **Deployment**: Digital Ocean with CloudFlare
 
 ## Port Configuration
 
@@ -39,9 +39,9 @@ The application uses the following ports:
 ### Prerequisites
 
 - Node.js 18+ 
-- MongoDB (for database functionality) OR use mock data mode for development
+- PostgreSQL (for database functionality) OR use Docker for containerized development
 - GitHub account (for project integration)
-- Docker Desktop (optional, for containerized development)
+- Docker Desktop (recommended, for containerized development)
 
 ### Installation
 
@@ -148,20 +148,17 @@ npm run docker:shell
 
 ```
 /
-├── docs/                    # Project documentation
-│   ├── NEXTAUTH_SETUP.md
-│   ├── PROJECT_PLAN.md
-│   ├── TROUBLESHOOTING.md
-│   ├── WINDOWS_SETUP.md     # Windows-specific setup guide
-│   └── ...
 ├── testing/                 # All testing files and configurations
 │   ├── cypress/            # E2E tests
 │   ├── unit/               # Unit tests
 │   ├── jest.config.js
 │   └── cypress.config.ts
-├── scripts/                 # Utility scripts
-│   ├── setup/
-│   └── ...
+├── scripts/                 # Deployment and utility scripts
+│   ├── 02-migration/       # Migration scripts
+│   ├── 03-server-setup/    # Server setup scripts
+│   ├── 04-deployment/      # Deployment scripts
+│   ├── 05-backup-restore/  # Backup scripts
+│   └── 06-maintenance/     # Maintenance scripts
 ├── src/                     # Source code
 │   ├── app/                # Next.js app router pages
 │   │   ├── (main)/         # Public pages
@@ -169,7 +166,7 @@ npm run docker:shell
 │   │   └── api/            # API endpoints
 │   ├── components/         # Reusable UI components
 │   ├── lib/                # Utility functions and services
-│   │   ├── models/         # MongoDB schemas
+│   │   ├── models/         # PostgreSQL models
 │   │   └── services/       # Data service layer
 │   ├── styles/             # Global styles
 │   └── types/              # TypeScript type definitions

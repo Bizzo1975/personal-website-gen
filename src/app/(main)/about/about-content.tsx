@@ -5,6 +5,7 @@ import { MDXRemoteSerializeResult } from 'next-mdx-remote';
 import MarkdownContent from '@/components/MarkdownContent';
 import FallbackImage from '@/components/FallbackImage';
 import HeaderSection from '@/components/HeaderSection';
+import NewsletterSignup from '@/components/NewsletterSignup';
 import { ProfileData } from '@/lib/services/profile-service';
 import { PageData } from '@/lib/services/page-service';
 
@@ -141,7 +142,7 @@ export default function AboutContent({ content, profile, pageData }: AboutConten
                         >
                           <span className="sr-only">Website</span>
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m-9 9a9 9 0 019-9" />
                           </svg>
                         </a>
                       )}
@@ -176,6 +177,18 @@ export default function AboutContent({ content, profile, pageData }: AboutConten
               )}
             </div>
           </div>
+        </div>
+      </section>
+      
+      {/* Newsletter Signup Section - matches blog and projects pages */}
+      <section className="section-modern bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+        <div className="container-modern">
+          <NewsletterSignup
+            variant="compact"
+            title="Stay Connected"
+            description="Subscribe to get updates on new projects, articles, and insights into my development journey."
+            showSocialProof={true}
+          />
         </div>
       </section>
     </div>

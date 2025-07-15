@@ -19,6 +19,7 @@ interface ProfileData {
   name: string;
   imageUrl: string;
   skills: string[];
+  homePageSkills?: string[];
   location?: string;
   email?: string;
   socialLinks?: SocialLinks;
@@ -33,6 +34,7 @@ export default function ProfilePage() {
     name: '',
     imageUrl: '',
     skills: [],
+    homePageSkills: [],
     location: '',
     email: '',
     socialLinks: {
@@ -67,6 +69,7 @@ export default function ProfilePage() {
         setProfileData({
           ...data,
           skills: data.skills || [],
+          homePageSkills: data.homePageSkills || [],
           socialLinks: data.socialLinks || {}
         });
         setLoading(false);
@@ -218,7 +221,7 @@ export default function ProfilePage() {
         console.log('Revalidating pages with profile data...');
         
         // Array of paths to revalidate
-        const pathsToRevalidate = ['/about', '/contact'];
+        const pathsToRevalidate = ['/about', '/contact', '/'];
         
         // Revalidate all paths sequentially
         for (const path of pathsToRevalidate) {
@@ -358,6 +361,85 @@ export default function ProfilePage() {
                   </div>
                 ))}
               </div>
+              
+              {/* Home Page Skills Selection */}
+              {(profileData.skills || []).length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">
+                    Professional Skills Card (Home Page)
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+                    Click skills to select which ones appear on the home page Professional Skills card:
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                    {(profileData.skills || []).map((skill, index) => {
+                      const isSelected = (profileData.homePageSkills || []).includes(skill);
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            const currentHomePageSkills = profileData.homePageSkills || [];
+                            if (isSelected) {
+                              setProfileData({
+                                ...profileData,
+                                homePageSkills: currentHomePageSkills.filter(s => s !== skill)
+                              });
+                            } else {
+                              setProfileData({
+                                ...profileData,
+                                homePageSkills: [...currentHomePageSkills, skill]
+                              });
+                            }
+                          }}
+                          className={`
+                            px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105
+                            ${isSelected 
+                              ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' 
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                            }
+                          `}
+                        >
+                          {skill}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="mt-3 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setProfileData({
+                        ...profileData,
+                        homePageSkills: [...(profileData.skills || [])]
+                      })}
+                      className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProfileData({
+                        ...profileData,
+                        homePageSkills: []
+                      })}
+                      className="text-xs text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 font-medium"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  
+                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    Selected: {(profileData.homePageSkills || []).length} of {(profileData.skills || []).length} skills
+                    {(profileData.homePageSkills || []).length > 0 && (
+                      <span className="ml-2 text-blue-600 dark:text-blue-400">
+                        ({(profileData.homePageSkills || []).join(', ')})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

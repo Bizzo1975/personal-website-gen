@@ -11,6 +11,7 @@ import { TagInput } from '@/components/TagInput';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import { Checkbox } from '@/components/Checkbox';
 import PermissionsEditor from '@/components/admin/PermissionsEditor';
+import ImageField from '@/components/admin/ImageField';
 import { PostData } from '@/types/content';
 import { ContentPermissions } from '@/types/content/permissions';
 
@@ -29,7 +30,8 @@ interface PostEditFormData {
   content: string;
   excerpt: string;
   tags: string[];
-  published: boolean;
+  status: 'draft' | 'scheduled' | 'published';
+  featured: boolean;
   metaDescription: string;
   featuredImage?: string;
   permissions: ContentPermissions;
@@ -54,20 +56,22 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
         }
         
         const data = await response.json();
-        setPost(data.data);
+        const postData = data.data || data; // Handle both { data: post } and direct post formats
+        setPost(postData);
         
         // Set form values
-        setValue('title', data.data.title);
-        setValue('slug', data.data.slug);
-        setValue('content', data.data.content);
-        setValue('excerpt', data.data.excerpt);
-        setValue('tags', data.data.tags);
-        setValue('published', data.data.published);
-        setValue('metaDescription', data.data.metaDescription || '');
-        setValue('featuredImage', data.data.featuredImage || '');
+        setValue('title', postData.title);
+        setValue('slug', postData.slug);
+        setValue('content', postData.content);
+        setValue('excerpt', postData.excerpt);
+        setValue('tags', postData.tags);
+        setValue('status', postData.status);
+        setValue('featured', postData.featured);
+        setValue('metaDescription', postData.metaDescription || '');
+        setValue('featuredImage', postData.featuredImage || '');
         
         // Set permissions (use default if not present)
-        const postPermissions = data.data.permissions || getDefaultPermissions();
+        const postPermissions = postData.permissions || getDefaultPermissions();
         setPermissions(postPermissions);
         setValue('permissions', postPermissions);
         
@@ -99,8 +103,16 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
       }
 
       setSuccessMessage('Post updated successfully!');
+      
+      // Show additional guidance for scheduled posts
+      if (data.status === 'scheduled') {
+        setTimeout(() => {
+          setSuccessMessage('Post updated! If scheduling, visit the Content Scheduler to set the publish date.');
+        }, 800);
+      }
+      
       setTimeout(() => {
-        router.push('/admin/posts');
+        router.push('/admin/content-management?tab=posts');
       }, 1500);
     } catch (err) {
       setError('Failed to update post. Please try again.');
@@ -160,7 +172,7 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
           <h1 className="text-2xl font-bold">Edit Blog Post</h1>
           <Button 
             variant="outline" 
-            onClick={() => router.push('/admin/posts')}
+            onClick={() => router.push('/admin/content-management?tab=posts')}
           >
             Cancel
           </Button>
@@ -205,9 +217,10 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Input
-                label="Featured Image URL"
-                {...register('featuredImage')}
+              <ImageField
+                label="Featured Image"
+                value={watch('featuredImage') || ''}
+                onChange={(url) => setValue('featuredImage', url)}
                 error={errors.featuredImage?.message}
               />
             </div>
@@ -242,19 +255,46 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
             />
           </div>
           
-          <div className="flex items-center">
-            <Checkbox
-              label="Published"
-              checked={watch('published')}
-              onChange={(checked) => setValue('published', checked)}
-            />
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="status" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Status *
+                </label>
+                <select
+                  id="status"
+                  {...register('status', { required: 'Status is required' })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="draft">📝 Draft - Hidden from public</option>
+                  <option value="published">✅ Published - Live immediately</option>
+                  <option value="scheduled">⏰ Scheduled - Publish later</option>
+                </select>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {watch('status') === 'draft' && 'Draft posts are hidden from public view. You can schedule them later in Content Scheduler.'}
+                  {watch('status') === 'published' && 'Published posts are visible to readers immediately'}
+                  {watch('status') === 'scheduled' && 'Scheduled posts will be published at a future date (set in Content Scheduler)'}
+                </p>
+              </div>
+              
+              <div className="flex items-center">
+                <Checkbox
+                  label="Featured Post"
+                  checked={watch('featured')}
+                  onChange={(checked) => setValue('featured', checked)}
+                />
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Featured posts will be highlighted on the blog page
+                </p>
+              </div>
+            </div>
           </div>
           
           <div className="flex justify-end space-x-4">
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => router.push('/admin/posts')}
+              onClick={() => router.push('/admin/content-management?tab=posts')}
             >
               Cancel
             </Button>

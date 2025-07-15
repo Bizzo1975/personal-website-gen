@@ -23,6 +23,7 @@ export async function GET() {
         name: session.user?.name || '',
         imageUrl: session.user?.image || '/images/placeholder-image.png',
         skills: [],
+        homePageSkills: [],
         location: '',
         email: session.user?.email || '',
         socialLinks: {
@@ -52,18 +53,27 @@ export async function GET() {
       skills = [];
     }
     
+    // Parse home page skills array
+    let homePageSkills = [];
+    try {
+      homePageSkills = profile.home_page_skills || [];
+    } catch (e) {
+      homePageSkills = [];
+    }
+    
     // Format response to match frontend expectations
     const formattedProfile = {
       id: profile.id,
       name: profile.name || '',
       imageUrl: profile.image_url || '/images/placeholder-image.png',
       skills: skills,
+      homePageSkills: homePageSkills,
       location: profile.location || '',
       email: profile.email || '',
       socialLinks: {
-        github: socialLinks.github || '',
-        linkedin: socialLinks.linkedin || '',
-        website: socialLinks.website || ''
+        github: (socialLinks as any)?.github || '',
+        linkedin: (socialLinks as any)?.linkedin || '',
+        website: (socialLinks as any)?.website || ''
       }
     };
 
@@ -101,15 +111,17 @@ export async function PUT(request: NextRequest) {
           name = $1, 
           image_url = $2, 
           skills = $3, 
-          location = $4, 
-          email = $5, 
-          social_links = $6,
+          home_page_skills = $4,
+          location = $5, 
+          email = $6, 
+          social_links = $7,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $7`,
+        WHERE id = $8`,
         [
           data.name,
           data.imageUrl,
           data.skills || [],
+          JSON.stringify(data.homePageSkills || []),
           data.location || '',
           data.email || '',
           socialLinksJson,
@@ -120,12 +132,13 @@ export async function PUT(request: NextRequest) {
       // Insert new profile
       await query(
         `INSERT INTO profiles (
-          name, image_url, skills, location, email, social_links, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          name, image_url, skills, home_page_skills, location, email, social_links, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [
           data.name,
           data.imageUrl,
           data.skills || [],
+          JSON.stringify(data.homePageSkills || []),
           data.location || '',
           data.email || '',
           socialLinksJson

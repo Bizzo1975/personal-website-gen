@@ -189,36 +189,70 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  console.log('🔍 [Access Requests API] Starting GET request...');
+  
   try {
     // Check authentication
+    console.log('🔍 [Step 1] Checking authentication...');
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.email) {
+    if (!session) {
+      console.log('❌ [Step 1] No session found');
       return NextResponse.json(
-        { error: 'Unauthorized - Authentication required' },
+        { error: 'Unauthorized - No session found', step: 'authentication', debug: true },
         { status: 401 }
       );
     }
+    
+    if (!session.user?.email) {
+      console.log('❌ [Step 1] Session exists but no user email');
+      return NextResponse.json(
+        { error: 'Unauthorized - No user email in session', step: 'authentication', debug: true },
+        { status: 401 }
+      );
+    }
+    
+    console.log('✅ [Step 1] Authentication successful:', { email: session.user.email, role: session.user?.role });
 
     // Check if user is admin
+    console.log('🔍 [Step 2] Checking admin status...');
     const isAdmin = await AccessRequestService.isUserAdmin(session.user.email);
+    console.log('🔍 [Step 2] Admin check result:', { email: session.user.email, isAdmin });
+    
     if (!isAdmin) {
+      console.log('❌ [Step 2] User is not admin');
       return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
+        { 
+          error: 'Forbidden - Admin access required', 
+          step: 'authorization', 
+          debug: true,
+          userEmail: session.user.email,
+          suggestion: 'Make sure your user has admin role in the database'
+        },
         { status: 403 }
       );
     }
     
+    console.log('✅ [Step 2] Admin authorization successful');
+    
     // Get query parameters
+    console.log('🔍 [Step 3] Processing query parameters...');
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') as 'pending' | 'approved' | 'rejected' | null;
     const accessLevel = searchParams.get('accessLevel') as 'professional' | 'personal' | null;
+    console.log('🔍 [Step 3] Query params:', { status, accessLevel });
     
     // Get access requests with filtering
+    console.log('🔍 [Step 4] Fetching access requests...');
     const accessRequests = await AccessRequestService.getFilteredRequests(status, accessLevel);
+    console.log('✅ [Step 4] Access requests retrieved:', accessRequests.length);
     
     // Get summary statistics
+    console.log('🔍 [Step 5] Fetching statistics...');
     const stats = await AccessRequestService.getRequestStats();
+    console.log('✅ [Step 5] Stats retrieved:', stats);
+    
+    console.log('🎉 [Complete] Access requests API successful');
     
     return NextResponse.json({
       success: true,
@@ -228,14 +262,27 @@ export async function GET(request: NextRequest) {
       filters: {
         status,
         accessLevel
+      },
+      debug: {
+        userEmail: session.user.email,
+        isAdmin: true,
+        requestsCount: accessRequests.length,
+        timestamp: new Date().toISOString()
       }
     });
     
   } catch (error) {
-    console.error('Error fetching access requests:', error);
+    console.error('❌ [Error] Access requests API failed:', error);
+    console.error('❌ [Error] Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
     
     return NextResponse.json(
-      { error: 'Failed to fetch access requests' },
+      { 
+        error: 'Failed to fetch access requests', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        step: 'execution',
+        debug: true,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }

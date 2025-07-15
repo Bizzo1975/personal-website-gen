@@ -4,12 +4,27 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { PostService } from '@/lib/services/post-service';
 
-// GET /api/posts/[id] - Get a specific post
+// GET /api/posts/[id] - Get a specific post by ID
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    const { searchParams } = new URL(request.url);
+    const isPreview = searchParams.get('preview') === 'true';
+    
+    // Check if user is authenticated (for admin access)
+    const session = await getServerSession(authOptions);
+    const isAdmin = session && session.user.role === 'admin';
+    
+    // If preview mode, require admin authentication
+    if (isPreview && !isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     const post = await PostService.getPostById(params.id);
     
     if (!post) {
@@ -18,10 +33,18 @@ export async function GET(
         { status: 404 }
       );
     }
-
+    
+    // Admin users can access any post, others can only access published posts
+    if (!isAdmin && post.status !== 'published' && !post.published) {
+      return NextResponse.json(
+        { error: 'Post not found' },
+        { status: 404 }
+      );
+    }
+    
     return NextResponse.json({ data: post });
   } catch (error) {
-    console.error('Error fetching post:', error);
+    console.error('Error fetching post by ID:', error);
     return NextResponse.json(
       { error: 'Failed to fetch post' },
       { status: 500 }
@@ -54,20 +77,23 @@ export async function PUT(
       );
     }
 
-    // Update the post using PostService
-    const updatedPost = await PostService.updatePost(params.id, {
+    // Update the post data
+    const updateData = {
       title: postData.title,
       slug: postData.slug,
       content: postData.content,
       excerpt: postData.excerpt,
-      image: postData.featuredImage,
+      featured_image: postData.featuredImage || postData.featured_image,
       tags: postData.tags || [],
       author: postData.author || session.user.email,
-      readTime: postData.readTime || 5,
-      date: postData.publishedAt ? new Date(postData.publishedAt) : new Date(),
-      permissionLevel: postData.permissions?.level || 'all',
+      read_time: postData.readTime || postData.read_time || 5,
+      date: postData.date ? new Date(postData.date) : new Date(),
+      permission_level: postData.permissions?.level || postData.permissionLevel || 'all',
       published: postData.published || false
-    });
+    };
+
+    // Update the post using PostService
+    const updatedPost = await PostService.updatePost(params.id, updateData);
 
     // Revalidate blog pages
     revalidatePath('/blog');
@@ -77,21 +103,16 @@ export async function PUT(
     return NextResponse.json(updatedPost);
   } catch (error) {
     console.error('Error updating post:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
-    if (error.message.includes('Post not found')) {
+    if (errorMessage.includes('Post not found')) {
       return NextResponse.json(
         { error: 'Post not found' },
         { status: 404 }
       );
     }
-    
-    if (error.message.includes('duplicate') || error.message.includes('unique')) {
-      return NextResponse.json(
-        { error: 'A post with this slug already exists' },
-        { status: 400 }
-      );
-    }
-    
+
     return NextResponse.json(
       { error: 'Failed to update post' },
       { status: 500 }

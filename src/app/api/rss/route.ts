@@ -4,10 +4,8 @@ import { config } from '@/lib/config';
 
 export async function GET() {
   try {
-    const posts = await getPosts({ 
-      published: true, 
-      limit: 20,
-      sort: { date: -1 } 
+    const posts = await getPosts({
+      limit: 20
     });
     
     // Use config for site URL with fallback

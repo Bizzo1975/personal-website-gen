@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { FiCode } from 'react-icons/fi';
 import BackgroundSlideshow from '@/components/BackgroundSlideshow';
 import CreativeCodeElement from '@/components/CreativeCodeElement';
 import NewsletterSignup from '@/components/NewsletterSignup';
@@ -9,6 +11,8 @@ import MarkdownContent from '@/components/MarkdownContent';
 import { ProfileData } from '@/lib/services/profile-service';
 import { Icon, IconWithText } from '@/components/IconSystem';
 import { EnhancedAnimatedElement, ScrollAnimation } from '@/components/EnhancedAnimationLibrary';
+import TiltProjectCard from '@/components/TiltProjectCard';
+import MorphingBlogCard from '@/components/MorphingBlogCard';
 
 interface HomePageProps {
   content?: any;
@@ -28,6 +32,7 @@ interface HomePageProps {
     excerpt: string;
     tags: string[];
     slug: string;
+    featuredImage?: string;
   }[];
   heroHeading?: string;
   headerTitle?: string;
@@ -51,6 +56,9 @@ export default function HomePage({
     setIsMounted(true);
   }, []);
 
+  // Default skills to use if profile data is not available
+  const defaultSkills = ['React', 'Next.js', 'TypeScript', 'Node.js', 'TailwindCSS', 'Python', 'Docker', 'AWS', 'PostgreSQL', 'MongoDB', 'GraphQL', 'Redis'];
+  
   // Fetch profile data from API with timeout and error handling
   useEffect(() => {
     if (!isMounted) return;
@@ -61,8 +69,8 @@ export default function HomePage({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
         
-        // Fetch profile data
-        const profileResponse = await fetch('/api/profile', {
+        // Fetch profile data from public endpoint (no authentication required)
+        const profileResponse = await fetch('/api/public/profile', {
           signal: controller.signal
         });
         
@@ -73,13 +81,33 @@ export default function HomePage({
           setProfileData(data);
         } else {
           console.warn('Failed to fetch profile data:', profileResponse.status);
+          // Use default skills if API fails
+          setProfileData({
+            name: 'Developer',
+            imageUrl: '/images/placeholder-image.png',
+            skills: defaultSkills,
+            homePageSkills: defaultSkills.slice(0, 6),
+            location: '',
+            email: '',
+            socialLinks: { github: '', linkedin: '', website: '' }
+          });
         }
       } catch (error) {
-        if (error.name === 'AbortError') {
+        if (error instanceof Error && error.name === 'AbortError') {
           console.warn('Profile data fetch timed out');
         } else {
           console.warn('Error fetching profile data:', error);
         }
+        // Use default skills if API fails
+        setProfileData({
+          name: 'Developer',
+          imageUrl: '/images/placeholder-image.png',
+          skills: defaultSkills,
+          homePageSkills: defaultSkills.slice(0, 6),
+          location: '',
+          email: '',
+          socialLinks: { github: '', linkedin: '', website: '' }
+        });
       } finally {
         setLoading(false);
       }
@@ -88,11 +116,9 @@ export default function HomePage({
     fetchData();
   }, [isMounted]);
 
-  // Default skills to use if profile data is not available
-  const defaultSkills = ['React', 'Next.js', 'TypeScript', 'Node.js', 'TailwindCSS', 'Python', 'Docker', 'AWS', 'PostgreSQL', 'MongoDB', 'GraphQL', 'Redis'];
-  
-  // Use skills from profile data or fallback to default skills
-  const skills = profileData?.skills || defaultSkills;
+  // Use home page skills from profile data, fallback to all skills, then default skills
+  const homePageSkills = profileData?.homePageSkills || [];
+  const skills = homePageSkills.length > 0 ? homePageSkills : (profileData?.skills || defaultSkills);
 
   // Always show sections - allow empty states
   const displayedProjects = projects || [];
@@ -216,11 +242,11 @@ export default function HomePage({
                 )}
                 
                 <div className="bg-slate-800/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg p-6 rounded-2xl rotate-2 hover:rotate-0 transition-transform duration-500" style={{ width: '400px', height: '250px' }}>
-                  <div className="text-white mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mb-1 text-blue-400">
+                  <div className="flex items-center text-white mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mr-3 text-blue-400">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
                     </svg>
-                    <h3 className="text-xl font-semibold text-white">Expert Skills</h3>
+                    <h3 className="text-xl font-semibold text-white">Professional Skills</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {skills.map(skill => (
@@ -264,63 +290,7 @@ export default function HomePage({
             {displayedProjects.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {displayedProjects.map((project, index) => (
-                  <div 
-                    key={project.id} 
-                    className="card-enhanced group animate-fade-in-up opacity-0"
-                    style={{ 
-                      animationDelay: `${index * 150}ms`,
-                      animationFillMode: 'forwards'
-                    }}
-                  >
-                    <div className="img-hover-zoom h-48 relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
-                      <img 
-                        src={project.image || '/images/projects/placeholder.svg'} 
-                        alt={project.title}
-                        width={600}
-                        height={400}
-                        className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
-                        style={{ objectFit: 'cover' }}
-                        loading="lazy"
-                      />
-                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0 z-20">
-                        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-full p-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-primary-600 dark:text-primary-400">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                        {project.title}
-                      </h3>
-                      <p className="text-slate-600 dark:text-slate-400 text-sm mb-4 line-clamp-2">
-                        {project.description}
-                      </p>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {project.technologies.slice(0, 3).map((tech, techIndex) => (
-                          <span key={techIndex} className="px-2 py-1 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 rounded text-xs font-medium">
-                            {tech}
-                          </span>
-                        ))}
-                        {project.technologies.length > 3 && (
-                          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-xs font-medium">
-                            +{project.technologies.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                      <Link 
-                        href={`/projects/${project.slug}`}
-                        className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium text-sm inline-flex items-center transition-colors"
-                      >
-                        Learn More
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </Link>
-                    </div>
-                  </div>
+                  <TiltProjectCard key={project.id} project={project} index={index} />
                 ))}
               </div>
             ) : (
@@ -368,48 +338,7 @@ export default function HomePage({
             {displayedPosts.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {displayedPosts.map((post, index) => (
-                  <article 
-                    key={post.id} 
-                    className="card-enhanced group animate-fade-in-up opacity-0"
-                    style={{ 
-                      animationDelay: `${index * 150}ms`,
-                      animationFillMode: 'forwards'
-                    }}
-                  >
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <time className="text-sm text-slate-500 dark:text-slate-400">
-                          {new Date(post.date).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
-                        </time>
-                        <div className="flex gap-1">
-                          {post.tags.slice(0, 2).map((tag, tagIndex) => (
-                            <span key={tagIndex} className="px-2 py-1 bg-secondary-50 dark:bg-secondary-900/20 text-secondary-700 dark:text-secondary-300 rounded-full text-xs font-medium">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3 group-hover:text-secondary-600 dark:group-hover:text-secondary-400 transition-colors line-clamp-2">
-                        {post.title}
-                      </h3>
-                      <p className="text-slate-600 dark:text-slate-400 text-sm mb-4 line-clamp-3">
-                        {post.excerpt}
-                      </p>
-                      <Link 
-                        href={`/blog/${post.slug}`}
-                        className="text-secondary-600 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-300 font-medium text-sm inline-flex items-center transition-colors"
-                      >
-                        Read More
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </Link>
-                    </div>
-                  </article>
+                  <MorphingBlogCard key={post.id} post={post} index={index} />
                 ))}
               </div>
             ) : (

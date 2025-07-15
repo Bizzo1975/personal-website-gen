@@ -1,9 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
-import fs from 'fs/promises';
-import path from 'path';
+import { query } from '@/lib/db';
+import { MediaService } from '@/lib/services/media-service';
 
+/**
+ * Bulk Delete API Route
+ * DELETE: Delete multiple media files
+ */
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session || session.user?.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { fileIds } = await request.json();
+
+    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+      return NextResponse.json({ error: 'No file IDs provided' }, { status: 400 });
+    }
+
+    console.log('🗑️ Bulk deleting files:', {
+      fileCount: fileIds.length,
+      userId: session.user.email
+    });
+
+    const results = [];
+    const errors = [];
+
+    for (const fileId of fileIds) {
+      try {
+        // Check if file exists
+        const fileCheck = await query(
+          'SELECT id, filename, file_path FROM media_files WHERE id = $1',
+          [fileId]
+        );
+
+        if (fileCheck.rows.length === 0) {
+          errors.push(`File ${fileId}: Not found`);
+          continue;
+        }
+
+        // Delete the file using MediaService
+        const deleteResult = await MediaService.deleteMediaFile(fileId);
+
+        if (deleteResult) {
+          results.push({
+            id: fileId,
+            success: true,
+            filename: fileCheck.rows[0].filename
+          });
+        } else {
+          errors.push(`File ${fileId}: Failed to delete`);
+        }
+
+      } catch (error) {
+        console.error(`Failed to delete file ${fileId}:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`File ${fileId}: ${errorMessage}`);
+      }
+    }
+
+    return NextResponse.json({
+      success: errors.length === 0,
+      deleted: results.length,
+      total: fileIds.length,
+      results,
+      errors
+    });
+
+  } catch (error) {
+    console.error('❌ Bulk delete error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return NextResponse.json({
+      error: 'Failed to delete files',
+      details: errorMessage,
+      success: false,
+      deleted: 0,
+      total: 0,
+      results: [],
+      errors: [errorMessage]
+    }, { status: 500 });
+  }
+}
+
+// Keep the old POST method for backward compatibility
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

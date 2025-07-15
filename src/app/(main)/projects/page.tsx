@@ -12,10 +12,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ProjectsPage() {
-  // Fetch projects from the API
+  // Fetch projects from the database
   const projects = await getProjects({
-    limit: 10,
-    sort: { updatedAt: -1 }
+    limit: 10
   });
   
   // Fetch page data for the projects page

@@ -6,12 +6,20 @@ import AdminPageLayout from '../components/AdminPageLayout';
 import Button from '@/components/Button';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import { AccessRequest } from '@/lib/models/access-request';
-import { BiCheck, BiX, BiUser, BiEnvelope, BiTime, BiMessageSquareDetail } from 'react-icons/bi';
+import { BiCheck, BiX, BiUser, BiEnvelope, BiTime, BiMessageSquareDetail, BiDownload, BiTrash } from 'react-icons/bi';
 
 interface StatusMessage {
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
   dismissible?: boolean;
+}
+
+interface RequestStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  recentRequests: AccessRequest[];
 }
 
 export default function AdminAccessRequestsPage() {
@@ -20,6 +28,10 @@ export default function AdminAccessRequestsPage() {
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [stats, setStats] = useState<RequestStats | null>(null);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   // Fetch access requests
   const fetchAccessRequests = async () => {
@@ -33,6 +45,7 @@ export default function AdminAccessRequestsPage() {
       
       if (response.ok) {
         setAccessRequests(data.accessRequests || []);
+        setStats(data.stats || null);
       } else {
         throw new Error(data.error || 'Failed to fetch access requests');
       }
@@ -71,7 +84,7 @@ export default function AdminAccessRequestsPage() {
       if (response.ok) {
         setStatusMessage({
           type: 'success',
-          message: `Access request ${status} successfully`
+          message: `Access request ${status} successfully${data.userCreated ? ' and user account created' : ''}`
         });
         
         // Refresh the list
@@ -90,6 +103,70 @@ export default function AdminAccessRequestsPage() {
     }
   };
 
+  // Handle bulk operations
+  const handleBulkOperation = async (action: 'approve' | 'reject', adminNotes?: string) => {
+    if (selectedRequests.length === 0) return;
+
+    setBulkProcessing(true);
+    try {
+      const response = await fetch('/api/access-requests/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requestIds: selectedRequests,
+          action,
+          adminNotes,
+          createUserAccounts: true
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatusMessage({
+          type: 'success',
+          message: `Bulk ${action} completed: ${data.successCount} successful, ${data.failureCount} failed`
+        });
+        
+        // Clear selection and refresh
+        setSelectedRequests([]);
+        setShowBulkActions(false);
+        await fetchAccessRequests();
+      } else {
+        throw new Error(data.error || `Failed to ${action} requests`);
+      }
+    } catch (error) {
+      console.error(`Error bulk ${action}:`, error);
+      setStatusMessage({
+        type: 'error',
+        message: `Failed to ${action} selected requests`
+      });
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  // Handle select all
+  const handleSelectAll = () => {
+    const pendingRequests = accessRequests.filter(req => req.status === 'pending');
+    if (selectedRequests.length === pendingRequests.length) {
+      setSelectedRequests([]);
+    } else {
+      setSelectedRequests(pendingRequests.map(req => req._id!));
+    }
+  };
+
+  // Handle individual selection
+  const handleSelectRequest = (id: string) => {
+    setSelectedRequests(prev => 
+      prev.includes(id) 
+        ? prev.filter(reqId => reqId !== id)
+        : [...prev, id]
+    );
+  };
+
   // Clear status message after 5 seconds
   useEffect(() => {
     if (statusMessage) {
@@ -99,6 +176,11 @@ export default function AdminAccessRequestsPage() {
       return () => clearTimeout(timer);
     }
   }, [statusMessage]);
+
+  // Show bulk actions when requests are selected
+  useEffect(() => {
+    setShowBulkActions(selectedRequests.length > 0);
+  }, [selectedRequests]);
 
   const getStatusBadge = (status: string) => {
     const baseClasses = "px-2 py-1 text-xs font-medium rounded-full";
@@ -137,6 +219,7 @@ export default function AdminAccessRequestsPage() {
   };
 
   const pendingCount = accessRequests.filter(req => req.status === 'pending').length;
+  const pendingRequests = accessRequests.filter(req => req.status === 'pending');
 
   if (loading) {
     return (
@@ -153,48 +236,147 @@ export default function AdminAccessRequestsPage() {
         description={`Manage user access requests and control platform access`}
         status={statusMessage || undefined}
       >
+        {/* Statistics Cards */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardBody className="text-center">
+                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400">Total Requests</div>
+              </CardBody>
+            </Card>
+            <Card>
+              <CardBody className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400">Pending</div>
+              </CardBody>
+            </Card>
+            <Card>
+              <CardBody className="text-center">
+                <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400">Approved</div>
+              </CardBody>
+            </Card>
+            <Card>
+              <CardBody className="text-center">
+                <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400">Rejected</div>
+              </CardBody>
+            </Card>
+          </div>
+        )}
+
+        {/* Bulk Actions Bar */}
+        {showBulkActions && (
+          <Card className="mb-6">
+            <CardBody>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {selectedRequests.length} request{selectedRequests.length > 1 ? 's' : ''} selected
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedRequests([])}
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkOperation('approve', 'Bulk approved by admin')}
+                    disabled={bulkProcessing}
+                    className="text-green-600 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900/20"
+                  >
+                    <BiCheck className="w-4 h-4 mr-1" />
+                    {bulkProcessing ? 'Processing...' : 'Approve All'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkOperation('reject', 'Bulk rejected by admin')}
+                    disabled={bulkProcessing}
+                    className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20"
+                  >
+                    <BiX className="w-4 h-4 mr-1" />
+                    {bulkProcessing ? 'Processing...' : 'Reject All'}
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        )}
+
         {/* Status Filter */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          <button
-            onClick={() => setSelectedStatus('all')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              selectedStatus === 'all'
-                ? 'bg-primary-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            All ({accessRequests.length})
-          </button>
-          <button
-            onClick={() => setSelectedStatus('pending')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              selectedStatus === 'pending'
-                ? 'bg-primary-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            Pending {pendingCount > 0 && <span className="ml-1 bg-yellow-500 text-white text-xs px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
-          </button>
-          <button
-            onClick={() => setSelectedStatus('approved')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              selectedStatus === 'approved'
-                ? 'bg-primary-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            Approved
-          </button>
-          <button
-            onClick={() => setSelectedStatus('rejected')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              selectedStatus === 'rejected'
-                ? 'bg-primary-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            Rejected
-          </button>
+        <div className="mb-6 flex flex-wrap gap-2 justify-between items-center">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedStatus('all')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                selectedStatus === 'all'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              All ({accessRequests.length})
+            </button>
+            <button
+              onClick={() => setSelectedStatus('pending')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                selectedStatus === 'pending'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              Pending {pendingCount > 0 && <span className="ml-1 bg-yellow-500 text-white text-xs px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
+            </button>
+            <button
+              onClick={() => setSelectedStatus('approved')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                selectedStatus === 'approved'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              Approved
+            </button>
+            <button
+              onClick={() => setSelectedStatus('rejected')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                selectedStatus === 'rejected'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              Rejected
+            </button>
+          </div>
+          
+          {/* Additional Actions */}
+          <div className="flex items-center space-x-2">
+            {pendingRequests.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+                className="text-slate-600 dark:text-slate-400"
+              >
+                {selectedRequests.length === pendingRequests.length ? 'Deselect All' : 'Select All Pending'}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open('/api/access-requests/export', '_blank')}
+              className="text-slate-600 dark:text-slate-400"
+            >
+              <BiDownload className="w-4 h-4 mr-1" />
+              Export
+            </Button>
+          </div>
         </div>
 
         {/* Access Requests List */}
@@ -224,6 +406,15 @@ export default function AdminAccessRequestsPage() {
                     {/* Header */}
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
+                        {/* Selection Checkbox */}
+                        {request.status === 'pending' && (
+                          <input
+                            type="checkbox"
+                            checked={selectedRequests.includes(request._id!)}
+                            onChange={() => handleSelectRequest(request._id!)}
+                            className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          />
+                        )}
                         <div className="flex-shrink-0">
                           <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
                             <BiUser className="w-5 h-5 text-slate-600 dark:text-slate-300" />
@@ -252,7 +443,7 @@ export default function AdminAccessRequestsPage() {
                     </div>
 
                     {/* Request Details */}
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
                           Subject
@@ -311,6 +502,7 @@ export default function AdminAccessRequestsPage() {
                           <BiX className="w-4 h-4 mr-1" />
                           {processingId === request._id ? 'Rejecting...' : 'Reject'}
                         </Button>
+                        
                         <Button
                           variant="outline"
                           size="sm"

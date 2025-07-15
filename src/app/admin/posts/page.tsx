@@ -1,98 +1,56 @@
 'use client'
 import '@/styles/globals.css';
-;
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import AdminLayout from '../components/AdminLayout';
 import Card, { CardBody } from '@/components/Card';
-import Badge from '@/components/Badge';
 import AdminPageLayout from '../components/AdminPageLayout';
-import { AdminFilterBar, AdminFilterButton } from '../components/AdminDataTable';
 import Button from '@/components/Button';
 
 interface BlogPage {
-  _id?: string;
+  id?: string;
   headerTitle: string;
   headerSubtitle: string;
 }
 
 export default function AdminPostsPage() {
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [filters, setFilters] = useState({
-    published: 'all',
-    author: 'all',
-    tag: 'all'
-  });
   const [pageData, setPageData] = useState<BlogPage>({
-    headerTitle: 'My Blog',
-    headerSubtitle: 'Thoughts, tutorials, and insights about technology and development'
+    headerTitle: 'My Articles',
+    headerSubtitle: 'Some thoughts on what I am working on'
   });
   const [headerLoading, setHeaderLoading] = useState(true);
   const [headerSaving, setHeaderSaving] = useState(false);
   const [headerSaveSuccess, setHeaderSaveSuccess] = useState(false);
   
   useEffect(() => {
+    const fetchBlogPage = async () => {
+      try {
+        setHeaderLoading(true);
+        const response = await fetch('/api/pages');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch pages: ${response.status}`);
+        }
+        
+        const pages = await response.json();
+        const blogPage = pages.find((page: any) => page.slug === 'blog');
+        
+        if (blogPage) {
+          setPageData({
+            id: blogPage.id,
+            headerTitle: blogPage.headerTitle || 'My Articles',
+            headerSubtitle: blogPage.headerSubtitle || 'Some thoughts on what I am working on'
+          });
+        }
+        setHeaderLoading(false);
+      } catch (err) {
+        console.error('Error fetching blog page:', err);
+        setHeaderLoading(false);
+      }
+    };
+    
     fetchBlogPage();
-    fetchPosts();
   }, []);
-
-  const fetchPosts = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/posts');
-      if (response.ok) {
-        const data = await response.json();
-        setPosts(data.posts || []);
-      } else {
-        console.error('Failed to fetch posts');
-        setPosts([]);
-      }
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-      setPosts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchBlogPage = async () => {
-    try {
-      setHeaderLoading(true);
-      const response = await fetch('/api/pages');
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch pages: ${response.status}`);
-      }
-      
-      const pages = await response.json();
-      const blogPage = pages.find((page: any) => page.slug === 'blog');
-      
-      if (blogPage) {
-        setPageData({
-          _id: blogPage._id,
-          headerTitle: blogPage.headerTitle || 'My Blog',
-          headerSubtitle: blogPage.headerSubtitle || 'Thoughts, tutorials, and insights about technology and development'
-        });
-      }
-      setHeaderLoading(false);
-    } catch (err) {
-      console.error('Error fetching blog page:', err);
-      setHeaderLoading(false);
-    }
-  };
-  
-  // Filter posts based on the current filter - ensure posts is always an array
-  const filteredPosts = Array.isArray(posts) ? (
-    filters.published === 'all' 
-      ? posts 
-      : filters.published === 'published' 
-        ? posts.filter(post => post.published) 
-        : posts.filter(post => !post.published)
-  ) : [];
 
   const handleHeaderInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -109,9 +67,9 @@ export default function AdminPostsPage() {
     try {
       let response;
       
-      if (pageData._id) {
+      if (pageData.id) {
         // Update existing page
-        response = await fetch(`/api/pages/${pageData._id}`, {
+        response = await fetch(`/api/pages/${pageData.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -138,16 +96,17 @@ export default function AdminPostsPage() {
       }
       
       if (!response.ok) {
-        throw new Error(`Failed to save page: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(`Failed to save page: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
       
       const result = await response.json();
       
       // If it was a new page, store the ID
-      if (!pageData._id && result._id) {
+      if (!pageData.id && result.page?.id) {
         setPageData({
           ...pageData,
-          _id: result._id
+          id: result.page.id
         });
       }
       
@@ -158,15 +117,10 @@ export default function AdminPostsPage() {
       setTimeout(() => setHeaderSaveSuccess(false), 3000);
     } catch (err) {
       console.error('Error saving blog page:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Failed to save blog page: ${errorMessage}`);
     } finally {
       setHeaderSaving(false);
-    }
-  };
-
-  // Function to handle post deletion
-  const handleDeletePost = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this post?')) {
-      setPosts(posts.filter(post => post.id !== id));
     }
   };
 
@@ -174,11 +128,7 @@ export default function AdminPostsPage() {
     <AdminLayout title="Blog Posts">
       <AdminPageLayout
         title="Blog Posts"
-        description="Manage your blog posts"
-        action={{
-          label: "Create New Post",
-          href: "/admin/posts/new"
-        }}
+        description="Customize your blog page header"
       >
         <Card variant="default" className="mb-6">
           <CardBody>
@@ -234,78 +184,25 @@ export default function AdminPostsPage() {
           </CardBody>
         </Card>
         
-        <AdminFilterBar>
-          <AdminFilterButton
-            isActive={filters.published === 'all'}
-            onClick={() => setFilters({ ...filters, published: 'all' })}
-          >
-            All Posts
-          </AdminFilterButton>
-          <AdminFilterButton
-            isActive={filters.published === 'published'}
-            onClick={() => setFilters({ ...filters, published: 'published' })}
-          >
-            Published
-          </AdminFilterButton>
-          <AdminFilterButton
-            isActive={filters.published === 'drafts'}
-            onClick={() => setFilters({ ...filters, published: 'drafts' })}
-          >
-            Drafts
-          </AdminFilterButton>
-        </AdminFilterBar>
-
-        {filteredPosts.length === 0 ? (
-          <Card variant="default">
-            <CardBody className="text-center py-10">
-              <p className="text-slate-500 dark:text-slate-400">
-                No posts found. Create a new post to get started.
+        {/* Informational note */}
+        <Card variant="default">
+          <CardBody>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-blue-900 dark:text-blue-100 mb-2">
+                Individual Post Management
+              </h3>
+              <p className="text-blue-700 dark:text-blue-300 mb-3">
+                To create, edit, or manage individual blog posts, please use the Content Management system.
               </p>
-            </CardBody>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {filteredPosts.map((post) => (
-              <Card key={post.id} variant="default" className="overflow-hidden">
-                <CardBody>
-                  <div className="flex flex-col md:flex-row justify-between">
-                    <div className="mb-4 md:mb-0">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-semibold">{post.title}</h2>
-                        {!post.published && (
-                          <Badge variant="warning" size="sm">Draft</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
-                        {new Date(post.date).toLocaleDateString()} • {post.readTime} min read
-                      </p>
-                      <p className="text-slate-600 dark:text-slate-300 mb-2">{post.excerpt}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {post.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary" size="sm">{tag}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex flex-row md:flex-col justify-end gap-2">
-                      <Link 
-                        href={`/admin/posts/${post.id}`}
-                        className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded text-sm font-medium"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => handleDeletePost(post.id)}
-                        className="bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
-            ))}
-          </div>
-        )}
+              <Button 
+                variant="primary" 
+                onClick={() => window.location.href = '/admin/content-management?tab=posts'}
+              >
+                Go to Content Management → Posts
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
       </AdminPageLayout>
     </AdminLayout>
   );

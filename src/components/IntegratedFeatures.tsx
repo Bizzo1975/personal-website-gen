@@ -49,7 +49,6 @@ export const BlogPostWithFeatures: React.FC<BlogPostWithFeaturesProps> = ({
           description="Get notified when I publish new content like this."
           incentive="✨ Plus get exclusive tips and early access to new posts"
           showSocialProof={true}
-          subscriberCount={2847}
         />
       </div>
 
@@ -161,63 +160,32 @@ export const MobileAppLayout: React.FC<MobileAppLayoutProps> = ({ children }) =>
         description="Join thousands of developers getting weekly insights!"
         incentive="🔥 Exclusive content + Free resources"
         showSocialProof={true}
-        subscriberCount={2847}
       />
     </div>
   );
 };
 
-// Example of touch-friendly action buttons
-export const TouchFriendlyActions: React.FC = () => {
-  const handleLike = () => {
-    console.log('Post liked!');
-  };
-
-  const handleShare = () => {
-    console.log('Share post!');
-  };
-
-  const handleComment = () => {
-    console.log('Add comment!');
-  };
-
+const PerformanceOptimization: React.FC = () => {
   return (
-    <div className="flex gap-3 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-      <TouchButton
-        onClick={handleLike}
-        variant="ghost"
-        size="md"
-        className="flex items-center gap-2"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
-        <span>Like</span>
-      </TouchButton>
-
-      <TouchButton
-        onClick={handleShare}
-        variant="ghost"
-        size="md"
-        className="flex items-center gap-2"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-        </svg>
-        <span>Share</span>
-      </TouchButton>
-
-      <TouchButton
-        onClick={handleComment}
-        variant="primary"
-        size="md"
-        className="flex items-center gap-2"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-        <span>Comment</span>
-      </TouchButton>
+    <div className="max-w-6xl mx-auto p-6">
+      {/* Performance monitoring dashboard would go here */}
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-8 mb-8">
+        <h2 className="text-2xl font-bold mb-4">Performance Dashboard</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">98</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Performance Score</div>
+          </div>
+          <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">1.2s</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Load Time</div>
+          </div>
+          <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">0.1s</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">First Paint</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -235,7 +203,6 @@ export const NewsletterVariantsShowcase: React.FC = () => {
           description="Get notified when I publish new articles and tutorials."
           incentive="✨ Plus exclusive tips and early access to new content"
           showSocialProof={true}
-          subscriberCount={2847}
         />
       </div>
 
@@ -247,9 +214,8 @@ export const NewsletterVariantsShowcase: React.FC = () => {
             variant="sidebar"
             title="Newsletter"
             description="Weekly insights on web development."
-            incentive="Join 2,800+ developers"
+            incentive="Join developers worldwide"
             showSocialProof={true}
-            subscriberCount={2847}
           />
         </div>
       </div>

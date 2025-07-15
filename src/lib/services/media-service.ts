@@ -321,13 +321,13 @@ export class MediaService {
         'SELECT mime_type, COUNT(*) as count FROM media_files GROUP BY mime_type'
       );
 
-      const byContentType = {};
-      contentTypeResult.rows.forEach(row => {
+      const byContentType: Record<string, number> = {};
+      contentTypeResult.rows.forEach((row: any) => {
         byContentType[row.content_type] = parseInt(row.count);
       });
 
-      const byMimeType = {};
-      mimeTypeResult.rows.forEach(row => {
+      const byMimeType: Record<string, number> = {};
+      mimeTypeResult.rows.forEach((row: any) => {
         byMimeType[row.mime_type] = parseInt(row.count);
       });
 
@@ -414,11 +414,11 @@ export class MediaService {
               deletedFiles.push(filePath);
             }
           }
-        } catch (dirError) {
+        } catch (dirError: any) {
           errors.push(`Could not process directory ${contentType}: ${dirError.message}`);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       errors.push(`Cleanup failed: ${error.message}`);
     }
 

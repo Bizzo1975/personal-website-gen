@@ -17,7 +17,7 @@ interface ContactPageData {
 
 interface ContactContentProps {
   content: MDXRemoteSerializeResult;
-  profile: ProfileData;
+  profile: ProfileData | null;
   pageData?: ContactPageData | null;
 }
 
@@ -75,11 +75,11 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
                     </div>
                     <div>
                       <p className="font-medium">Email</p>
-                      <p className="text-gray-600 dark:text-gray-400">{profile.email || 'contact@example.com'}</p>
+                      <p className="text-gray-600 dark:text-gray-400">{profile?.email || 'contact@example.com'}</p>
                     </div>
                   </div>
                   
-                  {profile.location && (
+                  {profile?.location && (
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
                         <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +97,7 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
                 
                 {/* Social Links */}
                 <div className="flex items-center space-x-6">
-                  {profile.socialLinks.github && (
+                  {profile?.socialLinks?.github && (
                     <a
                       href={profile.socialLinks.github}
                       target="_blank"
@@ -110,7 +110,7 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
                       </svg>
                     </a>
                   )}
-                  {profile.socialLinks.linkedin && (
+                  {profile?.socialLinks?.linkedin && (
                     <a
                       href={profile.socialLinks.linkedin}
                       target="_blank"
@@ -123,7 +123,7 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
                       </svg>
                     </a>
                   )}
-                  {profile.socialLinks.website && (
+                  {profile?.socialLinks?.website && (
                     <a
                       href={profile.socialLinks.website}
                       target="_blank"

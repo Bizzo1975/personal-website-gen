@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
       draftPostsResult,
       scheduledPostsResult,
       projectsResult,
+      draftProjectsResult,
+      scheduledProjectsResult,
       usersResult,
       accessRequestsResult,
       pendingAccessRequestsResult,
@@ -54,6 +56,8 @@ export async function GET(request: NextRequest) {
       query('SELECT COUNT(*) FROM posts WHERE status = $1', ['draft']),
       query('SELECT COUNT(*) FROM posts WHERE status = $1', ['scheduled']),
       query('SELECT COUNT(*) FROM projects WHERE status = $1', ['published']),
+      query('SELECT COUNT(*) FROM projects WHERE status = $1', ['draft']),
+      query('SELECT COUNT(*) FROM projects WHERE status = $1', ['scheduled']),
       query('SELECT COUNT(*) FROM users'),
       query('SELECT COUNT(*) FROM access_requests'),
       query('SELECT COUNT(*) FROM access_requests WHERE status = $1', ['pending']),
@@ -83,6 +87,8 @@ export async function GET(request: NextRequest) {
     const draftPosts = parseInt(draftPostsResult.rows[0].count);
     const scheduledPosts = parseInt(scheduledPostsResult.rows[0].count);
     const totalProjects = parseInt(projectsResult.rows[0].count);
+    const draftProjects = parseInt(draftProjectsResult.rows[0].count);
+    const scheduledProjects = parseInt(scheduledProjectsResult.rows[0].count);
     const totalUsers = parseInt(usersResult.rows[0].count);
     const totalAccessRequests = parseInt(accessRequestsResult.rows[0].count);
     const pendingAccessRequests = parseInt(pendingAccessRequestsResult.rows[0].count);
@@ -131,6 +137,8 @@ export async function GET(request: NextRequest) {
         draftPosts,
         scheduledPosts,
         totalProjects,
+        draftProjects,
+        scheduledProjects,
         pendingAccessRequests,
         activeUsers: activeAccessLevels
       },

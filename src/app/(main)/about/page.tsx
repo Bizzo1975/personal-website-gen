@@ -35,12 +35,19 @@ export default async function AboutPage() {
   
   if (profileData) {
     console.log('✅ Profile data retrieved successfully');
+  } else {
+    console.error('❌ No profile data found in database');
   }
   
   // Serialize the markdown content
   const serializedContent = aboutPage 
     ? await serializeMarkdown(aboutPage.content)
     : await serializeMarkdown('# About Me\nContent coming soon.');
+  
+  // If no profile data exists, something is wrong with the database
+  if (!profileData) {
+    throw new Error('Profile data not found. Please check the database setup.');
+  }
   
   // Render the page
   return (

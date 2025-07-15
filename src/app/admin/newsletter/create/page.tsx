@@ -17,6 +17,7 @@ import { Newsletter, NewsletterFormData } from '@/types/newsletter';
 import { ContentPermissions } from '@/types/content/permissions';
 import { BlogPost } from '@/types/content/blog';
 import { PostData } from '@/lib/services/post-service';
+import ImageField from '@/components/admin/ImageField';
 
 interface NewsletterTemplate {
   id: string;
@@ -74,26 +75,45 @@ const CreateNewsletterPage: React.FC = () => {
           title: 'Building Modern React Applications with Next.js 14',
           slug: 'modern-react-nextjs-14',
           excerpt: 'Learn how to build scalable React applications using the latest Next.js features',
-          date: '2024-01-15',
+          date: new Date('2024-01-15'),
           content: '',
           readTime: 8,
           tags: ['React', 'Next.js', 'TypeScript'],
-          author: 'Alex Johnson',
+          author: 'Jon Keck',
           published: true,
+          permissionLevel: 'professional',
+          createdAt: new Date('2024-01-15'),
           updatedAt: new Date('2024-01-15')
         },
         {
           id: '2',
           title: 'Advanced TypeScript Patterns for Better Code',
           slug: 'advanced-typescript-patterns',
-          excerpt: 'Explore advanced TypeScript patterns to improve code quality and maintainability',
-          date: '2024-01-12',
+          excerpt: 'Explore advanced TypeScript patterns to write more robust and maintainable code',
+          date: new Date('2024-01-10'),
           content: '',
-          readTime: 6,
-          tags: ['TypeScript', 'Patterns', 'Best Practices'],
-          author: 'Sarah Chen',
+          readTime: 12,
+          tags: ['TypeScript', 'Programming', 'Best Practices'],
+          author: 'Jon Keck',
           published: true,
-          updatedAt: new Date('2024-01-12')
+          permissionLevel: 'professional',
+          createdAt: new Date('2024-01-10'),
+          updatedAt: new Date('2024-01-10')
+        },
+        {
+          id: '3',
+          title: 'State Management in React: Best Practices',
+          slug: 'react-state-management',
+          excerpt: 'Learn the best practices for managing state in React applications',
+          date: new Date('2024-01-05'),
+          content: '',
+          readTime: 10,
+          tags: ['React', 'State Management', 'Redux'],
+          author: 'Jon Keck',
+          published: false,
+          permissionLevel: 'professional',
+          createdAt: new Date('2024-01-05'),
+          updatedAt: new Date('2024-01-05')
         }
       ];
 
@@ -450,15 +470,14 @@ const CreateNewsletterPage: React.FC = () => {
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Header Image URL
-            </label>
-            <input
-              type="url"
+            <ImageField
+              label="Header Image"
               value={formData.headerImage || ''}
-              onChange={(e) => handleInputChange('headerImage', e.target.value)}
-              placeholder="https://example.com/header-image.jpg"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(url) => handleInputChange('headerImage', url)}
+              contentType="newsletter"
+              placeholder="No header image selected"
+              helpText="Select an image for the newsletter header"
+              className="w-full"
             />
           </div>
 

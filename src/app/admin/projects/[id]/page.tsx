@@ -11,6 +11,7 @@ import { TagInput } from '@/components/TagInput';
 import { Checkbox } from '@/components/Checkbox';
 import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
+import ImageField from '@/components/admin/ImageField';
 import { BiSave } from 'react-icons/bi';
 import { ContentPermissions } from '@/types/content/permissions';
 
@@ -47,6 +48,7 @@ interface ProjectEditFormData {
   liveDemo?: string;
   sourceCode?: string;
   featured: boolean;
+  status: 'draft' | 'scheduled' | 'published';
   permissions: ContentPermissions;
 }
 
@@ -80,6 +82,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
         setValue('liveDemo', data.liveDemo || data.data?.liveDemo || '');
         setValue('sourceCode', data.sourceCode || data.data?.sourceCode || '');
         setValue('featured', data.featured || data.data?.featured || false);
+        setValue('status', data.status || data.data?.status || 'draft');
         
         // Set permissions (use default if not present)
         const projectPermissions = data.permissions || data.data?.permissions || getDefaultPermissions();
@@ -115,7 +118,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
 
       setSuccessMessage('Project updated successfully!');
       setTimeout(() => {
-        router.push('/admin/projects');
+        router.push('/admin/content-management?tab=projects');
       }, 1500);
     } catch (err) {
       setError('Failed to update project. Please try again.');
@@ -157,7 +160,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
           <h1 className="text-2xl font-bold">Edit Project</h1>
           <Button 
             variant="outline" 
-            onClick={() => router.push('/admin/projects')}
+            onClick={() => router.push('/admin/content-management?tab=projects')}
           >
             Cancel
           </Button>
@@ -215,12 +218,16 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
                 <h3 className="font-medium mb-4">Project Image & Links</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Input
-                    label="Image URL"
-                    {...register('image')}
-                    placeholder="https://example.com/image.jpg"
-                    wrapperClassName="mb-0"
-                  />
+                  <div>
+                    <ImageField
+                      label="Project Image"
+                      value={watch('image') || ''}
+                      onChange={(url) => setValue('image', url)}
+                      contentType="project"
+                      placeholder="No project image selected"
+                      helpText="Select an image to display for this project"
+                    />
+                  </div>
                   
                   <div className="space-y-4">
                     <Input
@@ -259,13 +266,28 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
                   Featured projects will be highlighted on your portfolio page
                 </p>
               </div>
+
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+                <label htmlFor="status" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Status
+                </label>
+                <select
+                  id="status"
+                  {...register('status', { required: 'Status is required' })}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="published">Published</option>
+                </select>
+              </div>
             </CardBody>
             
             <CardFooter className="flex justify-between border-t">
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => router.push('/admin/projects')}
+                onClick={() => router.push('/admin/content-management?tab=projects')}
               >
                 Cancel
               </Button>

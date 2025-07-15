@@ -175,7 +175,7 @@ export default function AdminAboutPageEditor() {
   
   return (
     <AdminLayout title="Edit About Page">
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-6 h-full">
         <div className="mb-6">
           {/* Collapsible Edit About Page Header */}
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg mb-6">
@@ -254,69 +254,75 @@ export default function AdminAboutPageEditor() {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* About Page Header Fields - Always Visible */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">About Page Header</h3>
-            
-            <AdminInput
-              id="headerTitle"
-              name="headerTitle"
-              label="Header Title"
-              value={pageData.headerTitle || ''}
-              onChange={handleInputChange}
-              helpText="The main heading displayed at the top of the about page"
-              required
-            />
-            
-            <AdminTextarea
-              id="headerSubtitle"
-              name="headerSubtitle"
-              label="Header Subtitle"
-              value={pageData.headerSubtitle || ''}
-              onChange={handleInputChange}
-              helpText="The subtitle displayed below the main heading"
-              rows={2}
-            />
-          </div>
+        {/* Form Container with Height Constraints */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col" style={{ height: 'calc(100vh - 300px)', minHeight: '600px' }}>
+          <form onSubmit={handleSubmit} className="flex flex-col h-full">
+            {/* Form Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* About Page Header Fields - Always Visible */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">About Page Header</h3>
+                
+                <AdminInput
+                  id="headerTitle"
+                  name="headerTitle"
+                  label="Header Title"
+                  value={pageData.headerTitle || ''}
+                  onChange={handleInputChange}
+                  helpText="The main heading displayed at the top of the about page"
+                  required
+                />
+                
+                <AdminTextarea
+                  id="headerSubtitle"
+                  name="headerSubtitle"
+                  label="Header Subtitle"
+                  value={pageData.headerSubtitle || ''}
+                  onChange={handleInputChange}
+                  helpText="The subtitle displayed below the main heading"
+                  rows={2}
+                />
+              </div>
 
-          {/* Content Editor */}
-          <div className="space-y-1">
-            <label htmlFor="content" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Content
-            </label>
-            <EnhancedEditor
-              value={pageData.content || ''}
-              onChange={handleContentChange}
-              placeholder="Write your about page content here..."
-              height="400px"
-              toolbar="full"
-              id="about-content-editor"
-              ariaLabel="About page content rich text editor"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Use the toolbar to format your content with headings, bold, italic, lists, links, and more.
-            </p>
-          </div>
+              {/* Content Editor */}
+              <div className="space-y-1">
+                <label htmlFor="content" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Content
+                </label>
+                <EnhancedEditor
+                  value={pageData.content || ''}
+                  onChange={handleContentChange}
+                  placeholder="Write your about page content here..."
+                  height="400px"
+                  toolbar="full"
+                  id="about-content-editor"
+                  ariaLabel="About page content rich text editor"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Use the toolbar to format your content with headings, bold, italic, lists, links, and more.
+                </p>
+              </div>
+            </div>
 
-          {/* Form Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => router.push('/admin/pages')}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save About Page'}
-            </Button>
-          </div>
-        </form>
+            {/* Form Actions - Fixed at Bottom */}
+            <div className="flex-shrink-0 flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.push('/admin/pages')}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save About Page'}
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
     </AdminLayout>
   );

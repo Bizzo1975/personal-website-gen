@@ -26,9 +26,8 @@ export async function GET(request: NextRequest) {
     const availableContent = [
       ...draftPosts.map(post => ({
         id: post.id,
+        type: 'post' as const,
         title: post.title,
-        slug: post.slug,
-        type: 'post',
         author: post.author || 'Unknown',
         excerpt: post.excerpt || `${post.title.substring(0, 100)}...`,
         createdAt: post.createdAt,
@@ -36,13 +35,12 @@ export async function GET(request: NextRequest) {
       })),
       ...draftProjects.map(project => ({
         id: project.id,
+        type: 'project' as const,
         title: project.title,
-        slug: project.slug,
-        type: 'project',
-        author: 'Admin', // TODO: Get actual author from created_by
-        excerpt: project.description ? `${project.description.substring(0, 100)}...` : `${project.title} project`,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt
+        author: 'Admin', // TODO: Get from database
+        excerpt: project.description || `${project.title} project`,
+        createdAt: project.created_at,
+        updatedAt: project.updated_at
       }))
     ];
 

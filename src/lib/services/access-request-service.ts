@@ -414,7 +414,7 @@ export class AccessRequestService {
         [id, 'access_request']
       );
 
-      return result.rowCount > 0;
+      return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('Error deleting access request:', error);
       throw new Error('Failed to delete access request');

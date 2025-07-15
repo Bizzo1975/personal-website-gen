@@ -62,10 +62,10 @@ export async function PUT(
       content: projectData.content,
       image: projectData.image,
       technologies: projectData.technologies || [],
-      liveDemo: projectData.liveDemo,
-      sourceCode: projectData.sourceCode,
+      live_demo: projectData.liveDemo,
+      source_code: projectData.sourceCode,
       featured: projectData.featured || false,
-      permissionLevel: projectData.permissions?.level || 'all',
+      permission_level: projectData.permissions?.level || 'all',
       status: projectData.status || 'draft'
     });
 
@@ -78,14 +78,16 @@ export async function PUT(
   } catch (error) {
     console.error('Error updating project:', error);
     
-    if (error.message.includes('Project not found')) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    if (errorMessage.includes('Project not found')) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
       );
     }
     
-    if (error.message.includes('duplicate') || error.message.includes('unique')) {
+    if (errorMessage.includes('duplicate') || errorMessage.includes('unique')) {
       return NextResponse.json(
         { error: 'A project with this slug already exists' },
         { status: 400 }

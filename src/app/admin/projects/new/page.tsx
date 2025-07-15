@@ -12,6 +12,7 @@ import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
 import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import { BiUpload, BiSave } from 'react-icons/bi';
 import { ContentPermissions } from '@/types/content/permissions';
+import ImageField from '@/components/admin/ImageField';
 
 // Client-side default permissions function
 const getDefaultPermissions = (): ContentPermissions => ({
@@ -28,6 +29,7 @@ interface NewProjectFormData {
   description: string;
   technologies: string[];
   featured: boolean;
+  status: 'draft' | 'published' | 'scheduled';
   image?: string;
   liveDemo?: string;
   sourceCode?: string;
@@ -36,7 +38,6 @@ interface NewProjectFormData {
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -46,15 +47,14 @@ export default function NewProjectPage() {
     description: '',
     technologies: [],
     featured: false,
+    status: 'draft', // Default to draft
     image: '',
     liveDemo: '',
     sourceCode: '',
     permissions: getDefaultPermissions() // Default to public access
   });
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
@@ -73,38 +73,15 @@ export default function NewProjectPage() {
     setFormData(prev => ({ ...prev, permissions }));
   };
 
-  const handleImageUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
 
     try {
-      // In a real app, you would upload the image to a storage service first
-      // and then save the URL along with the other project data
-      
-      // For now, we'll simulate the image upload by keeping the image preview URL
+      // Ensure slug is URL-friendly
       const projectData = {
         ...formData,
-        image: imagePreview || formData.image, // Use preview if available, otherwise use URL
-        // Ensure slug is URL-friendly
         slug: formData.slug.trim().toLowerCase().replace(/\s+/g, '-')
       };
 
@@ -126,9 +103,16 @@ export default function NewProjectPage() {
       console.log('Project created successfully:', result);
       setSuccessMessage('Project created successfully!');
       
+      // Show additional guidance for scheduled projects
+      if (projectData.status === 'scheduled') {
+        setTimeout(() => {
+          setSuccessMessage('Project created! Visit the Content Scheduler to set the publish date.');
+        }, 800);
+      }
+      
       // Wait 1.5 seconds before redirecting
       setTimeout(() => {
-        router.push('/admin/projects');
+        router.push('/admin/content-management?tab=projects');
       }, 1500);
       
     } catch (err) {
@@ -144,7 +128,7 @@ export default function NewProjectPage() {
           <h1 className="text-2xl font-bold">Create New Project</h1>
           <Button 
             variant="outline" 
-            onClick={() => router.push('/admin/projects')}
+            onClick={() => router.push('/admin/content-management?tab=projects')}
           >
             Cancel
           </Button>
@@ -192,6 +176,42 @@ export default function NewProjectPage() {
                   wrapperClassName="mb-0"
                 />
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Status *
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="draft">📝 Draft - Hidden from public</option>
+                    <option value="published">✅ Published - Live immediately</option>
+                    <option value="scheduled">⏰ Scheduled - Publish later</option>
+                  </select>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {formData.status === 'draft' && 'Draft projects are hidden from public view'}
+                    {formData.status === 'published' && 'Published projects are visible to everyone immediately'}
+                    {formData.status === 'scheduled' && 'Scheduled projects will be published at a future date (set in Content Scheduler)'}
+                  </p>
+                </div>
+                
+                <div className="flex items-end">
+                  <div className="w-full">
+                    <Checkbox
+                      label="Featured Project"
+                      checked={formData.featured}
+                      onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
+                    />
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      Featured projects will be highlighted on your portfolio page
+                    </p>
+                  </div>
+                </div>
+              </div>
               
               <TextArea
                 label="Description"
@@ -210,56 +230,14 @@ export default function NewProjectPage() {
               
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
                 <h3 className="font-medium mb-4">Project Image</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      accept="image/*"
-                      className="hidden"
-                    />
-                    
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleImageUploadClick}
-                      icon={<BiUpload />}
-                      className="mb-2"
-                    >
-                      Upload Image
-                    </Button>
-                    
-                    <div className="text-sm text-slate-500 dark:text-slate-400">
-                      Or enter a URL:
-                    </div>
-                    
-                    <Input
-                      name="image"
-                      value={formData.image}
-                      onChange={handleChange}
-                      placeholder="https://example.com/image.jpg"
-                      wrapperClassName="mt-2 mb-0"
-                    />
-                  </div>
-                  
-                  <div>
-                    {imagePreview ? (
-                      <div className="relative w-full h-40 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                        <div className="absolute inset-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${imagePreview})` }}></div>
-                      </div>
-                    ) : formData.image ? (
-                      <div className="relative w-full h-40 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                        <div className="absolute inset-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${formData.image})` }}></div>
-                      </div>
-                    ) : (
-                      <div className="w-full h-40 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500">
-                        No image selected
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ImageField
+                  label="Project Image"
+                  value={formData.image || ''}
+                  onChange={(url) => setFormData(prev => ({ ...prev, image: url }))}
+                  contentType="project"
+                  placeholder="No project image selected"
+                  helpText="Click 'Choose from Library' to select from uploaded images, or 'Use External URL' to add an image from the web. You can upload new images directly from the media picker."
+                />
               </div>
               
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
@@ -294,24 +272,13 @@ export default function NewProjectPage() {
                   contentType="project"
                 />
               </div>
-              
-              <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-                <Checkbox
-                  label="Featured Project"
-                  checked={formData.featured}
-                  onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
-                />
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Featured projects will be highlighted on your portfolio page
-                </p>
-              </div>
             </CardBody>
             
             <CardFooter className="flex justify-between border-t">
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => router.push('/admin/projects')}
+                onClick={() => router.push('/admin/content-management?tab=projects')}
               >
                 Cancel
               </Button>

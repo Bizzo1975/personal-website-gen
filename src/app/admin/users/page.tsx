@@ -16,19 +16,29 @@ import {
   EnvelopeIcon,
   CalendarIcon,
   EyeIcon,
-  XMarkIcon
+  XMarkIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  KeyIcon
 } from '@heroicons/react/24/outline';
 
 interface User {
   id: string;
   name: string;
   email: string;
-  role: string;
-  status: 'active' | 'inactive' | 'pending';
+  role: 'subscriber' | 'author' | 'editor' | 'admin';
+  status: 'active' | 'inactive' | 'pending' | 'suspended';
   lastLogin?: string;
   createdAt: string;
   avatar?: string;
   permissions: string[];
+  accessLevels?: {
+    hasProfessionalAccess: boolean;
+    hasPersonalAccess: boolean;
+    isActive: boolean;
+    grantedAt?: string;
+    grantedBy?: string;
+  };
 }
 
 interface Role {
@@ -39,6 +49,7 @@ interface Role {
   permissions: string[];
   isSystem: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface UserModalProps {
@@ -52,35 +63,73 @@ function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     role: 'subscriber' as User['role'],
     status: 'active' as User['status'],
-    permissions: [] as string[]
+    permissions: [] as string[],
+    hasProfessionalAccess: false,
+    hasPersonalAccess: false
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
       setFormData({
         name: user.name,
         email: user.email,
+        password: '',
         role: user.role,
         status: user.status,
-        permissions: user.permissions
+        permissions: user.permissions,
+        hasProfessionalAccess: user.accessLevels?.hasProfessionalAccess || false,
+        hasPersonalAccess: user.accessLevels?.hasPersonalAccess || false
       });
     } else {
       setFormData({
         name: '',
         email: '',
+        password: '',
         role: 'subscriber',
         status: 'active',
-        permissions: []
+        permissions: [],
+        hasProfessionalAccess: false,
+        hasPersonalAccess: false
       });
     }
+    setError('');
   }, [user]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
-    onClose();
+    setLoading(true);
+    setError('');
+
+    try {
+      const url = user ? `/api/admin/users/${user.id}` : '/api/admin/users';
+      const method = user ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save user');
+      }
+
+      onSave(data.user);
+      onClose();
+    } catch (error) {
+      console.error('Failed to save user:', error);
+      setError(error instanceof Error ? error.message : 'Failed to save user');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const availablePermissions = [
@@ -103,47 +152,88 @@ function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {user ? 'Edit User' : 'Add New User'}
           </h2>
           <button
             onClick={onClose}
+            disabled={loading}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
 
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Name
+                Name *
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
+                disabled={loading}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email
+                Email *
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
+                disabled={loading}
               />
             </div>
           </div>
 
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Password {!user && '*'}
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required={!user}
+                disabled={loading}
+                placeholder={user ? 'Leave blank to keep current password' : 'Enter password'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <EyeIcon className="h-5 w-5" />
+              </button>
+            </div>
+            {!user && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Password will be auto-generated if left blank
+              </p>
+            )}
+          </div>
+
+          {/* Role and Status */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -152,7 +242,8 @@ function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
               <select
                 value={formData.role}
                 onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as User['role'] }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loading}
               >
                 <option value="subscriber">Subscriber</option>
                 <option value="author">Author</option>
@@ -167,27 +258,66 @@ function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
               <select
                 value={formData.status}
                 onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as User['status'] }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loading}
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
               </select>
             </div>
           </div>
 
+          {/* Access Levels */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Permissions
+              Access Levels
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="professionalAccess"
+                  checked={formData.hasProfessionalAccess}
+                  onChange={(e) => setFormData(prev => ({ ...prev, hasProfessionalAccess: e.target.checked }))}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  disabled={loading}
+                />
+                <label htmlFor="professionalAccess" className="text-sm text-gray-700 dark:text-gray-300">
+                  Professional Access
+                </label>
+              </div>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="personalAccess"
+                  checked={formData.hasPersonalAccess}
+                  onChange={(e) => setFormData(prev => ({ ...prev, hasPersonalAccess: e.target.checked }))}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  disabled={loading}
+                />
+                <label htmlFor="personalAccess" className="text-sm text-gray-700 dark:text-gray-300">
+                  Personal Access
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Permissions */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Additional Permissions
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3">
               {availablePermissions.map(permission => (
                 <label key={permission} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
                     checked={formData.permissions.includes(permission)}
                     onChange={() => togglePermission(permission)}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    disabled={loading}
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300">
                     {permission.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -197,12 +327,31 @@ function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" type="button" onClick={onClose}>
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button 
+              variant="outline" 
+              type="button" 
+              onClick={onClose}
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button type="submit">
-              {user ? 'Update User' : 'Create User'}
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="flex items-center space-x-2"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircleIcon className="h-4 w-4" />
+                  <span>{user ? 'Update User' : 'Create User'}</span>
+                </>
+              )}
             </Button>
           </div>
         </form>
@@ -380,11 +529,17 @@ function UserManagementPageContent() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [activeTab, setActiveTab] = useState<'users' | 'roles'>('users');
+  const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   useEffect(() => {
     fetchUsers();
     fetchRoles();
   }, []);
+
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000);
+  };
 
   const fetchUsers = async () => {
     try {
@@ -392,33 +547,34 @@ function UserManagementPageContent() {
       if (response.ok) {
         const data = await response.json();
         
-        // Extract users array from the API response and transform data
+        // Transform the API response to match the expected format
         const transformedUsers = (data.users || []).map((user: any) => ({
           id: user.id,
           name: user.name || 'Unknown',
           email: user.email,
           role: user.role || 'subscriber',
-          status: user.accessLevels?.isActive ? 'active' : 'inactive',
-          lastLogin: null, // API doesn't provide this, could be added later
+          status: user.status || 'active',
+          lastLogin: null,
           createdAt: user.createdAt,
-          avatar: null, // API doesn't provide this, could be added later
+          avatar: null,
           permissions: user.role === 'admin' 
             ? ['system_admin', 'manage_users', 'manage_settings', 'manage_roles', 'view_analytics', 'manage_media', 'edit_posts', 'delete_posts', 'write_posts', 'read_posts']
             : user.role === 'editor'
             ? ['edit_posts', 'delete_posts', 'write_posts', 'read_posts', 'manage_media', 'manage_comments']
             : user.role === 'author'
             ? ['write_posts', 'read_posts', 'edit_posts']
-            : ['read_posts']
+            : ['read_posts'],
+          accessLevels: user.accessLevels
         }));
         
         setUsers(transformedUsers);
       } else {
         console.error('Failed to fetch users:', response.status);
-        setUsers([]); // Set empty array on error
+        showNotification('error', 'Failed to fetch users');
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
-      setUsers([]); // Set empty array on error
+      showNotification('error', 'Failed to fetch users');
     } finally {
       setLoading(false);
     }
@@ -426,46 +582,51 @@ function UserManagementPageContent() {
 
   const fetchRoles = async () => {
     try {
-      // Mock roles data - in real app, fetch from API
-      const mockRoles: Role[] = [
-        {
-          id: '1',
-          name: 'admin',
-          displayName: 'Administrator',
-          description: 'Full system access with all permissions',
-          permissions: ['system_admin', 'manage_users', 'manage_settings', 'manage_roles', 'view_analytics', 'manage_media', 'edit_posts', 'delete_posts', 'write_posts', 'read_posts'],
-          isSystem: true,
-          createdAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: '2',
-          name: 'editor',
-          displayName: 'Editor',
-          description: 'Can manage content and moderate posts',
-          permissions: ['edit_posts', 'delete_posts', 'write_posts', 'read_posts', 'manage_media', 'manage_comments'],
-          isSystem: true,
-          createdAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: '3',
-          name: 'author',
-          displayName: 'Author',
-          description: 'Can create and edit their own content',
-          permissions: ['write_posts', 'read_posts', 'edit_posts'],
-          isSystem: true,
-          createdAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: '4',
-          name: 'subscriber',
-          displayName: 'Subscriber',
-          description: 'Basic read-only access',
-          permissions: ['read_posts'],
-          isSystem: true,
-          createdAt: '2024-01-01T00:00:00Z'
-        }
-      ];
-      setRoles(mockRoles);
+      const response = await fetch('/api/admin/roles');
+      if (response.ok) {
+        const data = await response.json();
+        setRoles(data.roles || []);
+      } else {
+        // Use default roles if API fails
+        setRoles([
+          {
+            id: '1',
+            name: 'admin',
+            displayName: 'Administrator',
+            description: 'Full system access with all permissions',
+            permissions: ['system_admin', 'manage_users', 'manage_settings', 'manage_roles', 'view_analytics', 'manage_media', 'edit_posts', 'delete_posts', 'write_posts', 'read_posts'],
+            isSystem: true,
+            createdAt: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: '2',
+            name: 'editor',
+            displayName: 'Editor',
+            description: 'Can manage content and moderate posts',
+            permissions: ['edit_posts', 'delete_posts', 'write_posts', 'read_posts', 'manage_media', 'manage_comments'],
+            isSystem: true,
+            createdAt: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: '3',
+            name: 'author',
+            displayName: 'Author',
+            description: 'Can create and edit their own content',
+            permissions: ['write_posts', 'read_posts', 'edit_posts'],
+            isSystem: true,
+            createdAt: '2024-01-01T00:00:00Z'
+          },
+          {
+            id: '4',
+            name: 'subscriber',
+            displayName: 'Subscriber',
+            description: 'Basic read-only access',
+            permissions: ['read_posts'],
+            isSystem: true,
+            createdAt: '2024-01-01T00:00:00Z'
+          }
+        ]);
+      }
     } catch (error) {
       console.error('Failed to fetch roles:', error);
     }
@@ -473,26 +634,20 @@ function UserManagementPageContent() {
 
   const handleSaveUser = async (userData: Partial<User>) => {
     try {
-      const url = editingUser ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
-      const method = editingUser ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
-
-      if (response.ok) {
-        await fetchUsers();
-        setEditingUser(null);
-      }
+      await fetchUsers(); // Refresh the users list
+      setEditingUser(null);
+      showNotification('success', `User ${editingUser ? 'updated' : 'created'} successfully`);
     } catch (error) {
       console.error('Failed to save user:', error);
+      showNotification('error', 'Failed to save user');
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    if (!confirm(`Are you sure you want to delete user "${user.name}"?`)) return;
 
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
@@ -501,14 +656,28 @@ function UserManagementPageContent() {
 
       if (response.ok) {
         await fetchUsers();
+        showNotification('success', 'User deleted successfully');
+      } else {
+        const data = await response.json();
+        showNotification('error', data.error || 'Failed to delete user');
       }
     } catch (error) {
       console.error('Failed to delete user:', error);
+      showNotification('error', 'Failed to delete user');
     }
   };
 
-  const handleBulkAction = async (action: string) => {
-    if (selectedUsers.size === 0) return;
+  const handleBulkAction = async (action: string, params?: any) => {
+    if (selectedUsers.size === 0) {
+      showNotification('error', 'No users selected');
+      return;
+    }
+
+    const confirmMessage = action === 'delete' 
+      ? `Are you sure you want to delete ${selectedUsers.size} user(s)?`
+      : `Are you sure you want to ${action} ${selectedUsers.size} user(s)?`;
+
+    if (!confirm(confirmMessage)) return;
 
     try {
       const response = await fetch('/api/admin/users/bulk', {
@@ -516,16 +685,23 @@ function UserManagementPageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action,
-          userIds: Array.from(selectedUsers)
+          userIds: Array.from(selectedUsers),
+          params
         })
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         await fetchUsers();
         setSelectedUsers(new Set());
+        showNotification('success', data.message);
+      } else {
+        showNotification('error', data.error || 'Bulk operation failed');
       }
     } catch (error) {
       console.error('Failed to perform bulk action:', error);
+      showNotification('error', 'Bulk operation failed');
     }
   };
 
@@ -603,6 +779,7 @@ function UserManagementPageContent() {
       case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
       case 'inactive': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
       case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+      case 'suspended': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
     }
   };
@@ -624,6 +801,24 @@ function UserManagementPageContent() {
 
   return (
     <AdminPageLayout>
+      {/* Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+          notification.type === 'success' 
+            ? 'bg-green-100 border border-green-400 text-green-700' 
+            : 'bg-red-100 border border-red-400 text-red-700'
+        }`}>
+          <div className="flex items-center space-x-2">
+            {notification.type === 'success' ? (
+              <CheckCircleIcon className="h-5 w-5" />
+            ) : (
+              <ExclamationTriangleIcon className="h-5 w-5" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
           User Management
@@ -645,7 +840,7 @@ function UserManagementPageContent() {
             }`}
           >
             <UserGroupIcon className="h-4 w-4" />
-            <span>Users</span>
+            <span>Users ({users.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('roles')}
@@ -656,7 +851,7 @@ function UserManagementPageContent() {
             }`}
           >
             <ShieldCheckIcon className="h-4 w-4" />
-            <span>Roles</span>
+            <span>Roles ({roles.length})</span>
           </button>
         </nav>
       </div>
@@ -673,7 +868,7 @@ function UserManagementPageContent() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{(users || []).length}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{users.length}</p>
                   </div>
                 </div>
               </CardBody>
@@ -688,7 +883,7 @@ function UserManagementPageContent() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {(users || []).filter(u => u.status === 'active').length}
+                      {users.filter(u => u.status === 'active').length}
                     </p>
                   </div>
                 </div>
@@ -704,7 +899,7 @@ function UserManagementPageContent() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Admins</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {(users || []).filter(u => u.role === 'admin').length}
+                      {users.filter(u => u.role === 'admin').length}
                     </p>
                   </div>
                 </div>
@@ -720,7 +915,7 @@ function UserManagementPageContent() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {(users || []).filter(u => u.status === 'pending').length}
+                      {users.filter(u => u.status === 'pending').length}
                     </p>
                   </div>
                 </div>
@@ -729,91 +924,94 @@ function UserManagementPageContent() {
           </div>
 
           {/* Controls */}
-          <Card className="mb-6">
-            <CardBody>
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search users..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    />
-                  </div>
-
-                  <select
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  >
-                    <option value="all">All Roles</option>
-                    <option value="admin">Admin</option>
-                    <option value="editor">Editor</option>
-                    <option value="author">Author</option>
-                    <option value="subscriber">Subscriber</option>
-                  </select>
-
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="pending">Pending</option>
-                  </select>
-                </div>
-
-                <Button
-                  onClick={() => {
-                    setEditingUser(null);
-                    setUserModalOpen(true);
-                  }}
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Add User
-                </Button>
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="editor">Editor</option>
+                <option value="author">Author</option>
+                <option value="subscriber">Subscriber</option>
+              </select>
 
-              {/* Bulk Actions */}
-              {selectedUsers.size > 0 && (
-                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                      {selectedUsers.size} user{selectedUsers.size !== 1 ? 's' : ''} selected
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBulkAction('activate')}
-                      >
-                        Activate
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBulkAction('deactivate')}
-                      >
-                        Deactivate
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBulkAction('delete')}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
+              </select>
+
+              <Button
+                onClick={() => {
+                  setEditingUser(null);
+                  setUserModalOpen(true);
+                }}
+                className="flex items-center space-x-2"
+              >
+                <PlusIcon className="h-4 w-4" />
+                <span>Add User</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Bulk Actions */}
+          {selectedUsers.size > 0 && (
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-blue-700 dark:text-blue-300">
+                  {selectedUsers.size} user(s) selected
+                </span>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkAction('activate')}
+                    className="text-green-600 hover:text-green-700"
+                  >
+                    Activate
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkAction('deactivate')}
+                    className="text-yellow-600 hover:text-yellow-700"
+                  >
+                    Deactivate
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkAction('delete')}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Delete
+                  </Button>
                 </div>
-              )}
-            </CardBody>
-          </Card>
+              </div>
+            </div>
+          )}
 
           {/* Users Table */}
           <Card>
@@ -833,6 +1031,7 @@ function UserManagementPageContent() {
                             }
                           }}
                           checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -845,7 +1044,7 @@ function UserManagementPageContent() {
                         Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Last Login
+                        Access
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Actions
@@ -868,6 +1067,7 @@ function UserManagementPageContent() {
                               }
                               setSelectedUsers(newSelected);
                             }}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -897,8 +1097,19 @@ function UserManagementPageContent() {
                             {user.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex space-x-1">
+                            {user.accessLevels?.hasProfessionalAccess && (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                Pro
+                              </span>
+                            )}
+                            {user.accessLevels?.hasPersonalAccess && (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                Personal
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-2">

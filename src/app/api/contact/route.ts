@@ -274,12 +274,48 @@ export async function POST(request: NextRequest) {
       console.error('Error sending auto-responder:', error);
     }
 
+    // Handle newsletter subscription
+    if (contactData.newsletter) {
+      try {
+        const newsletterResponse = await fetch(`${process.env.NEXTAUTH_URL}/api/newsletter/subscribers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: contactData.email,
+            name: contactData.name,
+            phone: contactData.phone || null,
+            company: contactData.company || null,
+            source: 'contact_form',
+            metadata: {
+              contactCategory: contactData.category,
+              contactSubject: contactData.subject,
+              submittedAt: new Date().toISOString(),
+              ipAddress: ip,
+              userAgent: contactData.userAgent
+            }
+          })
+        });
+
+        const newsletterResult = await newsletterResponse.json();
+        
+        if (!newsletterResult.success) {
+          console.error('Newsletter subscription failed:', newsletterResult.error);
+          // Don't fail the entire contact form if newsletter subscription fails
+        }
+      } catch (error) {
+        console.error('Error subscribing to newsletter:', error);
+        // Don't fail the entire contact form if newsletter subscription fails
+      }
+    }
+
     // Store in database (if you have a database setup)
     // await storeContactSubmission(contactData, attachmentFiles);
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Message sent successfully!' 
+      message: 'Message sent successfully!' + (contactData.newsletter ? ' You have also been subscribed to our newsletter.' : '')
     });
 
   } catch (error) {

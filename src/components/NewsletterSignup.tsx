@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AccessibleButton } from '@/components/AccessibilityEnhancements';
 
 interface NewsletterSignupProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'compact' | 'inline' | 'popup' | 'modal' | 'sidebar';
+  variant?: 'default' | 'compact' | 'inline' | 'popup' | 'modal' | 'sidebar' | 'footer';
   title?: string;
   description?: string;
   incentive?: string;
@@ -16,6 +16,8 @@ interface NewsletterSignupProps extends React.HTMLAttributes<HTMLDivElement> {
   theme?: 'light' | 'dark' | 'accent';
   position?: 'fixed' | 'sticky' | 'static';
   onSubscribe?: (email: string, firstName?: string) => Promise<boolean>;
+  onSuccess?: (email: string) => void;
+  onError?: (error: any) => void;
   onClose?: () => void;
   contentOverride?: {
     title?: string;
@@ -36,7 +38,6 @@ interface NewsletterContent {
   title: string;
   description: string;
   incentive: string;
-  subscriberCount: number;
   footerText: string;
   weeklyArticlesIcon: string;
   weeklyArticlesTitle: string;
@@ -71,6 +72,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [adminContent, setAdminContent] = useState<NewsletterContent | null>(null);
   const [contentLoading, setContentLoading] = useState(true);
+  const [dbSubscriberCount, setDbSubscriberCount] = useState<number>(0);
 
   // Available interest categories
   const interestOptions = [
@@ -102,7 +104,21 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
       }
     };
 
+    const fetchSubscriberCount = async () => {
+      try {
+        const response = await fetch('/api/newsletter/admin/stats');
+        if (response.ok) {
+          const data = await response.json();
+          setDbSubscriberCount(data.totalSubscribers || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching subscriber count:', error);
+        // Keep default of 0 if fetch fails
+      }
+    };
+
     fetchAdminContent();
+    fetchSubscriberCount();
   }, []);
 
   // Default content based on variant (fallback if admin content not available)
@@ -148,7 +164,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
     incentive: adminContent.incentive
   } : getDefaultContent());
 
-  const currentSubscriberCount = subscriberCount || (adminContent?.subscriberCount) || 127;
+  const currentSubscriberCount = subscriberCount || dbSubscriberCount;
 
   // Popup logic for exit-intent
   useEffect(() => {
@@ -440,7 +456,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
           {/* Privacy Notice */}
           <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
             {adminContent?.footerText || 'By subscribing, you agree to receive our newsletter and promotional emails. You can unsubscribe at any time.'}{' '}
-            <a href="/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <a href="/privacy-policy" className="text-blue-600 dark:text-blue-400 hover:underline">
               Privacy Policy
             </a>.
           </p>

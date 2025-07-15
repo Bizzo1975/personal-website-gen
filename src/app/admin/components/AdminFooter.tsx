@@ -90,10 +90,10 @@ const AdminFooter: React.FC = () => {
                   style={{ objectFit: 'contain' }}
                 />
               </div>
-              <span>{profileData?.name || 'Admin User'}</span>
+              <span>{siteSettings?.logoText || 'Jonathan L Keck'}</span>
             </Link>
             <p className="mt-3 text-slate-600 dark:text-slate-400 max-w-md">
-              Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.
+              {siteSettings?.bioText || 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.'}
             </p>
           </div>
 
@@ -127,7 +127,7 @@ const AdminFooter: React.FC = () => {
         
         <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            &copy; {new Date().getFullYear()} {profileData?.name || 'Admin User'}. All rights reserved.
+            &copy; {new Date().getFullYear()} {siteSettings?.logoText || 'Jonathan L Keck'}. All rights reserved.
           </p>
           <div className="text-sm text-slate-500 dark:text-slate-400 mt-2 sm:mt-0 flex items-center">
             {isEditing ? (

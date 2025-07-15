@@ -1,8 +1,9 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import AccessibilityEnhancements from '@/components/AccessibilityEnhancements';
-import { getSiteSettings } from '@/lib/services/site-settings-service';
 
 // Define interfaces directly to avoid import issues
 interface NavbarLink {
@@ -21,13 +22,55 @@ interface SiteSettings {
   navbarLinks: NavbarLink[];
 }
 
-export default async function MainLayout({ 
+// Default site settings as fallback
+const getDefaultSiteSettings = (): SiteSettings => ({
+  logoUrl: '/images/jlk-logo.png',
+  logoText: 'Jonathan L Keck',
+  footerText: 'Built with Next.js and Tailwind CSS',
+  bioText: 'Full-stack developer specializing in modern web technologies.',
+  navbarStyle: 'default',
+  navbarLinks: [
+    { label: 'Home', url: '/', isExternal: false },
+    { label: 'About', url: '/about', isExternal: false },
+    { label: 'Projects', url: '/projects', isExternal: false },
+    { label: 'Blog', url: '/blog', isExternal: false },
+    { label: 'Contact', url: '/contact', isExternal: false },
+  ]
+});
+
+export default function MainLayout({ 
   children 
 }: { 
   children: React.ReactNode 
 }) {
-  // Fetch site settings from database
-  const siteSettings: SiteSettings = await getSiteSettings();
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(getDefaultSiteSettings());
+  const [loading, setLoading] = useState(true);
+
+  // Fetch site settings on client side
+  useEffect(() => {
+    const fetchSiteSettings = async () => {
+      try {
+        console.log('🔄 Fetching site settings from API...');
+        const response = await fetch('/api/site-settings', { 
+          cache: 'no-store'
+        });
+        
+        if (response.ok) {
+          const settings = await response.json();
+          console.log('✅ Site settings loaded - Logo URL:', settings.logoUrl);
+          setSiteSettings(settings);
+        } else {
+          console.warn('Failed to fetch site settings, using defaults');
+        }
+      } catch (error) {
+        console.error('Error fetching site settings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSiteSettings();
+  }, []);
 
   return (
     <AccessibilityEnhancements>

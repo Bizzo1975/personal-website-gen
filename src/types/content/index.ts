@@ -1,3 +1,4 @@
+// Export all content-related types
 export interface PageData {
   id: string;
   name?: string;
@@ -48,4 +49,9 @@ export interface QueryOptions {
   sort?: Record<string, 1 | -1>;
   featured?: boolean;
   published?: boolean;
-} 
+}
+
+// Re-export for backwards compatibility
+export type { PageData as Page };
+export type { PostData as Post };
+export type { CommentData as Comment }; 

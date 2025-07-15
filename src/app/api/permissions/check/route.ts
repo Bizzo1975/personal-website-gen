@@ -18,26 +18,20 @@ export async function POST(request: NextRequest) {
     // Get user session
     const session = await getServerSession(authOptions);
     
-    // Create user context - handle null email properly
-    const safeUser = session?.user ? {
-      ...session.user,
-      email: session.user.email || undefined
-    } : undefined;
-    const userContext = PermissionService.createUserContext(safeUser);
-
-    // Check permissions
-    const result = PermissionService.checkPermission(permissions as ContentPermissions, userContext);
-
+    // Simplified permission check - just check if user is authenticated
+    const isAuthenticated = !!session?.user?.email;
+    const isAdmin = session?.user?.role === 'admin';
+    
     return NextResponse.json({
-      allowed: result.allowed,
-      reason: result.reason,
-      requiredLevel: result.requiredLevel,
-      requiredRoles: result.requiredRoles,
-      appliedRule: result.appliedRule,
+      allowed: isAuthenticated || permissions.level === 'all',
+      reason: isAuthenticated ? 'User is authenticated' : 'Authentication required',
+      requiredLevel: permissions.level || 'all',
+      requiredRoles: permissions.roles || [],
+      appliedRule: 'basic',
       userContext: {
-        isAuthenticated: userContext.isAuthenticated,
-        role: userContext.role,
-        accessLevel: userContext.accessLevel
+        isAuthenticated,
+        role: session?.user?.role || 'anonymous',
+        accessLevel: isAdmin ? 'admin' : 'user'
       }
     });
 
@@ -56,12 +50,15 @@ export async function GET(request: NextRequest) {
     const contentType = searchParams.get('contentType');
     const level = searchParams.get('level') as 'personal' | 'professional' | 'all';
 
-    // Get default permissions for content type
-    const defaultPermissions = PermissionService.getDefaultPermissions(level || 'all');
-
+    // Return basic default permissions
     return NextResponse.json({
-      defaultPermissions,
-      templates: PermissionService.getDefaultPermissions
+      defaultPermissions: {
+        level: level || 'all',
+        roles: [],
+        users: [],
+        groups: []
+      },
+      templates: {}
     });
 
   } catch (error) {

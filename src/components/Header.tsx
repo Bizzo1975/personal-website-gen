@@ -36,7 +36,7 @@ const Header: React.FC<HeaderProps> = ({ profileName, siteSettings }) => {
 
   // Use site settings or fallback values
   const displayName = profileName || siteSettings?.logoText || 'Jonathan L Keck';
-  const logoUrl = siteSettings?.logoUrl || '/images/jlk-logo.png';
+  const logoUrl = siteSettings?.logoUrl || '/uploads/general/branding-a0bbe598-5c50-4377-a2c5-a3a67d06959b.png';
   const navbarLinks = siteSettings?.navbarLinks || [
     { label: 'Home', url: '/', isExternal: false },
     { label: 'About', url: '/about', isExternal: false },

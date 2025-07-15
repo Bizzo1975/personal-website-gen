@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Images</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .image-test { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        img { max-width: 300px; height: auto; }
+    </style>
+</head>
+<body>
+    <h1>Image Loading Test</h1>
+    
+    <div class="image-test">
+        <h2>Blog Images</h2>
+        <div>
+            <h3>Modern Web Development</h3>
+            <img src="/images/blog/modern-web-development-2024.jpg" alt="Modern Web Development" />
+            <p>URL: /images/blog/modern-web-development-2024.jpg</p>
+        </div>
+        <div>
+            <h3>React Best Practices</h3>
+            <img src="/images/blog/react-component-architecture.jpg" alt="React Best Practices" />
+            <p>URL: /images/blog/react-component-architecture.jpg</p>
+        </div>
+        <div>
+            <h3>TailwindCSS</h3>
+            <img src="/images/blog/tailwind-utility-classes.jpg" alt="TailwindCSS" />
+            <p>URL: /images/blog/tailwind-utility-classes.jpg</p>
+        </div>
+        <div>
+            <h3>Next.js TypeScript</h3>
+            <img src="/images/blog/nextjs-typescript-production.jpg" alt="Next.js TypeScript" />
+            <p>URL: /images/blog/nextjs-typescript-production.jpg</p>
+        </div>
+    </div>
+    
+    <div class="image-test">
+        <h2>Project Images</h2>
+        <div>
+            <h3>AI Image Generator</h3>
+            <img src="/images/projects/ai-image-generator-dashboard.jpg" alt="AI Image Generator" />
+            <p>URL: /images/projects/ai-image-generator-dashboard.jpg</p>
+        </div>
+        <div>
+            <h3>E-commerce Platform</h3>
+            <img src="/images/projects/ecommerce-shopping-cart.jpg" alt="E-commerce Platform" />
+            <p>URL: /images/projects/ecommerce-shopping-cart.jpg</p>
+        </div>
+        <div>
+            <h3>Task Management</h3>
+            <img src="/images/projects/task-kanban-board.jpg" alt="Task Management" />
+            <p>URL: /images/projects/task-kanban-board.jpg</p>
+        </div>
+        <div>
+            <h3>Weather Dashboard</h3>
+            <img src="/images/projects/weather-forecast-app.jpg" alt="Weather Dashboard" />
+            <p>URL: /images/projects/weather-forecast-app.jpg</p>
+        </div>
+    </div>
+    
+    <script>
+        // Add load/error event listeners to all images
+        document.querySelectorAll('img').forEach(img => {
+            img.addEventListener('load', () => {
+                console.log('Image loaded successfully:', img.src);
+            });
+            img.addEventListener('error', () => {
+                console.error('Image failed to load:', img.src);
+            });
+        });
+    </script>
+</body>
+</html> 

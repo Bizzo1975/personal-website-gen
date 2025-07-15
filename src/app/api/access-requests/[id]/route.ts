@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
-import { query } from '@/lib/db';
-import { AccessRequestService } from '@/lib/services/access-request-service';
+import { EnhancedAccessRequestService } from '@/lib/services/enhanced-access-request-service';
 
 export async function GET(
   request: NextRequest,
@@ -15,7 +14,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const accessRequest = await AccessRequestService.getById(params.id);
+    const enhancedService = new EnhancedAccessRequestService();
+    const accessRequest = await enhancedService.getById(params.id);
     
     if (!accessRequest) {
       return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
@@ -42,24 +42,53 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { status, adminNotes } = await request.json();
+    const { status, adminNotes, createUserAccount = true } = await request.json();
     
     if (!['approved', 'rejected'].includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    const result = await AccessRequestService.updateStatus(
-      params.id,
-      status,
-      session.user.id,
-      adminNotes
-    );
-
-    if (!result) {
-      return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
+    const enhancedService = new EnhancedAccessRequestService();
+    
+    // Get admin user ID
+    const adminUserId = await enhancedService.getAdminUserId(session.user.email);
+    if (!adminUserId) {
+      return NextResponse.json({ error: 'Admin user not found' }, { status: 404 });
     }
 
-    return NextResponse.json(result);
+    let result;
+    
+    if (status === 'approved') {
+      // Use enhanced service for approval with automatic user creation and email notifications
+      result = await enhancedService.approveWithUserCreation(
+        params.id,
+        adminUserId,
+        adminNotes,
+        createUserAccount
+      );
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Access request approved successfully',
+        request: result.request,
+        userCreated: !!result.user,
+        generatedPassword: result.generatedPassword ? '****' : null // Don't expose password in response
+      });
+    } else {
+      // Use enhanced service for rejection with email notifications
+      result = await enhancedService.rejectWithNotification(
+        params.id,
+        adminUserId,
+        adminNotes
+      );
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Access request rejected successfully',
+        request: result
+      });
+    }
+    
   } catch (error) {
     console.error('Error updating access request:', error);
     return NextResponse.json(
@@ -80,7 +109,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const result = await AccessRequestService.deleteById(params.id);
+    const enhancedService = new EnhancedAccessRequestService();
+    const result = await enhancedService.deleteById(params.id);
     
     if (!result) {
       return NextResponse.json({ error: 'Access request not found' }, { status: 404 });

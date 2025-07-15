@@ -191,6 +191,25 @@ CREATE TABLE newsletter_subscribers (
   unsubscribe_token UUID DEFAULT uuid_generate_v4()
 );
 
+-- Recurring Content Rules Table
+CREATE TABLE recurring_content_rules (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  content_type VARCHAR(50) NOT NULL CHECK (content_type IN ('post', 'project', 'newsletter')),
+  template_content_id UUID, -- Reference to the template content (posts/projects/newsletter_campaigns)
+  recurrence_pattern VARCHAR(50) NOT NULL CHECK (recurrence_pattern IN ('weekly', 'monthly')),
+  recurrence_day INTEGER, -- Day of week (0-6) for weekly, day of month (1-31) for monthly
+  recurrence_time TIME NOT NULL DEFAULT '09:00:00',
+  is_active BOOLEAN DEFAULT true,
+  target_access_levels TEXT[] DEFAULT ARRAY['all'],
+  permissions JSONB DEFAULT '{"level": "all", "allowedRoles": ["admin", "editor", "author", "subscriber", "guest"], "allowedUsers": [], "restrictedUsers": [], "requiresAuth": false, "customRules": []}',
+  next_scheduled_at TIMESTAMP,
+  last_created_at TIMESTAMP,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Media files table for file management
 CREATE TABLE media_files (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -240,6 +259,10 @@ CREATE INDEX idx_user_access_levels_personal ON user_access_levels(has_personal_
 CREATE INDEX idx_categories_slug ON categories(slug);
 CREATE INDEX idx_pages_slug ON pages(slug);
 
+-- Create indexes for recurring content
+CREATE INDEX idx_recurring_content_rules_active ON recurring_content_rules(is_active);
+CREATE INDEX idx_recurring_content_rules_next_scheduled ON recurring_content_rules(next_scheduled_at);
+
 -- Create triggers for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -265,4 +288,17 @@ CREATE TRIGGER update_newsletter_campaigns_updated_at BEFORE UPDATE ON newslette
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_recurring_content_rules_updated_at BEFORE UPDATE ON recurring_content_rules
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Add recurring_rule_id columns to existing tables
+ALTER TABLE posts ADD COLUMN recurring_rule_id UUID REFERENCES recurring_content_rules(id);
+ALTER TABLE projects ADD COLUMN recurring_rule_id UUID REFERENCES recurring_content_rules(id);
+ALTER TABLE newsletter_campaigns ADD COLUMN recurring_rule_id UUID REFERENCES recurring_content_rules(id);
+
+-- Create indexes for the new columns
+CREATE INDEX idx_posts_recurring_rule ON posts(recurring_rule_id);
+CREATE INDEX idx_projects_recurring_rule ON projects(recurring_rule_id);
+CREATE INDEX idx_newsletter_campaigns_recurring_rule ON newsletter_campaigns(recurring_rule_id); 

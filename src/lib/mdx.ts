@@ -12,12 +12,55 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
   ]);
 };
 
+// Convert HTML to Markdown-friendly content
+const convertHtmlToMarkdown = (content: string): string => {
+  if (!content) return '';
+  
+  return content
+    // Convert paragraph tags to markdown
+    .replace(/<p>/gi, '\n\n')
+    .replace(/<\/p>/gi, '')
+    // Convert line breaks
+    .replace(/<br\s*\/?>/gi, '\n')
+    // Convert headings
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n')
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n')
+    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n')
+    .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n')
+    .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n')
+    // Convert bold and italic
+    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+    .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
+    .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+    .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
+    // Convert links
+    .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+    // Convert lists
+    .replace(/<ul[^>]*>/gi, '\n')
+    .replace(/<\/ul>/gi, '\n')
+    .replace(/<ol[^>]*>/gi, '\n')
+    .replace(/<\/ol>/gi, '\n')
+    .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
+    // Convert code
+    .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
+    .replace(/<pre[^>]*>(.*?)<\/pre>/gi, '```\n$1\n```')
+    // Remove any remaining HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Clean up multiple newlines
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
 // Clean content to prevent MDX parsing issues
 const cleanContent = (content: string): string => {
   if (!content) return '';
   
+  // First convert HTML to markdown if needed
+  let cleaned = content.includes('<') ? convertHtmlToMarkdown(content) : content;
+  
   // Remove problematic characters that can break MDX parsing
-  return content
+  cleaned = cleaned
     .replace(/\\n/g, '\n')    // Convert literal \n to actual newlines
     .replace(/\\r/g, '\r')    // Convert literal \r to actual carriage returns
     .replace(/\r\n/g, '\n')   // Normalize line endings
@@ -29,14 +72,20 @@ const cleanContent = (content: string): string => {
     .replace(/&#39;/g, "'")   // Convert HTML entities
     .replace(/\u0000/g, '')   // Remove null bytes
     .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width characters
+    // Remove any export statements that might be causing issues
+    .replace(/export\s+default\s+/gi, '')
+    .replace(/export\s+/gi, '')
+    .replace(/import\s+.*?from\s+['"][^'"]*['"];?/gi, '')
     .trim();
+  
+  return cleaned;
 };
 
 export async function serializeMarkdown(content: string): Promise<MDXRemoteSerializeResult> {
   if (!content) {
     console.warn('Empty content passed to serializeMarkdown');
     return {
-      compiledSource: 'export default function MDXContent() { return null; }',
+      compiledSource: 'export default function MDXContent() { return React.createElement("div", { className: "prose prose-lg dark:prose-invert max-w-none" }, React.createElement("p", {}, "Content coming soon...")); }',
       frontmatter: {},
       scope: {},
     };
@@ -45,6 +94,7 @@ export async function serializeMarkdown(content: string): Promise<MDXRemoteSeria
   try {
     const cleanedContent = cleanContent(content);
     console.log('Serializing markdown, content length:', cleanedContent.length);
+    console.log('First 200 chars:', cleanedContent.substring(0, 200));
     
     // Add timeout to prevent hanging
     const mdxSource = await withTimeout(
@@ -64,28 +114,19 @@ export async function serializeMarkdown(content: string): Promise<MDXRemoteSeria
     console.error('Error serializing markdown:', error);
     console.error('Content that caused the error:', content.substring(0, 200) + '...');
     
-    // Return a safe fallback that renders the content as plain text with basic formatting
+    // Return a safe fallback that renders the cleaned content as paragraphs
     const cleanedFallback = cleanContent(content);
+    const paragraphs = cleanedFallback.split('\n\n').filter(p => p.trim());
     
     return {
       compiledSource: `
         export default function MDXContent() { 
+          const paragraphs = ${JSON.stringify(paragraphs)};
           return React.createElement("div", { 
             className: "prose prose-lg dark:prose-invert max-w-none"
-          }, [
-            React.createElement("h1", { key: "title" }, "Welcome to My Portfolio"),
-            React.createElement("p", { key: "intro" }, "I am a Full Stack Developer with expertise in modern web technologies. I specialize in creating high-performance, scalable applications using React, Next.js, Node.js, and cloud technologies."),
-            React.createElement("h2", { key: "what-i-do" }, "What I Do"),
-            React.createElement("ul", { key: "skills" }, [
-              React.createElement("li", { key: "frontend" }, "Frontend Development: Building responsive, interactive user interfaces with React, Next.js, and TypeScript"),
-              React.createElement("li", { key: "backend" }, "Backend Development: Creating robust APIs and server-side applications with Node.js, Python, and databases"),
-              React.createElement("li", { key: "cloud" }, "Cloud & DevOps: Deploying and scaling applications using Docker, AWS, and modern CI/CD practices"),
-              React.createElement("li", { key: "fullstack" }, "Full Stack Solutions: End-to-end development from concept to deployment")
-            ]),
-            React.createElement("h2", { key: "approach" }, "My Approach"),
-            React.createElement("p", { key: "philosophy" }, "I believe in writing clean, maintainable code and following best practices. Every project is an opportunity to learn and apply cutting-edge technologies while delivering exceptional user experiences."),
-            React.createElement("p", { key: "cta" }, React.createElement("strong", {}, "Ready to bring your ideas to life? Let us build something amazing together."))
-          ]); 
+          }, paragraphs.map((text, index) => 
+            React.createElement("p", { key: index }, text)
+          )); 
         }
       `,
       frontmatter: {},

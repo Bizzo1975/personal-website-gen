@@ -6,6 +6,7 @@
 @import './dark-mode-enhancements.css';
 @import './enhanced-typography.css';
 @import './enhanced-color-system.css';
+@import './calendar.css';
 
 :root {
   --background: 255 255 255;
@@ -291,18 +292,19 @@
   }
 }
 
-/* Enhanced card hover effects */
+/* Enhanced card hover effects - optimized for dark mode */
 .card-enhanced {
   @apply transition-all duration-300 ease-out;
-  @apply hover:shadow-xl hover:-translate-y-1;
-  @apply border border-transparent hover:border-primary-200 dark:hover:border-primary-800;
+  @apply border border-transparent;
+  /* Removed transform and shadow to prevent conflicts with Framer Motion */
 }
 
 .card-enhanced:hover {
   @apply bg-gradient-to-br from-white to-primary-50/30 dark:from-slate-800 dark:to-primary-950/20;
+  @apply border-primary-200 dark:border-primary-800;
 }
 
-/* Image hover effects */
+/* Image hover effects - improved for dark mode */
 .img-hover-zoom {
   @apply overflow-hidden;
 }
@@ -312,10 +314,17 @@
 }
 
 .img-hover-zoom:hover img {
-  @apply scale-110;
+  @apply scale-105; /* Reduced scale to prevent conflicts */
 }
 
 /* Text line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -323,10 +332,14 @@
   overflow: hidden;
 }
 
-/* Subtle background patterns */
+/* Subtle background patterns - enhanced for dark mode */
 .bg-pattern-dots {
   background-image: radial-gradient(circle, rgba(16, 185, 129, 0.1) 1px, transparent 1px);
   background-size: 20px 20px;
+}
+
+.dark .bg-pattern-dots {
+  background-image: radial-gradient(circle, rgba(16, 185, 129, 0.15) 1px, transparent 1px);
 }
 
 .bg-pattern-grid {
@@ -336,6 +349,12 @@
   background-size: 30px 30px;
 }
 
+.dark .bg-pattern-grid {
+  background-image: 
+    linear-gradient(rgba(16, 185, 129, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 185, 129, 0.08) 1px, transparent 1px);
+}
+
 .bg-pattern-diagonal {
   background-image: repeating-linear-gradient(
     45deg,
@@ -343,6 +362,16 @@
     transparent 10px,
     rgba(16, 185, 129, 0.03) 10px,
     rgba(16, 185, 129, 0.03) 20px
+  );
+}
+
+.dark .bg-pattern-diagonal {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(16, 185, 129, 0.06) 10px,
+    rgba(16, 185, 129, 0.06) 20px
   );
 }
 
@@ -363,27 +392,507 @@
   pointer-events: none;
 }
 
-/* Floating elements animation */
-.floating-element {
-  animation: float 6s ease-in-out infinite;
+.dark .section-enhanced::before {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(14, 165, 233, 0.04) 100%);
 }
 
-.floating-element:nth-child(2n) {
-  animation-delay: -2s;
+/* 3D Animation Demo Styles - optimized for dark mode */
+.perspective-1000 {
+  perspective: 1000px;
 }
 
-.floating-element:nth-child(3n) {
-  animation-delay: -4s;
+.perspective-1500 {
+  perspective: 1500px;
 }
 
+.perspective-2000 {
+  perspective: 2000px;
+}
+
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.transform-style-flat {
+  transform-style: flat;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.backface-visible {
+  backface-visibility: visible;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+.rotate-x-180 {
+  transform: rotateX(180deg);
+}
+
+.translate-z-12 {
+  transform: translateZ(12px);
+}
+
+.translate-z-24 {
+  transform: translateZ(24px);
+}
+
+.translate-z-50 {
+  transform: translateZ(50px);
+}
+
+/* Removed transform-gpu class to prevent conflicts with Framer Motion */
+
+.transition-transform-3d {
+  transition: transform 0.3s ease-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px) translateZ(10px); /* Reduced transforms */
+}
+
+.hover-tilt:hover {
+  transform: rotateX(5deg) rotateY(5deg); /* Reduced rotation */
+}
+
+/* Gradient animations - enhanced for dark mode */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-animate {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* Floating animations - optimized performance */
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
   }
-  33% {
-    transform: translateY(-10px) rotate(1deg);
+  33% { 
+    transform: translateY(-8px) rotate(0.5deg); 
   }
-  66% {
-    transform: translateY(5px) rotate(-1deg);
+  66% { 
+    transform: translateY(4px) rotate(-0.5deg); 
   }
 }
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Glow effects - properly configured for dark mode */
+.glow-effect {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+.glow-effect:hover {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+}
+
+.dark .glow-effect {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+}
+
+.dark .glow-effect:hover {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+}
+
+.morphing-container {
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+}
+
+.morphing-container.expanded {
+  min-height: 400px;
+}
+
+/* Responsive optimizations for mobile dark mode */
+@media (max-width: 768px) {
+  .perspective-1000 {
+    perspective: 800px; /* Reduced for better mobile performance */
+  }
+  
+  .transform-style-preserve-3d {
+    transform-style: flat; /* Disable 3D on mobile for better performance */
+  }
+  
+  .backface-hidden {
+    backface-visibility: visible;
+  }
+  
+  /* Disable complex transforms on mobile for better dark mode performance */
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+  
+  .hover-tilt:hover {
+    transform: none;
+  }
+}
+
+/* Ensure smooth transitions in dark mode */
+@media (prefers-color-scheme: dark) {
+  .glow-effect {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  }
+  
+  .glow-effect:hover {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .float-animation,
+  .gradient-animate,
+  .transition-transform-3d {
+    animation: none;
+    transition: none;
+  }
+  
+  .perspective-1000,
+  .perspective-1500,
+  .perspective-2000 {
+    perspective: none;
+  }
+  
+  .transform-style-preserve-3d {
+    transform-style: flat;
+  }
+}
+
+/* Enhanced 3D perspective for project cards */
+.perspective-1000 {
+  perspective: 1000px;
+  perspective-origin: center center;
+}
+
+.perspective-1500 {
+  perspective: 1500px;
+  perspective-origin: center center;
+}
+
+/* Enhanced 3D transform optimizations */
+.transform-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+/* Enhanced card hover effects for both themes */
+.card-hover-3d {
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform-style: preserve-3d;
+}
+
+.card-hover-3d:hover {
+  transform: translateY(-8px) rotateX(5deg);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 10px 20px -5px rgba(0, 0, 0, 0.1),
+    0 0 40px rgba(59, 130, 246, 0.1);
+}
+
+/* Dark theme enhanced 3D effects */
+.dark .card-hover-3d:hover {
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.4),
+    0 10px 20px -5px rgba(0, 0, 0, 0.2),
+    0 0 40px rgba(59, 130, 246, 0.15);
+}
+
+/* Enhanced glow effects for 3D depth */
+.glow-effect {
+  position: relative;
+}
+
+.glow-effect::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, 
+    rgba(59, 130, 246, 0.1), 
+    rgba(147, 51, 234, 0.1), 
+    rgba(236, 72, 153, 0.1));
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+  filter: blur(10px);
+}
+
+.glow-effect:hover::before {
+  opacity: 1;
+}
+
+/* Dark theme glow enhancements */
+.dark .glow-effect::before {
+  background: linear-gradient(45deg, 
+    rgba(59, 130, 246, 0.15), 
+    rgba(147, 51, 234, 0.15), 
+    rgba(236, 72, 153, 0.15));
+}
+
+/* Enhanced background patterns for depth */
+.bg-pattern-dots {
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.dark .bg-pattern-dots {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+}
+
+.bg-pattern-grid {
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.dark .bg-pattern-grid {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+/* Enhanced mobile optimizations for 3D effects */
+@media (max-width: 768px) {
+  .perspective-1000 {
+    perspective: 800px;
+  }
+  
+  .card-hover-3d:hover {
+    transform: translateY(-4px) rotateX(2deg);
+  }
+}
+
+/* Reduced motion accessibility for 3D effects */
+@media (prefers-reduced-motion: reduce) {
+  .card-hover-3d,
+  .glow-effect {
+    transition: none;
+    transform: none !important;
+  }
+  
+  .card-hover-3d:hover {
+    transform: none !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .glow-effect::before {
+    display: none;
+  }
+}
+
+/* Enhanced 3D animation keyframes */
+@keyframes float3d {
+  0%, 100% { 
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg);
+  }
+  50% { 
+    transform: translateY(-10px) rotateX(2deg) rotateY(1deg);
+  }
+}
+
+@keyframes tilt3d {
+  0%, 100% { 
+    transform: rotateX(0deg) rotateY(0deg);
+  }
+  25% { 
+    transform: rotateX(5deg) rotateY(-5deg);
+  }
+  75% { 
+    transform: rotateX(-5deg) rotateY(5deg);
+  }
+}
+
+.animate-float3d {
+  animation: float3d 6s ease-in-out infinite;
+}
+
+.animate-tilt3d {
+  animation: tilt3d 4s ease-in-out infinite;
+}
+
+/* Enhanced depth layers */
+.depth-layer-1 { transform: translateZ(10px); }
+.depth-layer-2 { transform: translateZ(20px); }
+.depth-layer-3 { transform: translateZ(30px); }
+.depth-layer-4 { transform: translateZ(40px); }
+.depth-layer-5 { transform: translateZ(50px); }
+
+/* Enhanced 3D text effects for both themes */
+.text-3d {
+  text-shadow: 
+    1px 1px 0px rgba(0, 0, 0, 0.1),
+    2px 2px 0px rgba(0, 0, 0, 0.1),
+    3px 3px 0px rgba(0, 0, 0, 0.1),
+    4px 4px 6px rgba(0, 0, 0, 0.15);
+  transform-style: preserve-3d;
+}
+
+.dark .text-3d {
+  text-shadow: 
+    1px 1px 0px rgba(0, 0, 0, 0.3),
+    2px 2px 0px rgba(0, 0, 0, 0.3),
+    3px 3px 0px rgba(0, 0, 0, 0.3),
+    4px 4px 6px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* 3D text title effects */
+.text-3d-title {
+  text-shadow: 
+    2px 2px 0px rgba(0, 0, 0, 0.1),
+    4px 4px 0px rgba(0, 0, 0, 0.1),
+    6px 6px 8px rgba(0, 0, 0, 0.15),
+    0 0 30px rgba(59, 130, 246, 0.2);
+  transform-style: preserve-3d;
+}
+
+.dark .text-3d-title {
+  text-shadow: 
+    2px 2px 0px rgba(0, 0, 0, 0.4),
+    4px 4px 0px rgba(0, 0, 0, 0.4),
+    6px 6px 8px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(59, 130, 246, 0.4),
+    0 0 50px rgba(147, 51, 234, 0.2);
+}
+
+/* 3D text description effects */
+.text-3d-description {
+  text-shadow: 
+    1px 1px 0px rgba(0, 0, 0, 0.08),
+    2px 2px 4px rgba(0, 0, 0, 0.1);
+  transform-style: preserve-3d;
+}
+
+.dark .text-3d-description {
+  text-shadow: 
+    1px 1px 0px rgba(0, 0, 0, 0.2),
+    2px 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 15px rgba(59, 130, 246, 0.15);
+}
+
+/* 3D text tech tag effects */
+.text-3d-tech {
+  text-shadow: 
+    1px 1px 0px rgba(0, 0, 0, 0.06),
+    2px 2px 3px rgba(0, 0, 0, 0.08);
+  transform-style: preserve-3d;
+}
+
+.dark .text-3d-tech {
+  text-shadow: 
+    1px 1px 0px rgba(0, 0, 0, 0.15),
+    2px 2px 3px rgba(0, 0, 0, 0.2),
+    0 0 10px rgba(59, 130, 246, 0.1);
+}
+
+/* 3D text link effects */
+.text-3d-link {
+  text-shadow: 
+    1px 1px 0px rgba(59, 130, 246, 0.1),
+    2px 2px 4px rgba(59, 130, 246, 0.15),
+    0 0 20px rgba(59, 130, 246, 0.2);
+  transform-style: preserve-3d;
+}
+
+.dark .text-3d-link {
+  text-shadow: 
+    1px 1px 0px rgba(59, 130, 246, 0.2),
+    2px 2px 4px rgba(59, 130, 246, 0.3),
+    0 0 20px rgba(59, 130, 246, 0.4),
+    0 0 40px rgba(147, 51, 234, 0.2);
+}
+
+/* Dynamic 3D text transforms */
+.text-3d-hover {
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform-style: preserve-3d;
+}
+
+.text-3d-hover:hover {
+  transform: translateZ(10px) rotateX(5deg) rotateY(5deg);
+}
+
+/* 3D text glow effects */
+.text-glow {
+  position: relative;
+}
+
+.text-glow::before {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  color: rgba(59, 130, 246, 0.5);
+  filter: blur(10px);
+  transform: translateZ(-1px);
+}
+
+.dark .text-glow::before {
+  color: rgba(59, 130, 246, 0.8);
+  filter: blur(15px);
+}
+
+/* Enhanced text depth layers */
+.text-depth-1 { 
+  transform: translateZ(5px); 
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.text-depth-2 { 
+  transform: translateZ(10px); 
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.text-depth-3 { 
+  transform: translateZ(15px); 
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.text-depth-4 { 
+  transform: translateZ(20px); 
+  text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.text-depth-5 { 
+  transform: translateZ(25px); 
+  text-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark theme text depth enhancements */
+.dark .text-depth-1 { 
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3), 0 0 10px rgba(59, 130, 246, 0.1);
+}
+
+.dark .text-depth-2 { 
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.15);
+}
+
+.dark .text-depth-3 { 
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.dark .text-depth-4 { 
+  text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.6), 0 0 25px rgba(59, 130, 246, 0.25);
+}
+
+.dark .text-depth-5 { 
+  text-shadow: 5px 5px 10px rgba(0, 0, 0, 0.7), 0 0 30px rgba(59, 130, 246, 0.3);
+}
+

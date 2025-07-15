@@ -42,19 +42,25 @@ export async function GET(request: NextRequest) {
         ...row,
         scheduledDate: row.scheduleddate, // PostgreSQL returns lowercase field names
         author: 'Admin User', // You could join with users table to get actual author
-        excerpt: row.excerpt || `${row.title} scheduled for publication`
+        excerpt: row.excerpt || `${row.title} scheduled for publication`,
+        recurringRuleId: null, // No recurring functionality implemented yet
+        isRecurring: false
       })),
       ...projectsResult.rows.map(row => ({
         ...row,
         scheduledDate: row.scheduleddate,
         author: 'Admin User',
-        excerpt: row.excerpt || `${row.title} project scheduled for publication`
+        excerpt: row.excerpt || `${row.title} project scheduled for publication`,
+        recurringRuleId: null, // No recurring functionality implemented yet
+        isRecurring: false
       })),
       ...newslettersResult.rows.map(row => ({
         ...row,
         scheduledDate: row.scheduleddate,
         author: 'Admin User',
-        excerpt: `Newsletter: ${row.title}`
+        excerpt: `Newsletter: ${row.title}`,
+        recurringRuleId: null, // No recurring functionality implemented yet
+        isRecurring: false
       }))
     ];
 

@@ -36,7 +36,6 @@ jobs:
         script: |
           cd /home/deploy/personal-website
           git pull origin production
-          npm install
-          npm run build
-          pm2 restart personal-website || pm2 start ecosystem.config.js
-          pm2 save
+          docker compose -f docker-compose.prod.yml down
+          docker compose -f docker-compose.prod.yml up --build -d
+          docker compose -f docker-compose.prod.yml ps

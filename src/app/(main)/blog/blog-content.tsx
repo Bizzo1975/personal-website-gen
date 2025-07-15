@@ -43,20 +43,25 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
   const [sortBy, setSortBy] = useState('date');
 
   // Use only the database posts - no mock data fallback
-  const displayedPosts = posts.map(post => {
-    const imageUrl = (post as any).featuredImage || `/images/slideshow/coding-${Math.floor(Math.random() * 5) + 1}.jpg`;
+  const displayedPosts = posts.map((post, index) => {
+    const imageUrl = post.featuredImage || `/images/placeholder.jpg`;
+    console.log('Post image URL:', imageUrl, 'for post:', post.title);
     
     return {
       ...post,
       coverImage: imageUrl,
       featuredImage: imageUrl,
-      category: (post as any).category || 'General',
-      views: (post as any).views || Math.floor(Math.random() * 1000) + 100,
+      category: 'General', // Default category since we don't have categories in the database yet
+      views: 100 + (index * 50), // Fixed deterministic view count to prevent hydration errors
       author: typeof post.author === 'string' 
         ? { name: post.author, image: '/images/placeholder.jpg' }
         : post.author
     };
   });
+
+  // Separate featured and regular posts
+  const featuredPosts = displayedPosts.filter(post => post.featured);
+  const regularPosts = displayedPosts.filter(post => !post.featured);
 
   // Get unique categories and tags
   const categories = useMemo(() => {
@@ -154,6 +159,92 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
         className="bg-gradient-secondary"
         compact={true}
       />
+
+      {/* Featured Posts Section */}
+      {featuredPosts.length > 0 && (
+        <section className="section-modern">
+          <div className="container-modern">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                Featured Articles
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                Handpicked articles covering the latest trends and insights
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredPosts.slice(0, 3).map((post) => (
+                <article 
+                  key={post.id}
+                  className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-all duration-300 group"
+                >
+                  <div className="relative overflow-hidden">
+                    <div className="absolute top-4 left-4 z-10">
+                      <span className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        Featured
+                      </span>
+                    </div>
+                    <FallbackImage
+                      src={post.coverImage}
+                      alt={post.title}
+                      width={400}
+                      height={240}
+                      className="w-full h-60 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                  
+                  <div className="p-6">
+                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
+                      <div className="flex items-center gap-1">
+                        <CalendarIcon className="h-4 w-4" />
+                        <span>{formatDate(post.date)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>{post.readTime} min read</span>
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      <Link href={`/blog/${post.slug}`}>
+                        {post.title}
+                      </Link>
+                    </h3>
+                    
+                    <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                      {post.excerpt}
+                    </p>
+                    
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {post.tags.slice(0, 3).map(tag => (
+                          <span 
+                            key={tag}
+                            className="px-2 py-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs rounded-md"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <Link
+                      href={`/blog/${post.slug}`}
+                      className="inline-flex items-center text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                    >
+                      Read More
+                      <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
       
       {/* Enhanced Search Section */}
       <section className="section-modern">
@@ -257,6 +348,10 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
                         src={post.coverImage}
                         alt={post.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          console.error('Image failed to load:', post.coverImage);
+                          e.currentTarget.src = '/images/placeholder.jpg';
+                        }}
                       />
                     </div>
                   )}
@@ -284,7 +379,7 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
                     {/* Meta Information */}
                     <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
                       <div className="flex items-center space-x-4">
-                        <span>{formatDate(post.date)}</span>
+                        <span>{formatDate(typeof post.date === 'string' ? post.date : post.date.toISOString())}</span>
                         <span>{post.readTime} min read</span>
                         {post.views && <span>{post.views} views</span>}
                       </div>
@@ -293,10 +388,13 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
                     {/* Author */}
                     {post.author && (
                       <div className="flex items-center mb-4">
-                        <img
+                        <FallbackImage
                           src={typeof post.author === 'string' ? '/images/placeholder.jpg' : post.author.image}
                           alt={typeof post.author === 'string' ? post.author : post.author.name}
+                          width={32}
+                          height={32}
                           className="w-8 h-8 rounded-full mr-3"
+                          fallbackSrc="/images/placeholder.jpg"
                         />
                         <span className="text-sm text-gray-700 dark:text-gray-300">
                           {typeof post.author === 'string' ? post.author : post.author.name}
@@ -350,14 +448,13 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
       </section>
 
       {/* Newsletter Signup Section */}
-      <section className="section-modern">
+      <section className="section-modern bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
         <div className="container-modern">
           <NewsletterSignup
             variant="compact"
             title="Never Miss a Post"
             description="Subscribe to get the latest articles delivered directly to your inbox."
             showSocialProof={true}
-            subscriberCount={127}
           />
         </div>
       </section>

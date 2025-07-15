@@ -19,7 +19,7 @@ export default function BlogPostItem({ post }: BlogPostItemProps) {
         </Link>
       </h2>
       <div className="flex items-center text-gray-500 dark:text-gray-400 mb-4">
-        <span>{post.date}</span>
+        <span>{typeof post.date === 'string' ? post.date : post.date.toLocaleDateString()}</span>
         <span className="mx-2">&bull;</span>
         <span>{post.readTime} min read</span>
       </div>
