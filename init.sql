@@ -135,6 +135,15 @@ CREATE TABLE pages (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Site settings table for configuration
+CREATE TABLE site_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  setting_key VARCHAR(255) UNIQUE NOT NULL,
+  setting_value TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Access requests table
 CREATE TABLE access_requests (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
