@@ -1,4 +1,4 @@
-# Personal Website Generator: Modern Portfolio & Blog Platform
+# Personal Website Generator Modern Portfolio & Blog Platform
 
 ---
 
