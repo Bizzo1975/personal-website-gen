@@ -1,0 +1,345 @@
+/* Comic Book Theme Styles */
+
+/* Comic Panel Styles */
+.comic-panel {
+  background: var(--color-panel);
+  border: 3px solid var(--color-border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+  position: relative;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
+}
+
+.comic-panel-main {
+  grid-column: span 2;
+  min-height: 300px;
+}
+
+.comic-panel-sidebar {
+  grid-column: span 1;
+  min-height: 200px;
+}
+
+.comic-panel-full-width {
+  grid-column: 1 / -1;
+  min-height: 400px;
+}
+
+.comic-border-solid {
+  border-style: solid;
+}
+
+.comic-border-dashed {
+  border-style: dashed;
+}
+
+.comic-border-halftone {
+  border-style: solid;
+  background-image: radial-gradient(circle, #000 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+.comic-panel-content {
+  position: relative;
+  z-index: 2;
+}
+
+.comic-panel-border {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/* Speech Bubble Styles */
+.speech-bubble {
+  position: relative;
+  background: var(--color-speechBubble);
+  border: 3px solid var(--color-border);
+  border-radius: 20px;
+  padding: 16px;
+  margin: 16px 0;
+  max-width: 300px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.speech-thought {
+  border-radius: 50px;
+  background: var(--color-thoughtCloud);
+}
+
+.speech-narrative {
+  border-radius: 8px;
+  background: var(--color-panel);
+  font-style: italic;
+}
+
+.emotion-happy {
+  border-color: var(--color-accent);
+}
+
+.emotion-sad {
+  border-color: var(--color-secondary);
+}
+
+.emotion-angry {
+  border-color: var(--color-primary);
+}
+
+.emotion-surprised {
+  border-color: var(--color-accent);
+  transform: scale(1.05);
+}
+
+.bubble-text {
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.4;
+  color: var(--color-foreground);
+}
+
+.character-name {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.bubble-tail {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 12px solid transparent;
+}
+
+.tail-top {
+  bottom: -24px;
+  left: 20px;
+  border-top-color: var(--color-speechBubble);
+  border-bottom: none;
+}
+
+.tail-bottom {
+  top: -24px;
+  left: 20px;
+  border-bottom-color: var(--color-speechBubble);
+  border-top: none;
+}
+
+.tail-left {
+  right: -24px;
+  top: 20px;
+  border-left-color: var(--color-speechBubble);
+  border-right: none;
+}
+
+.tail-right {
+  left: -24px;
+  top: 20px;
+  border-right-color: var(--color-speechBubble);
+  border-left: none;
+}
+
+/* Comic Navigation Styles */
+.comic-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: var(--color-panel);
+  border: 3px solid var(--color-border);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.comic-issue-info {
+  display: flex;
+  gap: 16px;
+  font-family: 'Impact', sans-serif;
+  font-size: 1.2rem;
+  color: var(--color-primary);
+}
+
+.issue-number {
+  font-weight: bold;
+}
+
+.page-number {
+  color: var(--color-secondary);
+}
+
+.comic-menu {
+  display: flex;
+  gap: 12px;
+}
+
+.comic-btn {
+  padding: 8px 16px;
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-panel);
+  color: var(--color-foreground);
+  font-family: 'Impact', sans-serif;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+}
+
+.comic-btn:hover {
+  background: var(--color-primary);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.comic-btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.comic-btn-secondary {
+  background: var(--color-secondary);
+  color: white;
+}
+
+.comic-btn-accent {
+  background: var(--color-accent);
+  color: var(--color-foreground);
+}
+
+/* Comic Grid Layout */
+.comic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  padding: 20px;
+}
+
+.comic-spacing {
+  gap: 16px;
+}
+
+.comic-border {
+  border-radius: 8px;
+}
+
+/* Comic Animations */
+@keyframes comic-page-turn {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(-90deg); }
+  100% { transform: rotateY(-180deg); }
+}
+
+@keyframes panel-reveal {
+  0% { 
+    clip-path: inset(0 100% 100% 0);
+    transform: scale(0.8);
+  }
+  100% { 
+    clip-path: inset(0 0 0 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes pow-effect {
+  0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+  50% { transform: scale(1.2) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1) rotate(45deg); opacity: 0; }
+}
+
+@keyframes halftone-pattern {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+/* Comic Typography */
+.theme-comic h1,
+.theme-comic h2,
+.theme-comic h3 {
+  font-family: 'Action Comics', serif;
+  font-weight: bold;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.theme-comic h1 {
+  font-size: 2.5rem;
+  text-shadow: 2px 2px 0 var(--color-border);
+}
+
+.theme-comic h2 {
+  font-size: 2rem;
+  text-shadow: 1px 1px 0 var(--color-border);
+}
+
+.theme-comic h3 {
+  font-size: 1.5rem;
+  text-shadow: 1px 1px 0 var(--color-border);
+}
+
+.theme-comic p {
+  font-family: 'Comic Sans MS', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--color-foreground);
+}
+
+/* Sound Effect Styles */
+.sound-effect {
+  font-family: 'Impact', sans-serif;
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--color-soundEffect);
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 var(--color-border);
+  animation: pow-effect 1s ease-out;
+  position: absolute;
+  z-index: 10;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .comic-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .comic-navigation {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .comic-issue-info {
+    font-size: 1rem;
+  }
+  
+  .comic-menu {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .speech-bubble {
+    max-width: 250px;
+  }
+  
+  .theme-comic h1 {
+    font-size: 2rem;
+  }
+  
+  .theme-comic h2 {
+    font-size: 1.5rem;
+  }
+  
+  .theme-comic h3 {
+    font-size: 1.2rem;
+  }
+}

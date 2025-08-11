@@ -1,8 +1,6 @@
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    serverComponentsExternalPackages: ["@prisma/client", "bcryptjs", "pg"]
-  },
+  serverExternalPackages: ["@prisma/client", "bcryptjs", "pg"],
   webpack: (config, { isServer }) => {
     // Exclude server-side modules from client-side bundles
     if (!isServer) {
