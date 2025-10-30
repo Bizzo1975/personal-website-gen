@@ -150,7 +150,7 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
   }, [displayedPosts]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Section */}
       <HeaderSection 
         title={pageData?.headerTitle || "Blog & Articles"}
@@ -162,7 +162,7 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
 
       {/* Featured Posts Section */}
       {featuredPosts.length > 0 && (
-        <section className="section-modern">
+        <section className="py-6 md:py-8">
           <div className="container-modern">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
@@ -247,27 +247,29 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
       )}
       
       {/* Enhanced Search Section */}
-      <section className="section-modern">
+      <section className="py-6 md:py-8">
         <div className="container-modern">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 mb-6">
-            <EnhancedSearch
-              onSearch={handleEnhancedSearch}
-              placeholder="Search blog posts, tags, and categories..."
-              suggestions={searchSuggestions}
-              recentSearches={[]} // In real app, load from localStorage
-              showFilters={true}
-              className="mb-4"
-            />
-            
-            {/* Legacy Filter Controls - Keep for additional filtering */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-6">
+            {/* All Controls on Single Line */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Search Input */}
+              <div className="relative flex-shrink-0 flex-1 min-w-[200px]">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search posts..."
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                />
+              </div>
               {/* Category Filter */}
-              <div className="relative">
-                <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="relative flex-shrink-0">
+                <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none"
+                  className="pl-8 pr-4 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none min-w-[140px]"
                 >
                   {categories.map(category => (
                     <option key={category} value={category}>
@@ -278,12 +280,12 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
               </div>
 
               {/* Tag Filter */}
-              <div className="relative">
-                <TagIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="relative flex-shrink-0">
+                <TagIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <select
                   value={selectedTag}
                   onChange={(e) => setSelectedTag(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none"
+                  className="pl-8 pr-4 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none min-w-[120px]"
                 >
                   {allTags.map(tag => (
                     <option key={tag} value={tag}>
@@ -294,11 +296,11 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
               </div>
 
               {/* Sort By */}
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none"
+                  className="px-4 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none min-w-[140px]"
                 >
                   <option value="date">Sort by Date</option>
                   <option value="views">Sort by Views</option>
@@ -306,11 +308,19 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
                   <option value="title">Sort by Title</option>
                 </select>
               </div>
-            </div>
 
-            {/* Results Count */}
-            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-              Showing {filteredAndSortedPosts.length} of {displayedPosts.length} posts
+              {/* Clear Filters */}
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedCategory('all');
+                  setSelectedTag('all');
+                  setSortBy('date');
+                }}
+                className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Clear
+              </button>
             </div>
           </div>
 
@@ -447,13 +457,13 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
         </div>
       </section>
 
-      {/* Newsletter Signup Section */}
-      <section className="section-modern bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+      {/* Newsletter Section */}
+      <section className="py-6 md:py-8 bg-primary-50 dark:bg-primary-900/10">
         <div className="container-modern">
           <NewsletterSignup
             variant="compact"
-            title="Never Miss a Post"
-            description="Subscribe to get the latest articles delivered directly to your inbox."
+            title="Stay in the Loop"
+            description="Get notified about new projects, blog posts, and insights on my latest learnings."
             showSocialProof={true}
           />
         </div>

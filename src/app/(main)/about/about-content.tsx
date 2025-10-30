@@ -46,7 +46,7 @@ export default function AboutContent({ content, profile, pageData }: AboutConten
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Header Section */}
       <HeaderSection
         title={headerData.headerTitle}
@@ -57,9 +57,9 @@ export default function AboutContent({ content, profile, pageData }: AboutConten
       />
       
       {/* Main Content */}
-      <section className="section-modern">
+      <section className="py-6 md:py-8">
         <div className="container-modern">
-          <div className="grid md:grid-cols-3 gap-12 items-start">
+          <div className="grid md:grid-cols-3 gap-8 items-start">
             {/* Sidebar with profile photo and details */}
             <div className="sticky top-24">
               {/* Remove all vertical margin/padding from image container */}
@@ -74,7 +74,7 @@ export default function AboutContent({ content, profile, pageData }: AboutConten
                 />
               </div>
               
-              <div className="space-y-6 mt-8">
+              <div className="space-y-4 mt-6">
                 <div>
                   <h3 className="text-lg font-bold mb-3">Contact</h3>
                   <div className="space-y-2 text-sm">
@@ -158,10 +158,10 @@ export default function AboutContent({ content, profile, pageData }: AboutConten
               
               {/* Skills section */}
               {profile?.skills && profile.skills.length > 0 && (
-                <div className="mt-12 not-prose">
-                  <h2 className="text-2xl font-bold mb-6">Skills & Expertise</h2>
+                <div className="mt-8 not-prose">
+                  <h2 className="text-2xl font-bold mb-4">Skills & Expertise</h2>
                   
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     <div className="flex flex-wrap gap-2">
                       {profile.skills.map((skill, index) => (
                         <span
@@ -180,13 +180,13 @@ export default function AboutContent({ content, profile, pageData }: AboutConten
         </div>
       </section>
       
-      {/* Newsletter Signup Section - matches blog and projects pages */}
-      <section className="section-modern bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+      {/* Newsletter Section */}
+      <section className="py-6 md:py-8 bg-primary-50 dark:bg-primary-900/10">
         <div className="container-modern">
           <NewsletterSignup
             variant="compact"
-            title="Stay Connected"
-            description="Subscribe to get updates on new projects, articles, and insights into my development journey."
+            title="Stay in the Loop"
+            description="Get notified about new projects, blog posts, and insights on my latest learnings."
             showSocialProof={true}
           />
         </div>

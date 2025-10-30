@@ -63,8 +63,8 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
             alt={project.title}
             width={600}
             height={400}
-            className="w-full h-full object-cover transition-all duration-500"
-            style={{ objectFit: 'cover' }}
+            className="w-full h-full object-contain transition-all duration-500"
+            style={{ objectFit: 'contain' }}
             loading="lazy"
           />
           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">

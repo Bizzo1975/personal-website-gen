@@ -24,9 +24,9 @@ if "%1"=="" (
 )
 
 if "%1"=="immediate" (
-    echo Running immediate backup...
+    echo Running optimized backup...
     cd /d "%BACKUP_DIR%"
-    call backup-immediate.bat
+    call backup-optimized.bat
 ) else if "%1"=="automated" (
     echo Running automated backup...
     cd /d "%BACKUP_DIR%"

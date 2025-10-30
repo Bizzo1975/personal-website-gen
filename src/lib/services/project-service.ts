@@ -1,10 +1,20 @@
 import { query } from '@/lib/db';
 import { Project, CreateProjectData, UpdateProjectData } from '@/lib/models/Project';
+import CacheService from '@/lib/cache';
 
 export class ProjectService {
   // Get all published projects with optional permission filtering
   static async getAllProjects(userEmail?: string): Promise<Project[]> {
     try {
+      const cache = CacheService.getInstance();
+      const cacheKey = CacheService.getProjectsListKey({ userEmail });
+      
+      // Try to get from cache first
+      const cachedProjects = await cache.get<Project[]>(cacheKey);
+      if (cachedProjects) {
+        return cachedProjects;
+      }
+
       let queryText = `
         SELECT 
           id,
@@ -45,12 +55,18 @@ export class ProjectService {
       }));
 
       // Filter by user permissions if userEmail is provided
+      let filteredProjects;
       if (userEmail) {
-        return await this.filterProjectsByPermissions(projects, userEmail);
+        filteredProjects = await this.filterProjectsByPermissions(projects, userEmail);
+      } else {
+        // Return only public projects if no user context
+        filteredProjects = projects.filter(project => project.permission_level === 'all');
       }
 
-      // Return only public projects if no user context
-      return projects.filter(project => project.permission_level === 'all');
+      // Cache the results for 30 minutes
+      await cache.set(cacheKey, filteredProjects, 1800);
+
+      return filteredProjects;
     } catch (error) {
       console.error('Failed to fetch projects:', error);
       throw new Error('Failed to fetch projects from database');

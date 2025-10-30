@@ -306,7 +306,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
   if (isSubscribed) {
     return (
       <div className={`${getFormClasses()} ${className}`}>
-        <div className="text-center p-8 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl border border-green-200 dark:border-green-800">
+        <div className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl border border-green-200 dark:border-green-800">
           <div className="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
             <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -328,13 +328,13 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
 
   const formContent = (
     <div className={`${getFormClasses()} ${className}`}>
-      <div className="space-y-6">
+      <div className={variant === 'compact' ? 'space-y-3' : 'space-y-4'}>
         {/* Header */}
         <div className="text-center">
-          <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+          <h3 className={`font-semibold text-slate-900 dark:text-slate-100 ${variant === 'compact' ? 'text-base mb-1' : 'text-lg mb-1'}`}>
             {content.title}
           </h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-3">
+          <p className={`text-slate-600 dark:text-slate-400 ${variant === 'compact' ? 'text-sm mb-1' : 'mb-2'}`}>
             {content.description}
           </p>
           {content.incentive && (
@@ -363,7 +363,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubscribe} className="space-y-4">
+        <form onSubmit={handleSubscribe} className={variant === 'compact' ? 'space-y-2' : 'space-y-3'}>
           {/* Advanced Options Toggle */}
           {variant === 'inline' && (
             <div className="text-center">
@@ -401,7 +401,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
-                className="flex-1 px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`flex-1 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${variant === 'compact' ? 'px-3 py-2 text-sm' : 'px-4 py-3'}`}
                 required
               />
               <AccessibleButton
@@ -409,7 +409,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
                 variant="primary"
                 loading={isSubmitting}
                 disabled={!email.trim()}
-                className="px-6 py-3 whitespace-nowrap"
+                className={`whitespace-nowrap ${variant === 'compact' ? 'px-4 py-2 text-sm' : 'px-6 py-3'}`}
               >
                 {isSubmitting ? 'Subscribing...' : 'Subscribe'}
               </AccessibleButton>
@@ -464,45 +464,45 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
 
         {/* Features List - Use admin content if available */}
         {variant === 'inline' && !contentLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-slate-200 dark:border-slate-700">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
             <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-3 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 mx-auto mb-2 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
-              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
+              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1 text-sm">
                 {adminContent?.weeklyArticlesTitle || 'Weekly Articles'}
               </h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 {adminContent?.weeklyArticlesDescription || 'In-depth tutorials and insights'}
               </p>
             </div>
 
             <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-3 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 mx-auto mb-2 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
+              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1 text-sm">
                 {adminContent?.exclusiveTipsTitle || 'Exclusive Tips'}
               </h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 {adminContent?.exclusiveTipsDescription || 'Subscriber-only content and resources'}
               </p>
             </div>
 
             <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-3 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 mx-auto mb-2 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
+              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-1 text-sm">
                 {adminContent?.earlyAccessTitle || 'Early Access'}
               </h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 {adminContent?.earlyAccessDescription || 'Be first to see new projects and posts'}
               </p>
             </div>

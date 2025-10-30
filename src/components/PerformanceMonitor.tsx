@@ -28,8 +28,24 @@ const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
   const sendToAnalytics = useCallback((metric: any) => {
     if (!reportToAnalytics) return;
 
-    // Here you would typically send the metric to your analytics service
-    console.log('Sending metric to analytics:', metric);
+    // Send to performance API endpoint
+    fetch('/api/analytics/performance', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: metric.name,
+        value: metric.value,
+        rating: metric.rating,
+        url: window.location.href,
+        timestamp: Date.now(),
+        userAgent: navigator.userAgent,
+        connection: (navigator as any).connection?.effectiveType || 'unknown',
+      }),
+    }).catch(error => {
+      console.warn('Failed to send performance metric:', error);
+    });
   }, [reportToAnalytics]);
 
   useEffect(() => {

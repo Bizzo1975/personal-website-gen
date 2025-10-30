@@ -20,11 +20,11 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
   const [isMounted, setIsMounted] = useState(false);
   const shouldReduceMotion = useReducedMotion();
   
-  // Motion values for enhanced 3D tilt effect
+  // Motion values for enhanced 3D tilt effect - optimized for performance
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 30 });
-  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 30 });
+  const mouseXSpring = useSpring(x, { stiffness: 200, damping: 25 });
+  const mouseYSpring = useSpring(y, { stiffness: 200, damping: 25 });
   
   // Enhanced 3D transform values - restored full rotation
   const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["20deg", "-20deg"]);
@@ -211,8 +211,8 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
             alt={project.title}
             width={600}
             height={400}
-            className="w-full h-full object-cover"
-            style={{ objectFit: 'cover' }}
+            className="w-full h-full object-contain"
+            style={{ objectFit: 'contain' }}
             loading="lazy"
             whileHover={{ scale: shouldReduceMotion ? 1 : 1.05 }}
             transition={{ duration: 0.4 }}

@@ -33,30 +33,30 @@ const Footer: React.FC<FooterProps> = ({ siteSettings }) => {
   const bioText = siteSettings?.bioText || 'Full-stack developer specializing in modern web technologies.';
 
   return (
-    <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-8">
+    <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4">
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row items-center justify-between">
-          <div className="mb-6 md:mb-0">
-            <Link href="/" className="text-xl font-bold text-primary-600 dark:text-primary-400 flex items-center space-x-2">
-              <div className="w-10 h-10 relative">
+          <div className="mb-4 md:mb-0">
+            <Link href="/" className="text-lg font-bold text-primary-600 dark:text-primary-400 flex items-center space-x-2">
+              <div className="w-8 h-8 relative">
                 <Image 
                   src={logoUrl}
                   alt="Logo"
                   fill
-                  sizes="40px"
+                  sizes="32px"
                   style={{ objectFit: 'contain' }}
                 />
               </div>
               <span>{logoText}</span>
             </Link>
-            <p className="mt-3 text-slate-600 dark:text-slate-400 max-w-md">
+            <p className="mt-2 text-slate-600 dark:text-slate-400 max-w-md">
               {bioText}
             </p>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-8">
+          <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-6">
             <nav>
-              <ul className="flex space-x-6">
+              <ul className="flex space-x-4">
                 <li>
                   <Link href="/about" className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                     About
@@ -85,7 +85,7 @@ const Footer: React.FC<FooterProps> = ({ siteSettings }) => {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800 text-center text-slate-600 dark:text-slate-400 text-sm">
+        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 text-center text-slate-600 dark:text-slate-400 text-sm">
           <p>&copy; {new Date().getFullYear()} {logoText}. All rights reserved.</p>
         </div>
       </div>

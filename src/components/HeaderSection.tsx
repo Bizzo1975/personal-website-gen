@@ -30,7 +30,7 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
       {/* Optional slideshow background */}
       {showSlideshow && <BackgroundSlideshow />}
       
-      <div className={`container-modern relative z-10 ${compact ? 'py-6 md:py-8' : 'py-12 md:py-16'}`}>
+      <div className={`container-modern relative z-10 ${compact ? 'py-4 md:py-6' : 'py-12 md:py-16'}`}>
         <div className="bg-gradient-to-r from-slate-900/90 to-slate-800/80 backdrop-blur-sm p-6 rounded-3xl shadow-lg max-w-3xl">
           <h1 className={`${compact ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'} font-bold mb-4 text-white`}>{displayTitle}</h1>
           {displaySubtitle && (

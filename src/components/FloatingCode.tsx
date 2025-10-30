@@ -56,6 +56,9 @@ const FloatingCode: React.FC<FloatingCodeProps> = ({ className = '' }) => {
   }>>([]);
   
   useEffect(() => {
+    // Only run on client side to prevent hydration issues
+    if (typeof window === 'undefined') return;
+    
     // Initialize code elements
     const elements = Array.from({ length: 5 }, (_, index) => {
       const viewportWidth = window.innerWidth;

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
 import { MediaService } from '@/lib/services/media-service';
+import { autoResizeForProject } from '@/lib/utils/server-image-resize';
 
 /**
  * Admin Media API Routes
@@ -151,7 +152,31 @@ export async function POST(request: NextRequest) {
       userId: userId
     });
 
-    const uploadResult = await MediaService.uploadFile(file, {
+    // Auto-resize images for projects
+    let fileToUpload = file;
+    if (contentType === 'project' && file.type.startsWith('image/')) {
+      try {
+        const fileBuffer = Buffer.from(await file.arrayBuffer());
+        const resizedResult = await autoResizeForProject(fileBuffer, file.type, 'card');
+        
+        if (resizedResult) {
+          console.log('🔄 Image resized:', {
+            originalSize: file.size,
+            newSize: resizedResult.size,
+            reduction: `${(((file.size - resizedResult.size) / file.size) * 100).toFixed(1)}%`
+          });
+          
+          // Create a new File object with the resized data
+          fileToUpload = new File([resizedResult.buffer], file.name, {
+            type: `image/${resizedResult.format}`
+          });
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to auto-resize image, using original:', error);
+      }
+    }
+
+    const uploadResult = await MediaService.uploadFile(fileToUpload, {
       contentType: contentType as 'post' | 'project' | 'newsletter' | 'general',
       altText: altText || '',
       uploadedBy: userId

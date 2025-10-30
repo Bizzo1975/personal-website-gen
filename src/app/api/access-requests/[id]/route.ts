@@ -5,7 +5,7 @@ import { EnhancedAccessRequestService } from '@/lib/services/enhanced-access-req
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,8 +14,9 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
     const enhancedService = new EnhancedAccessRequestService();
-    const accessRequest = await enhancedService.getById(params.id);
+    const accessRequest = await enhancedService.getById(resolvedParams.id);
     
     if (!accessRequest) {
       return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
@@ -33,7 +34,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -42,6 +43,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
     const { status, adminNotes, createUserAccount = true } = await request.json();
     
     if (!['approved', 'rejected'].includes(status)) {
@@ -61,7 +63,7 @@ export async function PUT(
     if (status === 'approved') {
       // Use enhanced service for approval with automatic user creation and email notifications
       result = await enhancedService.approveWithUserCreation(
-        params.id,
+        resolvedParams.id,
         adminUserId,
         adminNotes,
         createUserAccount
@@ -77,7 +79,7 @@ export async function PUT(
     } else {
       // Use enhanced service for rejection with email notifications
       result = await enhancedService.rejectWithNotification(
-        params.id,
+        resolvedParams.id,
         adminUserId,
         adminNotes
       );
@@ -100,7 +102,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -109,8 +111,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
     const enhancedService = new EnhancedAccessRequestService();
-    const result = await enhancedService.deleteById(params.id);
+    const result = await enhancedService.deleteById(resolvedParams.id);
     
     if (!result) {
       return NextResponse.json({ error: 'Access request not found' }, { status: 404 });

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BiUpload, BiTrash, BiCopy, BiCheck, BiX, BiImage, BiSearch, BiFilter } from 'react-icons/bi';
+import { BiUpload, BiTrash, BiCopy, BiCheck, BiX, BiImage, BiSearch, BiFilter, BiExpand } from 'react-icons/bi';
 import Button from '@/components/Button';
 import Card, { CardBody } from '@/components/Card';
+import ImageResizeModal from './ImageResizeModal';
 
 interface MediaFile {
   id: string;
@@ -41,7 +42,9 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<MediaFile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('image');
+  const [showResizeModal, setShowResizeModal] = useState(false);
+  const [fileToResize, setFileToResize] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -54,9 +57,8 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (contentType !== 'general') {
-        params.append('type', contentType);
-      }
+      // Don't filter by content type for media picker - show all images
+      // This allows users to select any image from the media library
       
       const response = await fetch(`/api/admin/media?${params}`);
       if (response.ok) {
@@ -74,6 +76,18 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    // For single file uploads, show resize modal for images
+    if (files.length === 1 && files[0].type.startsWith('image/')) {
+      setFileToResize(files[0]);
+      setShowResizeModal(true);
+      return;
+    }
+
+    // For multiple files or non-images, upload directly
+    await uploadFiles(files);
+  };
+
+  const uploadFiles = async (files: FileList) => {
     setUploading(true);
     setUploadProgress(0);
 
@@ -119,6 +133,40 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
     }
   };
 
+  const handleResizeConfirm = async (resizedFile: File) => {
+    try {
+      setUploading(true);
+      
+      const formData = new FormData();
+      formData.append('file', resizedFile);
+      formData.append('contentType', contentType);
+
+      const response = await fetch('/api/admin/media', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload resized image');
+      }
+
+      // Refresh media files
+      await fetchMediaFiles();
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error('Error uploading resized file:', error);
+      alert('Failed to upload resized image. Please try again.');
+    } finally {
+      setUploading(false);
+      setShowResizeModal(false);
+      setFileToResize(null);
+    }
+  };
+
   const handleFileSelect = (file: MediaFile) => {
     if (multiple) {
       if (selectedFiles.find(f => f.id === file.id)) {
@@ -153,7 +201,9 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
     const matchesSearch = file.original_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          file.alt_text?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || file.mime_type.startsWith(filterType);
-    return matchesSearch && matchesFilter;
+    // For image selection, only show image files
+    const isImageFile = file.mime_type.startsWith('image/');
+    return matchesSearch && matchesFilter && isImageFile;
   });
 
   if (!isOpen) return null;
@@ -231,8 +281,8 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
               onChange={(e) => setFilterType(e.target.value)}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
-              <option value="all">All Types</option>
               <option value="image">Images</option>
+              <option value="all">All Types</option>
               <option value="video">Videos</option>
               <option value="audio">Audio</option>
               <option value="application">Documents</option>
@@ -280,12 +330,42 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {formatFileSize(file.file_size)}
                     </p>
+                    {isImage(file.mime_type) && (
+                      <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                        Click resize icon to optimize
+                      </p>
+                    )}
                   </div>
                   
                   {selectedFiles.find(f => f.id === file.id) && (
                     <div className="absolute top-2 right-2 bg-primary-500 text-white rounded-full p-1">
                       <BiCheck size={16} />
                     </div>
+                  )}
+                  
+                  {/* Resize button for images */}
+                  {isImage(file.mime_type) && (
+                    <button
+                      className="absolute top-2 left-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full p-1 opacity-80 hover:opacity-100 transition-opacity duration-200 hover:bg-white dark:hover:bg-gray-800"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Create a file object from the image URL for resizing
+                        fetch(file.file_path)
+                          .then(response => response.blob())
+                          .then(blob => {
+                            const resizeFile = new File([blob], file.original_name, { type: file.mime_type });
+                            setFileToResize(resizeFile);
+                            setShowResizeModal(true);
+                          })
+                          .catch(error => {
+                            console.error('Failed to load image for resizing:', error);
+                            alert('Failed to load image for resizing');
+                          });
+                      }}
+                      title="Resize image"
+                    >
+                      <BiExpand size={14} className="text-gray-600 dark:text-gray-400" />
+                    </button>
                   )}
                 </div>
               ))}
@@ -326,6 +406,23 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
           </div>
         )}
       </div>
+      
+      {/* Image Resize Modal */}
+      {showResizeModal && fileToResize && (
+        <ImageResizeModal
+          isOpen={showResizeModal}
+          onClose={() => {
+            setShowResizeModal(false);
+            setFileToResize(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          }}
+          onConfirm={handleResizeConfirm}
+          originalFile={fileToResize}
+          resizeType={contentType === 'project' ? 'card' : 'general'}
+        />
+      )}
     </div>
   );
 };

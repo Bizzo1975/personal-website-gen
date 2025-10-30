@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import AdminLayout from '../../components/AdminLayout';
@@ -52,7 +52,8 @@ interface ProjectEditFormData {
   permissions: ContentPermissions;
 }
 
-export default function EditProjectPage({ params }: { params: { id: string } }) {
+export default function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   const [project, setProject] = useState<ProjectData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,7 +66,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     async function fetchProject() {
       try {
-        const response = await fetch(`/api/projects/${params.id}`);
+        const response = await fetch(`/api/projects/${resolvedParams.id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch project');
         }
@@ -97,11 +98,11 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
     }
     
     fetchProject();
-  }, [params.id, setValue]);
+  }, [resolvedParams.id, setValue]);
 
   const onSubmit = async (data: ProjectEditFormData) => {
     try {
-      const response = await fetch(`/api/projects/${params.id}`, {
+      const response = await fetch(`/api/projects/${resolvedParams.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

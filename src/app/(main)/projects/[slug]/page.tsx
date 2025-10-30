@@ -167,13 +167,23 @@ export default function ProjectPage() {
       <article>
         {/* Project Image */}
         {project.image && (
-          <div className="mb-8 rounded-lg overflow-hidden">
+          <div className="mb-8 rounded-lg overflow-hidden project-detail">
             <Image
               src={project.image}
               alt={project.title}
               width={800}
               height={400}
-              className="w-full h-64 object-cover"
+              className="w-full h-64 object-contain"
+              onLoad={(e) => {
+                const img = e.target as HTMLImageElement;
+                console.log('Project detail image loaded:', {
+                  src: project.image,
+                  naturalWidth: img.naturalWidth,
+                  naturalHeight: img.naturalHeight,
+                  displayWidth: img.offsetWidth,
+                  displayHeight: img.offsetHeight
+                });
+              }}
             />
           </div>
         )}

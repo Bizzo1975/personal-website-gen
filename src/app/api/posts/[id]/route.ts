@@ -89,7 +89,9 @@ export async function PUT(
       read_time: postData.readTime || postData.read_time || 5,
       date: postData.date ? new Date(postData.date) : new Date(),
       permission_level: postData.permissions?.level || postData.permissionLevel || 'all',
-      published: postData.published || false
+      status: postData.status || 'draft',
+      published: postData.status === 'published' || postData.published || false,
+      featured: postData.featured || false
     };
 
     // Update the post using PostService

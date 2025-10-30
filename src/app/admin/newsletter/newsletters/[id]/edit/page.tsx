@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { ArrowLeftIcon, EyeIcon } from '@heroicons/react/24/outline';
 
 interface NewsletterEditPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function NewsletterEditPage({ params }: NewsletterEditPageProps) {
-  const { id } = params;
+export default async function NewsletterEditPage({ params }: NewsletterEditPageProps) {
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
 
   return (
     <div className="p-6">

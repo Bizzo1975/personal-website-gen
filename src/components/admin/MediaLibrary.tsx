@@ -23,6 +23,7 @@ import {
   ArrowDownIcon
 } from '@heroicons/react/24/outline';
 import Button from '@/components/Button';
+import ImageResizeButton from './ImageResizeButton';
 
 interface MediaFile {
   id: string;
@@ -913,6 +914,21 @@ const MediaLibrary: React.FC = () => {
                   >
                     <EyeIcon className="h-4 w-4" />
                   </Button>
+                  {file.mimeType.startsWith('image/') && (
+                    <ImageResizeButton
+                      imageUrl={file.url}
+                      imageName={file.originalName}
+                      mimeType={file.mimeType}
+                      onResizeComplete={(resizedFile) => {
+                        // Handle resized file - you could upload it as a new file or replace the existing one
+                        console.log('Image resized:', resizedFile);
+                        // For now, just show a message
+                        alert('Image resized! You can now upload it as a new file.');
+                      }}
+                      resizeType="card"
+                      className="bg-white text-blue-600"
+                    />
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -1003,6 +1019,19 @@ const MediaLibrary: React.FC = () => {
                   >
                     <EyeIcon className="h-4 w-4" />
                   </Button>
+                  {file.mimeType.startsWith('image/') && (
+                    <ImageResizeButton
+                      imageUrl={file.url}
+                      imageName={file.originalName}
+                      mimeType={file.mimeType}
+                      onResizeComplete={(resizedFile) => {
+                        console.log('Image resized:', resizedFile);
+                        alert('Image resized! You can now upload it as a new file.');
+                      }}
+                      resizeType="card"
+                      className="text-blue-600 hover:text-blue-700"
+                    />
+                  )}
                   <Button
                     size="sm"
                     variant="outline"

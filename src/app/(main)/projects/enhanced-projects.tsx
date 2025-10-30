@@ -62,6 +62,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
   const [selectedProject, setSelectedProject] = useState<EnhancedProject | null>(null);
+  const [showTechnologies, setShowTechnologies] = useState<boolean>(false);
 
   // Enhanced project data with mock additional fields
   const enhancedProjects: EnhancedProject[] = useMemo(() => {
@@ -253,18 +254,18 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
       />
       
       {/* Projects Section */}
-      <section className="section-modern">
+      <section className="py-6 md:py-8">
         <div className="container-modern">
-          {/* Filter Controls */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          {/* Filter Controls - Single Line Layout */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-6">
+            <div className="flex flex-wrap items-center gap-3">
               {/* Category Filter */}
-              <div className="relative">
-                <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="relative flex-shrink-0">
+                <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none"
+                  className="pl-8 pr-4 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none min-w-[140px]"
                 >
                   <option value="all">All Categories</option>
                   {allCategories.map(category => (
@@ -274,12 +275,12 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
               </div>
 
               {/* Status Filter */}
-              <div className="relative">
-                <ChartBarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="relative flex-shrink-0">
+                <ChartBarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none"
+                  className="pl-8 pr-4 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none min-w-[120px]"
                 >
                   {allStatuses.map(status => (
                     <option key={status} value={status}>
@@ -289,21 +290,34 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
                 </select>
               </div>
 
+              {/* Technology Filter Toggle */}
+              <button
+                onClick={() => setShowTechnologies(!showTechnologies)}
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  showTechnologies 
+                    ? 'bg-blue-600 text-white' 
+                    : 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                }`}
+              >
+                <TagIcon className="h-4 w-4" />
+                {showTechnologies ? 'Hide Tech' : 'Show Tech'}
+              </button>
+
               {/* View Mode Toggle */}
               <div className="flex rounded-lg border border-gray-300 dark:border-slate-600 overflow-hidden">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
                     viewMode === 'grid'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-600'
                   }`}
                 >
-                  Grid View
+                  Grid
                 </button>
                 <button
                   onClick={() => setViewMode('timeline')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
                     viewMode === 'timeline'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-600'
@@ -319,45 +333,56 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
                   setFilter(null);
                   setCategoryFilter('all');
                   setStatusFilter('all');
+                  setShowTechnologies(false);
                 }}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
-                Clear Filters
+                Clear
               </button>
+
+              {/* Active Filter Indicator */}
+              {filter && (
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-blue-600 dark:text-blue-400">{filter}</span>
+                </span>
+              )}
             </div>
 
-            {/* Technology Filter Tags */}
-            <div className="flex flex-wrap gap-2">
-              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Technologies:</span>
-              <button
-                onClick={() => setFilter(null)}
-                className={`px-3 py-1.5 text-sm rounded-full transition-all ${
-                  filter === null 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                All
-              </button>
-              {allTechnologies.map(tech => (
+            {/* Technology Filter Tags - Only show when toggled */}
+            {showTechnologies && (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Technologies:</span>
                 <button
-                  key={tech}
-                  onClick={() => setFilter(tech)}
-                  className={`px-3 py-1.5 text-sm rounded-full transition-all ${
-                    filter === tech 
+                  onClick={() => {
+                    setFilter(null);
+                    setShowTechnologies(false);
+                  }}
+                  className={`px-2.5 py-1 text-sm rounded-full transition-all ${
+                    filter === null 
                       ? 'bg-blue-600 text-white' 
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
-                  {tech}
+                  All
                 </button>
-              ))}
-            </div>
-
-            {/* Results Count */}
-            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-              Showing {filteredProjects.length} of {enhancedProjects.length} projects
-            </div>
+                {allTechnologies.map(tech => (
+                  <button
+                    key={tech}
+                    onClick={() => {
+                      setFilter(tech);
+                      setShowTechnologies(true);
+                    }}
+                    className={`px-2.5 py-1 text-sm rounded-full transition-all ${
+                      filter === tech 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {tech}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           
           {filteredProjects.length === 0 ? (
@@ -375,7 +400,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
               </button>
             </div>
           ) : viewMode === 'grid' ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProjects.map((project, index) => (
                 <TiltProjectCard 
                   key={project.id} 
@@ -389,7 +414,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
             <div className="relative">
               <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
               
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {timelineSortedProjects.map((project, index) => (
                   <div key={project.id} className="relative flex items-start">
                     {/* Timeline Dot */}
@@ -486,13 +511,13 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
         </div>
       </section>
 
-      {/* Newsletter Signup Section */}
-      <section className="section-modern bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+      {/* Newsletter Section */}
+      <section className="py-6 md:py-8 bg-primary-50 dark:bg-primary-900/10">
         <div className="container-modern">
           <NewsletterSignup
             variant="compact"
-            title="Get Project Updates"
-            description="Subscribe to be notified when new projects are released."
+            title="Stay in the Loop"
+            description="Get notified about new projects, blog posts, and insights on my latest learnings."
             showSocialProof={true}
           />
         </div>

@@ -49,7 +49,7 @@
 
 /* Modern section styles */
 .section-modern {
-  @apply py-12 md:py-16 relative overflow-hidden;
+  @apply py-6 md:py-8 relative overflow-hidden;
 }
 
 .section-hero {
@@ -120,10 +120,56 @@
 
 .img-hover-zoom img {
   @apply transition-transform duration-500;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .img-hover-zoom:hover img {
   @apply transform scale-105;
+}
+
+/* Project card image constraints */
+.card-project img,
+.project-card img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* Ensure project card containers are properly sized */
+.card-project .img-hover-zoom,
+.project-card .img-hover-zoom {
+  width: 100%;
+  height: 192px; /* h-48 equivalent */
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.dark .card-project .img-hover-zoom,
+.dark .project-card .img-hover-zoom {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+}
+
+/* Project detail page image constraints */
+.project-detail {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.dark .project-detail {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+}
+
+.project-detail img {
+  width: 100% !important;
+  height: 256px !important; /* h-64 equivalent */
+  object-fit: contain !important;
+  object-position: center !important;
 }
 
 /* Background decorations */

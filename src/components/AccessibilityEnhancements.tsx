@@ -136,7 +136,7 @@ export const AccessibilityToolbar: React.FC = () => {
       <button
         onClick={() => setIsVisible(!isVisible)}
         className={cn(
-          "fixed top-4 right-4 z-50 p-3 rounded-full",
+          "fixed top-3 right-3 z-50 p-2 rounded-full",
           "bg-primary-600 text-white hover:bg-primary-700",
           "focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2",
           "transition-all duration-200 shadow-lg",
@@ -146,7 +146,7 @@ export const AccessibilityToolbar: React.FC = () => {
         aria-expanded={isVisible}
         title="Accessibility Options"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path 
             strokeLinecap="round" 
             strokeLinejoin="round" 

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import TextArea from './TextArea';
 import { Tab } from '@headlessui/react';
-import MarkdownContent from './MarkdownContent';
+import { marked } from 'marked';
 
 interface MarkdownEditorProps {
   label: string;
@@ -65,7 +65,10 @@ export default function MarkdownEditor({
           <Tab.Panel>
             <div className="min-h-[250px] p-4 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-white overflow-y-auto">
               {value ? (
-                <MarkdownContent content={{ compiledSource: value }} />
+                <div 
+                  className="prose prose-sm dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: marked(value) }}
+                />
               ) : (
                 <p className="text-slate-400 dark:text-slate-500 italic">
                   Nothing to preview yet...

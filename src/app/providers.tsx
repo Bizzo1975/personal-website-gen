@@ -21,7 +21,12 @@ export default function Providers({
 
   return (
     <SessionProvider>
-      <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
+      <NextThemesProvider 
+        attribute="class" 
+        defaultTheme="dark" 
+        enableSystem={false}
+        disableTransitionOnChange
+      >
         <PageTransition mode="fade">
           {children}
         </PageTransition>

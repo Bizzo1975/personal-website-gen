@@ -167,14 +167,14 @@ export default function HomePage({
   }
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       {/* Hero Section */}
       <section className="section-hero text-white relative">
         {/* Slideshow background - only render on client */}
         {isMounted && <BackgroundSlideshow opacity={0.4} overlayOpacity={0.3} />}
         
         <div className="container-modern relative z-10">
-          <div className="grid md:grid-cols-12 gap-12 items-start py-16 md:py-24">
+          <div className="grid md:grid-cols-12 gap-8 items-start py-12 md:py-16">
             <div className="md:col-span-7">
               <h1 className="text-5xl md:text-7xl font-black text-white mb-6 text-balance leading-tight">
                 {heroHeading}
@@ -216,7 +216,7 @@ export default function HomePage({
               </EnhancedAnimatedElement>
             </div>
             <div className="md:col-span-5 relative z-10">
-              <div className="flex flex-col gap-16 items-center">
+              <div className="flex flex-col gap-8 items-center">
                 {/* Creative code animation element - only render on client */}
                 {isMounted && (
                   <div className="backdrop-blur-md rounded-2xl rotate-3 hover:rotate-0 transition-transform duration-500 border-0 outline-0" style={{ width: '400px', height: '250px' }}>
@@ -241,16 +241,16 @@ export default function HomePage({
                   </div>
                 )}
                 
-                <div className="bg-slate-800/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg p-6 rounded-2xl rotate-2 hover:rotate-0 transition-transform duration-500" style={{ width: '400px', height: '250px' }}>
-                  <div className="flex items-center text-white mb-4">
+                <div className="bg-slate-800/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg p-4 rounded-2xl rotate-2 hover:rotate-0 transition-transform duration-500" style={{ width: '400px', height: '220px' }}>
+                  <div className="flex items-center text-white mb-3">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mr-3 text-blue-400">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
                     </svg>
                     <h3 className="text-xl font-semibold text-white">Professional Skills</h3>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {skills.map(skill => (
-                      <span key={skill} className="px-3 py-1 bg-blue-600/80 rounded-full text-sm font-medium text-white">
+                      <span key={skill} className="px-2.5 py-0.5 bg-blue-600/80 rounded-full text-sm font-medium text-white">
                         {skill}
                       </span>
                     ))}
@@ -264,10 +264,10 @@ export default function HomePage({
       
       {/* Featured Projects Section - Always show */}
       <ScrollAnimation type="fadeIn">
-        <section className="section-modern section-enhanced bg-pattern-dots">
+        <section className="py-6 md:py-8 section-enhanced bg-pattern-dots">
           <div className="container-modern relative z-10">
             <EnhancedAnimatedElement type="slideUp">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
                 <div className="relative">
                   <div className="absolute -left-4 top-0 w-1 h-full bg-gradient-to-b from-primary-500 to-primary-600 rounded-full opacity-0 animate-fade-in-left" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}></div>
                   <p className="text-primary-600 dark:text-primary-400 font-medium mb-2 flex items-center animate-fade-in-up" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
@@ -289,7 +289,7 @@ export default function HomePage({
             
             {displayedProjects.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {displayedProjects.map((project, index) => (
+                {displayedProjects.slice(0, 6).map((project, index) => (
                   <TiltProjectCard key={project.id} project={project} index={index} />
                 ))}
               </div>
@@ -312,10 +312,10 @@ export default function HomePage({
       
       {/* Latest Blog Posts Section - Always show */}
       <ScrollAnimation type="fadeIn">
-        <section className="section-modern">
+        <section className="py-6 md:py-8">
           <div className="container-modern">
             <EnhancedAnimatedElement type="slideUp">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
                 <div className="relative">
                   <div className="absolute -left-4 top-0 w-1 h-full bg-gradient-to-b from-secondary-500 to-secondary-600 rounded-full opacity-0 animate-fade-in-left" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}></div>
                   <p className="text-secondary-600 dark:text-secondary-400 font-medium mb-2 flex items-center animate-fade-in-up" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
@@ -337,7 +337,7 @@ export default function HomePage({
             
             {displayedPosts.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {displayedPosts.map((post, index) => (
+                {displayedPosts.slice(0, 6).map((post, index) => (
                   <MorphingBlogCard key={post.id} post={post} index={index} />
                 ))}
               </div>
@@ -359,9 +359,14 @@ export default function HomePage({
       </ScrollAnimation>
       
       {/* Newsletter Section */}
-      <section className="section-modern bg-primary-50 dark:bg-primary-900/10">
+      <section className="py-6 md:py-8 bg-primary-50 dark:bg-primary-900/10">
         <div className="container-modern">
-          <NewsletterSignup />
+          <NewsletterSignup
+            variant="compact"
+            title="Stay in the Loop"
+            description="Get notified about new projects, blog posts, and insights on my latest learnings."
+            showSocialProof={true}
+          />
         </div>
       </section>
     </div>

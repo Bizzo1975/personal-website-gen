@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { ArrowLeftIcon, EyeIcon } from '@heroicons/react/24/outline';
 
 interface TemplateEditPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function TemplateEditPage({ params }: TemplateEditPageProps) {
-  const { id } = params;
+export default async function TemplateEditPage({ params }: TemplateEditPageProps) {
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
 
   return (
     <div className="p-6">

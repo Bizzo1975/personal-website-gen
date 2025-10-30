@@ -46,20 +46,20 @@ const Header: React.FC<HeaderProps> = ({ profileName, siteSettings }) => {
   ];
 
   return (
-    <header className="py-6 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm bg-white/70 dark:bg-slate-900/80 sticky top-0 z-40">
+    <header className="py-3 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm bg-white/70 dark:bg-slate-900/80 sticky top-0 z-40">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-primary-600 dark:text-primary-400 flex items-center space-x-2">
-            <div className="w-14 h-14 relative">
-              <Image src={logoUrl} alt="Logo" fill sizes="56px" style={{ objectFit: 'contain' }} />
+          <Link href="/" className="text-xl font-bold text-primary-600 dark:text-primary-400 flex items-center space-x-2">
+            <div className="w-10 h-10 relative">
+              <Image src={logoUrl} alt="Logo" fill sizes="40px" style={{ objectFit: 'contain' }} />
             </div>
             <span>{displayName}</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6">
             <nav>
-              <ul className="flex space-x-8">
+              <ul className="flex space-x-6">
                 {navbarLinks.map((link, index) => (
                   <li key={index}>
                     <Link href={link.url} className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">
@@ -76,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ profileName, siteSettings }) => {
                 )}
               </ul>
             </nav>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <ThemeSwitcher />
               {isAuthenticated ? (
                 <button 

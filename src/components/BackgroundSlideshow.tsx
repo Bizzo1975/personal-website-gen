@@ -37,40 +37,40 @@ const BackgroundSlideshow: React.FC<BackgroundSlideshowProps> = ({
     return [
       {
         id: 'fallback-1',
-        url: '/images/slideshow/coding-1.jpg',
-        altText: 'Coding environment with multiple monitors',
+        url: '/images/slideshow/coding-workspace-1.jpg',
+        altText: 'Modern coding workspace with laptop and multiple monitors',
         category: 'slideshow',
         displayOrder: 1,
         isActive: true
       },
       {
         id: 'fallback-2',
-        url: '/images/slideshow/coding-2.jpg',
-        altText: 'Modern development setup',
+        url: '/images/slideshow/programming-setup-2.jpg',
+        altText: 'Programming environment with code on screen',
         category: 'slideshow',
         displayOrder: 2,
         isActive: true
       },
       {
         id: 'fallback-3',
-        url: '/images/slideshow/coding-3.jpg',
-        altText: 'Programming workspace',
+        url: '/images/slideshow/web-development-3.jpg',
+        altText: 'Web development workspace with modern tools',
         category: 'slideshow',
         displayOrder: 3,
         isActive: true
       },
       {
         id: 'fallback-4',
-        url: '/images/slideshow/coding-4.jpg',
-        altText: 'Software development environment',
+        url: '/images/slideshow/tech-workspace-4.jpg',
+        altText: 'Technology workspace with development setup',
         category: 'slideshow',
         displayOrder: 4,
         isActive: true
       },
       {
         id: 'fallback-5',
-        url: '/images/slideshow/coding-5.jpg',
-        altText: 'Tech workspace with laptop',
+        url: '/images/slideshow/coding-1.jpg',
+        altText: 'Professional development environment',
         category: 'slideshow',
         displayOrder: 5,
         isActive: true

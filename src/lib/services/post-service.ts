@@ -311,8 +311,8 @@ export class PostService {
         `UPDATE posts 
            SET title = $1, slug = $2, content = $3, excerpt = $4, featured_image = $5, 
                tags = $6, author = $7, read_time = $8, date = $9, permission_level = $10, 
-               published = $11, updated_at = CURRENT_TIMESTAMP 
-           WHERE id = $12 
+               published = $11, status = $12, featured = $13, updated_at = CURRENT_TIMESTAMP 
+           WHERE id = $14 
            RETURNING *`,
           [
             postData.title,
@@ -326,6 +326,8 @@ export class PostService {
             postData.date,
             postData.permission_level,
             postData.published,
+            postData.status,
+            postData.featured,
             id
           ]
         );
@@ -347,7 +349,9 @@ export class PostService {
         readTime: row.read_time,
         date: row.date,
         permissionLevel: row.permission_level,
+        status: row.status,
         published: row.published,
+        featured: row.featured || false,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       };

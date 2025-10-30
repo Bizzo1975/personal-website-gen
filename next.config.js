@@ -1,6 +1,25 @@
 const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["@prisma/client", "bcryptjs", "pg"],
+  
+  // Performance optimizations
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['framer-motion', 'react-icons'],
+  },
+  
+  // Compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  
+  // Image optimization
+  images: {
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 60,
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
   webpack: (config, { isServer }) => {
     // Exclude server-side modules from client-side bundles
     if (!isServer) {

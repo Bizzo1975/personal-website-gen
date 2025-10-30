@@ -2,7 +2,7 @@
 import '@/styles/globals.css';
 ;
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Card, { CardBody, CardHeader, CardFooter } from '@/components/Card';
 import Button from '@/components/Button';
@@ -29,9 +29,10 @@ import dynamic from 'next/dynamic';
 const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
 import 'easymde/dist/easymde.min.css';
 
-export default function EditPagePage({ params }: { params: { id: string } }) {
+export default function EditPagePage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   const router = useRouter();
-  const { id } = params;
+  const { id } = resolvedParams;
   
   const [pageData, setPageData] = useState<Partial<PageData>>({
     name: '',

@@ -45,6 +45,9 @@ const CodeParticles: React.FC<CodeParticlesProps> = ({
 
   // Initialize code particles
   useEffect(() => {
+    // Only run on client side to prevent hydration issues
+    if (typeof window === 'undefined') return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
 

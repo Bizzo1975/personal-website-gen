@@ -38,7 +38,7 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
   const formDescription = pageData?.formDescription || "Use the form below to either send a general message or request access to register on the platform. For access requests, please select the appropriate access level and provide details about your intended use.";
   
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Header Section */}
       <HeaderSection
         title={headerData.headerTitle}
@@ -49,17 +49,17 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
       />
       
       {/* Main Content */}
-      <section className="section-modern">
+      <section className="py-6 md:py-8">
         <div className="container-modern">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             
             {/* Contact Information - Left Column */}
             <div className="md:col-span-5">
-              <div className="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm h-fit">
-                <h2 className="text-2xl font-bold mb-6">{connectSectionTitle}</h2>
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm h-fit">
+                <h2 className="text-2xl font-bold mb-4">{connectSectionTitle}</h2>
                 
                 {/* Connect Section Content */}
-                <div className="mb-6">
+                <div className="mb-4">
                   <p className="text-gray-600 dark:text-gray-400">
                     {connectSectionContent}
                   </p>
@@ -142,9 +142,9 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
             
             {/* Contact Form - Right Column */}
             <div className="md:col-span-7">
-              <div className="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm">
-                <h2 className="text-2xl font-bold mb-6">{formSectionTitle}</h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm">
+                <h2 className="text-2xl font-bold mb-4">{formSectionTitle}</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
                   {formDescription}
                 </p>
                 

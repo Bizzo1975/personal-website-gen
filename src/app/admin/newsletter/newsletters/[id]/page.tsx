@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { ArrowLeftIcon, PencilIcon, EyeIcon } from '@heroicons/react/24/outline';
 
 interface NewsletterDetailPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function NewsletterDetailPage({ params }: NewsletterDetailPageProps) {
-  const { id } = params;
+export default async function NewsletterDetailPage({ params }: NewsletterDetailPageProps) {
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
 
   return (
     <div className="p-6">

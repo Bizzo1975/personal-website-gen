@@ -24,13 +24,26 @@ export class SlideshowService {
         []
       );
 
-      return result.rows.map((row, index) => ({
-        id: row.id,
-        filename: row.filename,
-        url: row.file_path,
-        altText: row.alt_text || `Slideshow image ${index + 1}`,
-        order: index
-      }));
+      // Check if any of the database images have valid paths
+      const validImages = result.rows.filter(row => {
+        // Only accept images that are in the correct /images/slideshow/ directory
+        return row.file_path && row.file_path.startsWith('/images/slideshow/');
+      });
+
+      // If we have valid images from database, use them
+      if (validImages.length > 0) {
+        return validImages.map((row, index) => ({
+          id: row.id,
+          filename: row.filename,
+          url: row.file_path,
+          altText: row.alt_text || `Slideshow image ${index + 1}`,
+          order: index
+        }));
+      } else {
+        // If no valid images in database, use fallback images
+        console.log('No valid slideshow images in database, using fallback images');
+        return this.getFallbackImages();
+      }
     } catch (error) {
       console.error('Error fetching slideshow images:', error);
       // Return fallback images if database query fails

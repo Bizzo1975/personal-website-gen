@@ -2,9 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { BiHomeAlt, BiFile, BiNews, BiCodeBlock, BiCog, BiEnvelope, BiUser, BiPlus, BiImage, BiUserCircle, BiCalendarCheck, BiFolder, BiShield, BiUserPlus, BiChevronDown, BiChevronRight, BiTransfer } from 'react-icons/bi';
+import { BiHomeAlt, BiFile, BiNews, BiCodeBlock, BiCog, BiEnvelope, BiUser, BiImage, BiUserCircle, BiCalendarCheck, BiFolder, BiShield, BiUserPlus, BiChevronDown, BiChevronRight, BiTransfer } from 'react-icons/bi';
 import Header from '@/components/Header';
 import AdminFooter from '@/app/admin/components/AdminFooter';
 import { ProfileData } from '@/lib/services/profile-service';
@@ -184,29 +183,6 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
       <div className="flex-grow flex flex-col md:flex-row">
         {/* Sidebar */}
         <div className="w-full md:w-64 md:sticky md:top-[76px] md:h-[calc(100vh-76px)] bg-slate-800 text-white flex flex-col">
-          <div className="p-4 border-b border-slate-700">
-            <Link href="/admin/dashboard" className="flex items-center space-x-3 group">
-              <div className="w-14 h-14 relative">
-                <Image 
-                  src={siteSettings.logoUrl} 
-                  alt="Logo" 
-                  fill 
-                  sizes="56px" 
-                  style={{ objectFit: 'contain' }}
-                  className="transition-transform group-hover:scale-110"
-                />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-white group-hover:text-primary-300 transition-colors">
-                  {siteSettings.logoText}
-                </h1>
-                <p className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
-                  Admin Dashboard
-                </p>
-              </div>
-            </Link>
-          </div>
-          
           {/* Navigation Menu */}
           <nav className="flex-1 overflow-y-auto p-4">
             <ul className="space-y-1">
@@ -244,17 +220,6 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
               {renderNavItems(additionalItems)}
             </ul>
           </nav>
-          
-          {/* Add New Page Button at bottom */}
-          <div className="p-4 border-t border-slate-700">
-            <Link 
-              href="/admin/pages/new"
-              className="flex items-center justify-center gap-2 w-full py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
-            >
-              <BiPlus className="w-5 h-5" />
-              <span>Add New Page</span>
-            </Link>
-          </div>
         </div>
         
         {/* Main Content with 20% grey background */}

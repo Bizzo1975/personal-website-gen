@@ -263,9 +263,19 @@ export default function ProjectsClientPage({ projects, pageData }: ProjectsClien
                       alt={project.title}
                       width={600}
                       height={400}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                       fallbackSrc="/images/projects/placeholder.jpg"
                       priority={index < 3}
+                      onLoad={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        console.log('Project card image loaded:', {
+                          src: project.image,
+                          naturalWidth: img.naturalWidth,
+                          naturalHeight: img.naturalHeight,
+                          displayWidth: img.offsetWidth,
+                          displayHeight: img.offsetHeight
+                        });
+                      }}
                     />
                   </div>
                   <div className="p-6 flex flex-col flex-grow">

@@ -83,6 +83,9 @@ const CreativeCodeElement: React.FC<CreativeCodeElementProps> = ({
   useEffect(() => {
     if (!isMounted) return;
     
+    // Only run on client side to prevent hydration issues
+    if (typeof window === 'undefined') return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
     

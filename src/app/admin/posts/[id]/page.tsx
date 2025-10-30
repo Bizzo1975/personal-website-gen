@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import AdminLayout from '../../components/AdminLayout';
@@ -37,7 +37,8 @@ interface PostEditFormData {
   permissions: ContentPermissions;
 }
 
-export default function EditPostPage({ params }: { params: { id: string } }) {
+export default function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   const [post, setPost] = useState<PostData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,7 +51,7 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     async function fetchPost() {
       try {
-        const response = await fetch(`/api/posts/${params.id}`);
+        const response = await fetch(`/api/posts/${resolvedParams.id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch post');
         }
@@ -83,11 +84,11 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
     }
     
     fetchPost();
-  }, [params.id, setValue]);
+  }, [resolvedParams.id, setValue]);
 
   const onSubmit = async (data: PostEditFormData) => {
     try {
-      const response = await fetch(`/api/posts/${params.id}`, {
+      const response = await fetch(`/api/posts/${resolvedParams.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +128,7 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
       try {
-        const response = await fetch(`/api/posts/${params.id}`, {
+        const response = await fetch(`/api/posts/${resolvedParams.id}`, {
           method: 'DELETE',
         });
 
@@ -280,7 +281,7 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
               <div className="flex items-center">
                 <Checkbox
                   label="Featured Post"
-                  checked={watch('featured')}
+                  checked={watch('featured') || false}
                   onChange={(checked) => setValue('featured', checked)}
                 />
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">

@@ -7,9 +7,9 @@ import DynamicPage from './dynamic-page';
 
 // Define the page props with params containing the slug
 interface PageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 // Define paths that have dedicated directories and should not be captured by [slug]
@@ -32,12 +32,13 @@ export async function generateMetadata(
   { params }: PageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
+  const resolvedParams = await params;
   // Redirect dedicated paths to their proper routes
-  if (DEDICATED_PATHS.includes(params.slug)) {
+  if (DEDICATED_PATHS.includes(resolvedParams.slug)) {
     notFound();
   }
   
-  const page = await getPageBySlug(params.slug);
+  const page = await getPageBySlug(resolvedParams.slug);
   
   if (!page) {
     return {
@@ -53,12 +54,13 @@ export async function generateMetadata(
 
 // The page component that fetches and renders the content
 export default async function Page({ params }: PageProps) {
+  const resolvedParams = await params;
   // Redirect dedicated paths to their proper routes
-  if (DEDICATED_PATHS.includes(params.slug)) {
+  if (DEDICATED_PATHS.includes(resolvedParams.slug)) {
     notFound();
   }
   
-  const page = await getPageBySlug(params.slug);
+  const page = await getPageBySlug(resolvedParams.slug);
   
   // If page doesn't exist, show 404
   if (!page) {

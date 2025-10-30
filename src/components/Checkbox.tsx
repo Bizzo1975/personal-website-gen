@@ -3,7 +3,7 @@
 import React from 'react';
 
 interface CheckboxProps {
-  checked: boolean;
+  checked?: boolean;
   onChange: (checked: boolean) => void;
   indeterminate?: boolean;
   label?: string;
@@ -32,7 +32,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
       <input
         ref={checkboxRef}
         type="checkbox"
-        checked={checked}
+        checked={checked || false}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
