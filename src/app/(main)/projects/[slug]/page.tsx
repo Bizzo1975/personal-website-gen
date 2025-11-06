@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { marked } from 'marked';
 import { 
   CalendarIcon, 
   ClockIcon, 
@@ -239,14 +240,93 @@ export default function ProjectPage() {
           )}
         </header>
 
-        {/* Project Description */}
+        {/* Project Content */}
         <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
-          <p className="text-lg leading-relaxed text-gray-700 dark:text-gray-300">
-            {project.description}
-          </p>
-          
-          {project.content && (
-            <div className="mt-6" dangerouslySetInnerHTML={{ __html: project.content }} />
+          {project.content ? (
+            (() => {
+              // Function to extract plain text (for comparison)
+              const extractPlainText = (text: string) => {
+                return text
+                  .replace(/<[^>]*>/g, '') // Remove HTML tags
+                  .replace(/[#*`\[\]()]/g, '') // Remove markdown syntax
+                  .replace(/\s+/g, ' ') // Normalize whitespace
+                  .trim()
+                  .toLowerCase();
+              };
+              
+              // Clean content by removing title and description duplicates
+              let cleanedContent = project.content;
+              
+              // Remove title if it appears as a heading at the start
+              const titlePatterns = [
+                new RegExp(`^#+\\s*${project.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'im'), // # Title or ## Title
+                new RegExp(`^#+\\s*${project.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\n`, 'im'), // # Title\n
+                new RegExp(`<h[1-6][^>]*>\\s*${project.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*</h[1-6]>`, 'im'), // <h1>Title</h1>
+              ];
+              
+              titlePatterns.forEach(pattern => {
+                cleanedContent = cleanedContent.replace(pattern, '');
+              });
+              
+              // Remove description if it appears at the start of content
+              if (project.description) {
+                const descriptionText = extractPlainText(project.description);
+                const contentText = extractPlainText(cleanedContent);
+                
+                // Check if content starts with description
+                if (descriptionText && contentText.startsWith(descriptionText.substring(0, Math.min(descriptionText.length, 150)))) {
+                  // Try to remove description from markdown (could be first paragraph or after heading)
+                  const descriptionEscaped = project.description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  const descriptionPatterns = [
+                    new RegExp(`^\\s*${descriptionEscaped}\\s*\\n?`, 'im'), // Start with description
+                    new RegExp(`^\\s*${descriptionEscaped}\\s*\\.\\s*\\n?`, 'im'), // Start with description.
+                    new RegExp(`^\\s*<p>\\s*${descriptionEscaped}\\s*</p>\\s*`, 'im'), // <p>description</p>
+                  ];
+                  
+                  descriptionPatterns.forEach(pattern => {
+                    cleanedContent = cleanedContent.replace(pattern, '');
+                  });
+                }
+              }
+              
+              // Clean up extra whitespace/newlines at start
+              cleanedContent = cleanedContent.replace(/^\s+/, '');
+              
+              // Detect if content is markdown (contains markdown syntax)
+              const hasMarkdownSyntax = cleanedContent.includes('\n#') || 
+                                       cleanedContent.includes('##') || 
+                                       cleanedContent.includes('**') ||
+                                       cleanedContent.includes('```') ||
+                                       cleanedContent.includes('- ');
+              
+              // Convert markdown to HTML if needed
+              const renderedContent = hasMarkdownSyntax && cleanedContent.trim()
+                ? marked(cleanedContent) 
+                : cleanedContent.trim();
+              
+              // Only render if there's actual content left after cleaning
+              if (!renderedContent || renderedContent.trim().length === 0) {
+                // Fallback to description if content was completely removed
+                return project.description ? (
+                  <p className="text-lg leading-relaxed text-gray-700 dark:text-gray-300">
+                    {project.description}
+                  </p>
+                ) : null;
+              }
+              
+              return (
+                <div 
+                  dangerouslySetInnerHTML={{ __html: renderedContent }} 
+                />
+              );
+            })()
+          ) : (
+            // If no content, show description as fallback
+            project.description && (
+              <p className="text-lg leading-relaxed text-gray-700 dark:text-gray-300">
+                {project.description}
+              </p>
+            )
           )}
         </div>
 
