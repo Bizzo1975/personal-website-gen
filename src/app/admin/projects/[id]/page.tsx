@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/Checkbox';
 import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
 import ImageField from '@/components/admin/ImageField';
+import MarkdownEditor from '@/components/MarkdownEditor';
 import { BiSave } from 'react-icons/bi';
 import { ContentPermissions } from '@/types/content/permissions';
 
@@ -29,6 +30,7 @@ interface ProjectData {
   title: string;
   slug: string;
   description: string;
+  content?: string;
   image?: string;
   technologies: string[];
   liveDemo?: string;
@@ -43,6 +45,7 @@ interface ProjectEditFormData {
   title: string;
   slug: string;
   description: string;
+  content?: string;
   image?: string;
   technologies: string[];
   liveDemo?: string;
@@ -78,6 +81,7 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
         setValue('title', data.title || data.data?.title);
         setValue('slug', data.slug || data.data?.slug);
         setValue('description', data.description || data.data?.description);
+        setValue('content', data.content || data.data?.content || '');
         setValue('image', data.image || data.data?.image || '');
         setValue('technologies', data.technologies || data.data?.technologies || []);
         setValue('liveDemo', data.liveDemo || data.data?.liveDemo || '');
@@ -207,6 +211,13 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
                 {...register('description', { required: 'Description is required' })}
                 error={errors.description?.message}
                 wrapperClassName="mb-0"
+              />
+              
+              <MarkdownEditor
+                label="Full Body Text"
+                value={watch('content') || ''}
+                onChange={(value) => setValue('content', value)}
+                placeholder="Write the full project content in Markdown format..."
               />
               
               <TagInput

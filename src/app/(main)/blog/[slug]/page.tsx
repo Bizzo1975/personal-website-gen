@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
+import { marked } from 'marked';
 import { 
   CalendarIcon, 
   ClockIcon, 
@@ -294,7 +295,46 @@ export default function BlogPostPage() {
 
         {/* Content */}
         <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
-          <div dangerouslySetInnerHTML={{ __html: post.content }} />
+          {(() => {
+            if (!post.content || !post.content.trim()) {
+              return <p>No content available.</p>;
+            }
+            
+            // Check if content is clearly already HTML (has complete HTML tags like <p>, <div>, etc.)
+            // Simple regex won't catch markdown headings like # which aren't HTML
+            const hasCompleteHTMLTags = /<[a-z]+[^>]*>[\s\S]*<\/[a-z]+>/i.test(post.content);
+            const startsWithHTMLTag = /^\s*<[a-z]+/i.test(post.content);
+            const isAlreadyHTML = hasCompleteHTMLTags || startsWithHTMLTag;
+            
+            let renderedContent: string;
+            
+            if (isAlreadyHTML) {
+              // Content is already HTML, use as-is
+              renderedContent = post.content;
+            } else {
+              // Content is markdown, always parse it
+              try {
+                // Use marked() directly like MarkdownEditor does
+                renderedContent = marked(post.content);
+              } catch (error) {
+                console.error('Error parsing markdown:', error);
+                console.error('Content sample:', post.content.substring(0, 200));
+                // Fallback: treat as plain text with paragraphs
+                const paragraphs = post.content
+                  .split(/\n\s*\n/)
+                  .filter(p => p.trim())
+                  .map(p => p.trim().replace(/\n/g, ' '));
+                
+                renderedContent = paragraphs.length > 0
+                  ? paragraphs.map(p => `<p>${p}</p>`).join('')
+                  : `<p>${post.content.replace(/\n/g, ' ')}</p>`;
+              }
+            }
+            
+            return (
+              <div dangerouslySetInnerHTML={{ __html: renderedContent }} />
+            );
+          })()}
         </div>
 
         {/* Action Buttons */}
