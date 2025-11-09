@@ -1,0 +1,146 @@
+================================================================================
+DATABASE BACKUP RESTORATION INSTRUCTIONS
+================================================================================
+
+Backup File: database_backup_complete_*.zip
+Created: Current date/time
+Database: personal_website
+PostgreSQL Version: 15
+
+================================================================================
+RESTORATION STEPS
+================================================================================
+
+1. EXTRACT THE BACKUP FILE
+   ------------------------
+   Unzip the backup file to get: database_backup_complete.sql
+   
+   Windows:
+     Right-click the .zip file → Extract All
+   
+   Linux/Mac:
+     unzip database_backup_complete_*.zip
+
+
+2. ENSURE DATABASE IS RUNNING
+   ---------------------------
+   Make sure your PostgreSQL database container/service is running.
+   
+   Docker:
+     docker compose ps db
+     # If not running:
+     docker compose up -d db
+     # Wait for database to be ready:
+     docker compose exec db pg_isready -U postgres
+
+
+3. RESTORE THE DATABASE
+   --------------------
+   
+   Option A: Using Docker (Recommended)
+   --------------------------------------
+   docker compose exec -T db psql -U postgres -d personal_website < database_backup_complete.sql
+   
+   Or if database doesn't exist yet:
+   docker compose exec -T db psql -U postgres -c "CREATE DATABASE personal_website;"
+   docker compose exec -T db psql -U postgres -d personal_website < database_backup_complete.sql
+   
+   
+   Option B: Direct PostgreSQL Connection
+   --------------------------------------
+   psql -U postgres -d personal_website < database_backup_complete.sql
+   
+   Or with connection string:
+   psql "postgresql://postgres:password@localhost:5432/personal_website" < database_backup_complete.sql
+
+
+4. VERIFY THE RESTORATION
+   -----------------------
+   Check that data was restored:
+   
+   docker compose exec db psql -U postgres -d personal_website -c "SELECT COUNT(*) FROM posts;"
+   docker compose exec db psql -U postgres -d personal_website -c "SELECT COUNT(*) FROM projects;"
+   docker compose exec db psql -U postgres -d personal_website -c "SELECT COUNT(*) FROM users;"
+
+
+5. RESTART YOUR APPLICATION
+   ------------------------
+   After restoration, restart your application to ensure it connects properly:
+   
+   docker compose restart app
+   # Or
+   docker compose up -d
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Issue: "database does not exist"
+Solution: Create the database first:
+  docker compose exec db psql -U postgres -c "CREATE DATABASE personal_website;"
+
+Issue: "permission denied"
+Solution: Ensure you're using the correct database user (postgres) and password
+
+Issue: "connection refused"
+Solution: Check that the database container is running:
+  docker compose ps db
+
+Issue: "relation already exists"
+Solution: The database may already have data. Drop and recreate if needed:
+  WARNING: This will delete existing data!
+  docker compose exec db psql -U postgres -c "DROP DATABASE personal_website;"
+  docker compose exec db psql -U postgres -c "CREATE DATABASE personal_website;"
+  Then restore again.
+
+Issue: "out of memory"
+Solution: Check available RAM and disk space:
+  docker stats
+  df -h
+
+
+================================================================================
+BACKUP CONTENTS
+================================================================================
+
+This backup includes:
+- All database tables and schemas
+- All data (posts, projects, users, etc.)
+- All indexes and constraints
+- All triggers and functions
+- All sequences
+- Complete database structure
+
+Database Name: personal_website
+PostgreSQL Version: 15-alpine
+Backup Format: SQL (plain text)
+Compression: ZIP
+
+
+================================================================================
+IMPORTANT NOTES
+================================================================================
+
+1. This backup contains ALL data from your database
+2. Keep this backup file secure - it contains sensitive information
+3. Test the restoration on a development server first if possible
+4. Ensure you have enough disk space on the target server
+5. The backup file is compressed - extract before restoring
+6. Backup was created with --clean --if-exists flags, so it will drop existing
+   objects before recreating them during restoration
+
+
+================================================================================
+SUPPORT
+================================================================================
+
+If you encounter issues during restoration:
+1. Check the error messages carefully
+2. Verify database connection settings
+3. Ensure PostgreSQL version compatibility (15+)
+4. Check disk space and memory availability
+5. Review the troubleshooting section above
+
+================================================================================
+
