@@ -828,14 +828,29 @@ sudo tailscale up --ssh
 1. **Install Docker and related tools:**
 ```bash
    sudo apt update
-   sudo apt install -y docker.io docker-compose-plugin git curl
+   sudo apt install -y docker.io docker-compose git curl
    ```
    
    **What each does:**
-   - `docker.io`: The Docker container platform
-   - `docker-compose-plugin`: Tool to manage multiple containers together
+   - `docker.io`: The Docker container platform (from Ubuntu repositories)
+   - `docker-compose`: Standalone Docker Compose tool (v1) for managing multiple containers
    - `git`: Version control tool (to download your code)
    - `curl`: Tool to download files and test web services
+   
+   **Note:** If you prefer Docker Compose v2 (plugin), you'll need to install Docker from Docker's official repository instead:
+   ```bash
+   # Alternative: Install Docker from official repository (includes compose plugin)
+   sudo apt update
+   sudo apt install -y ca-certificates curl gnupg
+   sudo install -m 0755 -d /etc/apt/keyrings
+   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+   sudo chmod a+r /etc/apt/keyrings/docker.gpg
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   sudo apt update
+   sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin git curl
+   ```
+   
+   **For simplicity, we'll use the Ubuntu repository version (`docker.io` and `docker-compose`) which works perfectly fine.**
 
 2. **Add your user to the docker group (so you don't need sudo for docker commands):**
 ```bash
@@ -854,10 +869,12 @@ sudo tailscale up --ssh
 4. **Verify Docker is working:**
    ```bash
    docker --version
-   docker compose version
+   docker-compose --version
    ```
    
    **What to look for:** Both commands should show version numbers. If you see "command not found", something went wrong with installation.
+   
+   **Note:** If you installed from Docker's official repository, use `docker compose version` (with space). If you installed from Ubuntu repos, use `docker-compose --version` (with hyphen).
 
 5. **Start Docker service:**
    ```bash
@@ -999,7 +1016,7 @@ cd /opt/app
 
 2. **Build the Docker containers:**
    ```bash
-   docker compose -f docker-compose.prod.yml build
+   docker-compose -f docker-compose.prod.yml build
    ```
    
    **What this does:**
@@ -1012,7 +1029,7 @@ cd /opt/app
 
 3. **Start all services:**
    ```bash
-   docker compose -f docker-compose.prod.yml up -d
+   docker-compose -f docker-compose.prod.yml up -d
    ```
    
    **Breaking this down:**
@@ -1027,20 +1044,20 @@ cd /opt/app
 
 4. **Check that everything is running:**
    ```bash
-   docker compose -f docker-compose.prod.yml ps
+   docker-compose -f docker-compose.prod.yml ps
    ```
    
    **What to look for:** All containers should show "Up" status. If any show "Restarting" or "Exited", there's a problem.
 
 5. **Check the logs if something is wrong:**
    ```bash
-   docker compose -f docker-compose.prod.yml logs
+   docker-compose -f docker-compose.prod.yml logs
    ```
    
    **Or check logs for a specific service:**
    ```bash
-   docker compose -f docker-compose.prod.yml logs app
-   docker compose -f docker-compose.prod.yml logs db
+   docker-compose -f docker-compose.prod.yml logs app
+   docker-compose -f docker-compose.prod.yml logs db
    ```
 
 ### Step 7.6: Verify the Application is Running
@@ -1060,7 +1077,7 @@ cd /opt/app
    - You should see your website homepage
 
 **Troubleshooting:**
-- If containers won't start, check the logs: `docker compose -f docker-compose.prod.yml logs`
+- If containers won't start, check the logs: `docker-compose -f docker-compose.prod.yml logs`
 - If database connection fails, verify `.env.production` has correct database credentials
 - If port 3000 is already in use, check what's using it: `sudo netstat -tulpn | grep 3000`
 - If build fails, check you have enough disk space: `df -h`
@@ -1129,25 +1146,25 @@ cd /opt/app
 1. **Check if database container is running:**
    ```bash
    cd /opt/app/site
-   docker compose -f docker-compose.prod.yml ps db
+   docker-compose -f docker-compose.prod.yml ps db
    ```
    
    **What to look for:** Should show "Up" status. If not, start it:
    ```bash
-   docker compose -f docker-compose.prod.yml up -d db
+   docker-compose -f docker-compose.prod.yml up -d db
    ```
 
 2. **Wait for database to be ready:**
    ```bash
    # Check database logs to ensure it's fully started
-   docker compose -f docker-compose.prod.yml logs db | tail -20
+   docker-compose -f docker-compose.prod.yml logs db | tail -20
    ```
    
    **What to look for:** Should see messages like "database system is ready to accept connections"
 
 3. **Verify database is accessible:**
    ```bash
-   docker compose -f docker-compose.prod.yml exec db pg_isready -U postgres
+   docker-compose -f docker-compose.prod.yml exec db pg_isready -U postgres
    ```
    
    **What this does:** Tests if PostgreSQL is ready to accept connections. Should output: `postgresql://postgres@localhost:5432/postgres - accepting connections`
@@ -1166,7 +1183,7 @@ cd /opt/app
 
 2. **Import the database:**
    ```bash
-   docker compose -f /opt/app/site/docker-compose.prod.yml exec -T db psql -U postgres -d personal_website < your-backup-file.sql
+   docker-compose -f /opt/app/site/docker-compose.prod.yml exec -T db psql -U postgres -d personal_website < your-backup-file.sql
    ```
    
    **Breaking this down:**
@@ -1180,8 +1197,8 @@ cd /opt/app
 
 3. **Verify the import was successful:**
    ```bash
-   docker compose -f /opt/app/site/docker-compose.prod.yml exec db psql -U postgres -d personal_website -c "SELECT COUNT(*) FROM posts;"
-   docker compose -f /opt/app/site/docker-compose.prod.yml exec db psql -U postgres -d personal_website -c "SELECT COUNT(*) FROM projects;"
+   docker-compose -f /opt/app/site/docker-compose.prod.yml exec db psql -U postgres -d personal_website -c "SELECT COUNT(*) FROM posts;"
+   docker-compose -f /opt/app/site/docker-compose.prod.yml exec db psql -U postgres -d personal_website -c "SELECT COUNT(*) FROM projects;"
    ```
    
    **What this does:** Counts records in your tables. You should see numbers matching your development database.
@@ -1204,12 +1221,12 @@ cd /opt/app
 1. **Restart the application to ensure it picks up the database:**
    ```bash
    cd /opt/app/site
-   docker compose -f docker-compose.prod.yml restart app
+   docker-compose -f docker-compose.prod.yml restart app
    ```
 
 2. **Check application logs:**
    ```bash
-   docker compose -f docker-compose.prod.yml logs app | tail -30
+   docker-compose -f docker-compose.prod.yml logs app | tail -30
    ```
    
    **What to look for:** Should see successful database connections, no errors.
@@ -1476,8 +1493,8 @@ sudo systemctl enable --now cloudflared
 4. **Rebuild and restart the containers:**
    ```bash
    cd /opt/app/site
-   docker compose -f docker-compose.prod.yml build
-   docker compose -f docker-compose.prod.yml up -d
+   docker-compose -f docker-compose.prod.yml build
+   docker-compose -f docker-compose.prod.yml up -d
    ```
    
    **What this does:**
@@ -1488,8 +1505,8 @@ sudo systemctl enable --now cloudflared
 
 5. **Verify the update worked:**
    ```bash
-   docker compose -f docker-compose.prod.yml ps
-   docker compose -f docker-compose.prod.yml logs app | tail -20
+   docker-compose -f docker-compose.prod.yml ps
+   docker-compose -f docker-compose.prod.yml logs app | tail -20
    ```
    
    **What to check:**
@@ -1517,15 +1534,15 @@ crontab -e
    - Scroll to the bottom of the file
    - Add this line:
 ```bash
-   */30 * * * * cd /opt/app/site && git pull && cd /opt/app/site && docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up -d >> /var/log/auto-update.log 2>&1
+   */30 * * * * cd /opt/app/site && git pull && cd /opt/app/site && docker-compose -f docker-compose.prod.yml build && docker-compose -f docker-compose.prod.yml up -d >> /var/log/auto-update.log 2>&1
    ```
    
    **Breaking this down:**
    - `*/30 * * * *`: Run every 30 minutes
    - `cd /opt/app/site`: Go to app directory
    - `git pull`: Get latest code
-   - `docker compose build`: Rebuild containers
-   - `docker compose up -d`: Restart with new code
+   - `docker-compose build`: Rebuild containers
+   - `docker-compose up -d`: Restart with new code
    - `>> /var/log/auto-update.log 2>&1`: Save output to log file
 
 4. **Save and exit:**
@@ -1548,7 +1565,7 @@ crontab -e
 
 **Alternative: Less aggressive auto-update (once per day at 2 AM):**
 ```bash
-0 2 * * * cd /opt/app/site && git pull && cd /opt/app/site && docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up -d >> /var/log/auto-update.log 2>&1
+0 2 * * * cd /opt/app/site && git pull && cd /opt/app/site && docker-compose -f docker-compose.prod.yml build && docker-compose -f docker-compose.prod.yml up -d >> /var/log/auto-update.log 2>&1
 ```
 
 ### Step 9.3: Database Backups (Production)
@@ -1571,7 +1588,7 @@ crontab -e
    
    # Database backup
    cd /opt/app/site
-   docker compose -f docker-compose.prod.yml exec -T db pg_dump -U postgres personal_website | gzip > $BACKUP_DIR/database_$BACKUP_DATE.sql.gz
+   docker-compose -f docker-compose.prod.yml exec -T db pg_dump -U postgres personal_website | gzip > $BACKUP_DIR/database_$BACKUP_DATE.sql.gz
    
    # Content backup (uploads, images)
    tar -czf $BACKUP_DIR/content_$BACKUP_DATE.tar.gz -C /opt/app/site public/uploads public/images 2>/dev/null || true
@@ -1658,8 +1675,8 @@ chmod 600 .env.production
    sudo apt update && sudo apt upgrade -y
    
    # Update Docker images monthly
-   docker compose -f /opt/app/site/docker-compose.prod.yml pull
-   docker compose -f /opt/app/site/docker-compose.prod.yml up -d
+   docker-compose -f /opt/app/site/docker-compose.prod.yml pull
+   docker-compose -f /opt/app/site/docker-compose.prod.yml up -d
    ```
 
 **Troubleshooting:**
@@ -1828,7 +1845,7 @@ curl -I https://cloudflare.com
 - [ ] Router port forwarding is disabled
 - [ ] Router UPnP is disabled
 - [ ] Cloudflare Tunnel is running: `sudo systemctl status cloudflared`
-- [ ] Docker containers are all running: `docker compose -f docker-compose.prod.yml ps`
+- [ ] Docker containers are all running: `docker-compose -f docker-compose.prod.yml ps`
 - [ ] Database backups are scheduled and working
 
 **Troubleshooting:**
@@ -1884,7 +1901,7 @@ Congratulations! You now have a fully isolated, securely managed self-hosted Nex
 If you encounter issues:
 1. Check the troubleshooting sections in each step
 2. Review error messages carefully - they often tell you exactly what's wrong
-3. Check logs: `docker compose logs`, `sudo journalctl -u cloudflared`, etc.
+3. Check logs: `docker-compose logs`, `sudo journalctl -u cloudflared`, etc.
 4. Verify network connectivity and isolation with the tests in Step 10
 5. Consult the official documentation for each tool (Proxmox, Docker, Cloudflare, etc.)
 

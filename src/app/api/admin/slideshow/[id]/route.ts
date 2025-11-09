@@ -3,10 +3,11 @@ import { SlideshowService } from '@/lib/services/slideshow-service';
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
     
     if (!id) {
       return NextResponse.json({ error: 'Image ID is required' }, { status: 400 });

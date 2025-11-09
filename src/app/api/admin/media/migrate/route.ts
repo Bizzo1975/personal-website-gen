@@ -18,8 +18,8 @@ export async function POST(request: NextRequest) {
 
     console.log('🔧 Starting Media Library Migration...');
 
-    const steps = [];
-    const errors = [];
+    const steps: string[] = [];
+    const errors: string[] = [];
 
     try {
       // Step 1: Add columns to media_files table for advanced features
@@ -164,7 +164,8 @@ export async function POST(request: NextRequest) {
 
     } catch (stepError) {
       console.error('Migration step failed:', stepError);
-      errors.push(`Migration step failed: ${stepError.message}`);
+      const errorMessage = stepError instanceof Error ? stepError.message : 'Unknown error';
+      errors.push(`Migration step failed: ${errorMessage}`);
       
       return NextResponse.json({
         success: false,

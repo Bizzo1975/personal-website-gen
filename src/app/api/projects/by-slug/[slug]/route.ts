@@ -5,9 +5,10 @@ import { ProjectService } from '@/lib/services/project-service';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const { searchParams } = new URL(request.url);
     const isPreview = searchParams.get('preview') === 'true';
     
@@ -22,7 +23,7 @@ export async function GET(
       }
     }
     
-    const slug = params.slug;
+    const slug = resolvedParams.slug;
     
     // Get project by slug - use preview method if in preview mode
     const project = isPreview 

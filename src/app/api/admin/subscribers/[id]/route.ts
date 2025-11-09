@@ -4,8 +4,9 @@ import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
 
 // GET - Get individual subscriber details
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const subscriberId = params.id;
+    const subscriberId = resolvedParams.id;
 
     // Get subscriber with analytics
     const subscriberResult = await query(
@@ -103,8 +104,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PUT - Update subscriber
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -121,7 +123,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const subscriberId = params.id;
+    const subscriberId = resolvedParams.id;
     const body = await request.json();
     
     const {
@@ -293,8 +295,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE - Delete subscriber (with GDPR compliance)
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -311,7 +314,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const subscriberId = params.id;
+    const subscriberId = resolvedParams.id;
     const { searchParams } = new URL(request.url);
     const permanent = searchParams.get('permanent') === 'true';
 

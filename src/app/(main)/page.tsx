@@ -8,14 +8,33 @@ import { serializeMarkdown } from '@/lib/mdx';
 export default async function Page() {
   // Fetch the home page content from database
   console.log('🔄 Fetching Home page content...');
-  const page = await getPageBySlug('home');
+  let page = null;
+  try {
+    page = await getPageBySlug('home');
+  } catch (error) {
+    console.warn('Failed to fetch home page from database:', error);
+  }
   
-  // Fetch featured projects and recent posts
+  // Fetch featured projects and recent posts with error handling
   console.log('🔄 Fetching featured projects and recent posts...');
-  const [featuredProjects, publishedPosts] = await Promise.all([
-    ProjectService.getFeaturedProjects(),
-    PostService.getAllPosts()
-  ]);
+  let featuredProjects: Awaited<ReturnType<typeof ProjectService.getFeaturedProjects>> = [];
+  let publishedPosts: Awaited<ReturnType<typeof PostService.getAllPosts>> = [];
+  
+  try {
+    [featuredProjects, publishedPosts] = await Promise.all([
+      ProjectService.getFeaturedProjects().catch(err => {
+        console.warn('Failed to fetch featured projects:', err);
+        return [];
+      }),
+      PostService.getAllPosts().catch(err => {
+        console.warn('Failed to fetch posts:', err);
+        return [];
+      })
+    ]);
+  } catch (error) {
+    console.warn('Failed to fetch data during build:', error);
+    // Continue with empty arrays if database is not available
+  }
   
   // Transform projects to match HomePage interface
   const projects = featuredProjects.map(project => ({

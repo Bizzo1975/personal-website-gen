@@ -14,7 +14,7 @@ export class EmailNotificationService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: false,
@@ -202,6 +202,25 @@ export class EmailNotificationService {
     } catch (error) {
       console.error('❌ Failed to send rejection notification:', error);
       throw new Error('Failed to send rejection notification email');
+    }
+  }
+
+  /**
+   * Send a generic email
+   */
+  async sendEmail(to: string, subject: string, html: string): Promise<void> {
+    try {
+      await this.transporter.sendMail({
+        from: process.env.SMTP_USER,
+        to: to,
+        subject: subject,
+        html: html,
+      });
+
+      console.log(`✅ Email sent successfully to ${to}`);
+    } catch (error) {
+      console.error('❌ Failed to send email:', error);
+      throw new Error('Failed to send email');
     }
   }
 } 

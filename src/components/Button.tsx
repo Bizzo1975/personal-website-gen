@@ -16,6 +16,7 @@ type ButtonProps = {
   fullWidth?: boolean;
   icon?: React.ReactNode;
   iconPosition?: 'left' | 'right';
+  title?: string;
 };
 
 const Button: React.FC<ButtonProps> = ({
@@ -31,6 +32,7 @@ const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   icon,
   iconPosition = 'left',
+  title,
 }) => {
   const baseClasses = 'inline-flex items-center justify-center font-medium transition-all duration-200 ease-in-out rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900';
   
@@ -90,6 +92,7 @@ const Button: React.FC<ButtonProps> = ({
       className={classes}
       disabled={disabled || isLoading}
       aria-disabled={disabled || isLoading}
+      title={title}
     >
       {content}
     </button>

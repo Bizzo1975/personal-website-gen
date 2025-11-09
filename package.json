@@ -10,7 +10,6 @@
     "dev": "next dev",
     "dev:docker": "next dev -H 0.0.0.0 -p 3006",
     "dev:mock": "rimraf .next && cross-env MOCK_DATA=true next dev -p 3006",
-    "dev:windows": "rimraf .next && next dev -p 3006",
     "dev:compose": "docker-compose up --build",
     "dev:docker:detached": "docker-compose up --build -d",
     "docker:stop": "docker-compose down",
@@ -21,8 +20,8 @@
     "download:images": "node scripts/setup/download-real-images.js",
     "setup:all": "npm run download:images && npm run setup:images",
     "build": "next build",
+    "postinstall": "npx update-browserslist-db@latest || true",
     "start": "next start -p 3006",
-    "start:windows": "next start -p 3006",
     "lint": "next lint",
     "cypress": "cd testing && cypress open",
     "cypress:headless": "cd testing && cypress run",
@@ -117,6 +116,8 @@
   "license": "ISC",
   "overrides": {
     "cookie": "^0.7.0",
-    "quill": "^2.0.0"
+    "quill": "^2.0.0",
+    "glob": "^10.3.10",
+    "rimraf": "^5.0.5"
   }
 }

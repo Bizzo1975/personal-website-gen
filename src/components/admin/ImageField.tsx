@@ -24,6 +24,7 @@ interface ImageFieldProps {
   contentType?: 'post' | 'project' | 'newsletter' | 'general';
   placeholder?: string;
   helpText?: string;
+  error?: string;
   required?: boolean;
   className?: string;
   allowExternalUrl?: boolean;
@@ -37,6 +38,7 @@ const ImageField: React.FC<ImageFieldProps> = ({
   contentType = 'general',
   placeholder = 'No image selected',
   helpText,
+  error,
   required = false,
   className = '',
   allowExternalUrl = true,
@@ -323,7 +325,12 @@ const ImageField: React.FC<ImageFieldProps> = ({
         )}
       </div>
       
-      {helpText && (
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      )}
+      {helpText && !error && (
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {helpText}
         </p>
@@ -349,7 +356,7 @@ const ImageField: React.FC<ImageFieldProps> = ({
           }}
           onConfirm={handleResizeConfirm}
           originalFile={fileToResize!}
-          resizeType={contentType === 'project' ? 'card' : 'general'}
+          resizeType={contentType === 'project' ? 'card' : 'card'}
         />
       )}
     </div>

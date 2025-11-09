@@ -300,8 +300,11 @@ export default function ProjectPage() {
                                        cleanedContent.includes('- ');
               
               // Convert markdown to HTML if needed
-              const renderedContent = hasMarkdownSyntax && cleanedContent.trim()
+              const markedResult = hasMarkdownSyntax && cleanedContent.trim()
                 ? marked(cleanedContent) 
+                : null;
+              const renderedContent: string = markedResult 
+                ? (typeof markedResult === 'string' ? markedResult : String(markedResult))
                 : cleanedContent.trim();
               
               // Only render if there's actual content left after cleaning

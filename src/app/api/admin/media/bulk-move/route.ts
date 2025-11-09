@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const results = [];
-    const errors = [];
+    const results: any[] = [];
+    const errors: string[] = [];
 
     for (const fileId of fileIds) {
       try {

@@ -23,10 +23,7 @@ A modern, responsive personal website built with Next.js, TypeScript, and Tailwi
 
 3. **Start development:**
    ```bash
-   # Windows
-   scripts/deployment/startup-all.bat
-   
-   # Linux/macOS
+   # Linux/Ubuntu/macOS
    ./scripts/deployment/startup-all.sh
    ```
 

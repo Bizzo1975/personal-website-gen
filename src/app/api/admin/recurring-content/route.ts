@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN newsletter_campaigns n ON r.template_content_id = n.id AND r.content_type = 'newsletter'
     `;
 
-    const params = [];
+    const params: any[] = [];
     if (activeOnly) {
       sql += ' WHERE r.is_active = true';
     }

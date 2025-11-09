@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth-config';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,7 +13,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const contentId = params.id;
+    const resolvedParams = await params;
+    const contentId = resolvedParams.id;
     
     // Mock content data - in real app, fetch from database
     const mockContent = {
@@ -74,7 +75,7 @@ Next.js continues to be an excellent choice for modern web development, offering
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -83,7 +84,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const contentId = params.id;
+    const resolvedParams = await params;
+    const contentId = resolvedParams.id;
     const updateData = await request.json();
 
     // In a real app, you would:
@@ -116,7 +118,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -125,7 +127,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const contentId = params.id;
+    const resolvedParams = await params;
+    const contentId = resolvedParams.id;
 
     // In a real app, you would:
     // 1. Check if user has permission to delete

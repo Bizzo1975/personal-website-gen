@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
       userId
     });
 
-    const uploadResults = [];
-    const errors = [];
+    const uploadResults: any[] = [];
+    const errors: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];

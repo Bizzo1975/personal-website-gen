@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth-config';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,7 +13,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const contentId = params.id;
+    const resolvedParams = await params;
+    const contentId = resolvedParams.id;
     const { status } = await request.json();
 
     if (!status || !['draft', 'review', 'approved', 'published'].includes(status)) {

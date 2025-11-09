@@ -15,6 +15,7 @@ export interface Post {
   scheduled_publish_at?: Date;
   published_at?: Date;
   published: boolean;
+  featured?: boolean;
   created_by?: string;
   created_at: Date;
   updated_at: Date;
@@ -56,4 +57,5 @@ export interface UpdatePostData {
   status?: 'draft' | 'scheduled' | 'published';
   scheduled_publish_at?: Date;
   published?: boolean;
+  featured?: boolean;
 } 

@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { withTimeout } from '@/lib/mdx';
 
 export interface NavbarLink {
   label: string;

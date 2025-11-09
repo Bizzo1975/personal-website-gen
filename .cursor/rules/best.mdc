@@ -1,6 +1,9 @@
 ---
+<<<<<<< Updated upstream
 description: Senior developer guidelines for React, Node.js, TypeScript, and modern web development with best practices
 globs: ["**/*.{js,jsx,ts,tsx,py,html,css}"]
+=======
+>>>>>>> Stashed changes
 alwaysApply: true
 ---
 

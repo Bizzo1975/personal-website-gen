@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         request.status,
         new Date(request.submitted_at).toISOString(),
         request.processed_at ? new Date(request.processed_at).toISOString() : '',
-        request.processedBy || '',
+        request.processed_by || '',
         request.admin_notes || '',
         request.message.replace(/"/g, '""') // Escape quotes in message
       ]);

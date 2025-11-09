@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     
     // Build query conditions
     let whereConditions = [];
-    let queryParams = [];
+    let queryParams: any[] = [];
     let paramIndex = 1;
     
     if (type !== 'all') {

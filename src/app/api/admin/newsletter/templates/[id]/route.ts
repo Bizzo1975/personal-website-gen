@@ -6,9 +6,10 @@ import { query } from '@/lib/db';
 // GET - Fetch single newsletter template
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session || session.user.role !== 'admin') {
@@ -18,7 +19,7 @@ export async function GET(
       );
     }
     
-    const templateId = params.id;
+    const templateId = resolvedParams.id;
     
     const result = await query(
       `SELECT id, name, description, type, html_content, plain_text_content,
@@ -51,9 +52,10 @@ export async function GET(
 // PUT - Update newsletter template
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session || session.user.role !== 'admin') {
@@ -63,7 +65,7 @@ export async function PUT(
       );
     }
     
-    const templateId = params.id;
+    const templateId = resolvedParams.id;
     const body = await request.json();
     
     const {
@@ -158,9 +160,10 @@ export async function PUT(
 // DELETE - Delete newsletter template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session || session.user.role !== 'admin') {
@@ -170,7 +173,7 @@ export async function DELETE(
       );
     }
     
-    const templateId = params.id;
+    const templateId = resolvedParams.id;
     
     // Check if template exists and is not system template
     const templateResult = await query(

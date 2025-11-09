@@ -43,7 +43,7 @@ export const config = {
     uploadDir: process.env.UPLOAD_DIR || './public/uploads',
   },
   
-  // Windows-specific configuration
+  // Platform-specific configuration (cross-platform support)
   platform: {
     isWindows: process.platform === 'win32',
     pathSeparator: process.platform === 'win32' ? '\\' : '/',

@@ -332,7 +332,7 @@ export class SchedulerService {
         isHealthy: false,
         lastRun: null,
         pendingCount: 0,
-        errors: [error.message]
+        errors: [error instanceof Error ? error.message : 'Unknown error']
       };
     }
   }

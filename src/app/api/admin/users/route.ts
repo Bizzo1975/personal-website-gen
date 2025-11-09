@@ -273,7 +273,8 @@ async function createUser(userData: any, adminEmail: string) {
         ]
       );
     } catch (activityError) {
-      console.warn('Could not log user activity:', activityError.message);
+      const errorMessage = activityError instanceof Error ? activityError.message : 'Unknown error';
+      console.warn('Could not log user activity:', errorMessage);
     }
 
     return NextResponse.json({

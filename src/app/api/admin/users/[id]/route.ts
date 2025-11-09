@@ -8,9 +8,10 @@ import bcrypt from 'bcryptjs';
 // GET /api/admin/users/[id] - Get single user
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -23,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
     }
 
-    const userId = params.id;
+    const userId = resolvedParams.id;
     
     // Get user with access levels
     const userQuery = `
@@ -114,9 +115,10 @@ export async function GET(
 // PUT /api/admin/users/[id] - Update user
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -129,7 +131,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
     }
 
-    const userId = params.id;
+    const userId = resolvedParams.id;
     const updateData = await request.json();
     const { name, email, role, status, password, permissions, hasProfessionalAccess, hasPersonalAccess } = updateData;
 
@@ -251,7 +253,8 @@ export async function PUT(
           );
         }
       } catch (err) {
-        console.warn('Could not log role change:', err.message);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.warn('Could not log role change:', errorMessage);
       }
     }
 
@@ -282,7 +285,8 @@ export async function PUT(
         );
       }
     } catch (err) {
-      console.warn('Could not log user activity:', err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.warn('Could not log user activity:', errorMessage);
     }
 
     // Verify the update by re-querying the user
@@ -294,7 +298,8 @@ export async function PUT(
       console.log('Status in verification:', verifiedUser.status);
       console.log('Status matches expected:', verifiedUser.status === status);
     } catch (err) {
-      console.warn('Could not verify user update:', err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.warn('Could not verify user update:', errorMessage);
     }
 
     return NextResponse.json({
@@ -312,9 +317,10 @@ export async function PUT(
 // DELETE /api/admin/users/[id] - Delete user
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -327,7 +333,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
     }
 
-    const userId = params.id;
+    const userId = resolvedParams.id;
     
     // Check if user exists
     const existingUser = await query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -360,7 +366,8 @@ export async function DELETE(
         );
       }
     } catch (err) {
-      console.warn('Could not log user activity:', err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.warn('Could not log user activity:', errorMessage);
     }
 
     // Delete user (CASCADE will handle related records)

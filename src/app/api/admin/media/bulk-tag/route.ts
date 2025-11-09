@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
       userId: session.user.email
     });
 
-    const results = [];
-    const errors = [];
+    const results: any[] = [];
+    const errors: string[] = [];
 
     for (const fileId of fileIds) {
       try {

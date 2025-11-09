@@ -28,8 +28,8 @@ export async function DELETE(request: NextRequest) {
       userId: session.user.email
     });
 
-    const results = [];
-    const errors = [];
+    const results: any[] = [];
+    const errors: string[] = [];
 
     for (const fileId of fileIds) {
       try {
@@ -103,8 +103,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid item IDs' }, { status: 400 });
     }
 
-    const deletedItems = [];
-    const errors = [];
+    const deletedItems: any[] = [];
+    const errors: string[] = [];
 
     for (const itemId of itemIds) {
       try {
@@ -123,7 +123,8 @@ export async function POST(request: NextRequest) {
         
       } catch (error) {
         console.error(`Failed to delete item ${itemId}:`, error);
-        errors.push({ itemId, error: 'Failed to delete file' });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`Item ${itemId}: ${errorMessage}`);
       }
     }
 

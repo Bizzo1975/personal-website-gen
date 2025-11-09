@@ -6,10 +6,11 @@ import { getPageById, updatePage, deletePage } from '@/lib/services/page-service
 // GET: Fetch a specific page by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
     console.log(`🔍 API: Getting page by ID: ${id}`);
     
     const page = await getPageById(id);
@@ -34,7 +35,7 @@ export async function GET(
 // PUT: Update an existing page
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -47,7 +48,8 @@ export async function PUT(
       );
     }
     
-    const id = params.id;
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
     console.log(`✏️ API: Updating page with ID: ${id}`);
     
     // First check if the page exists
@@ -129,7 +131,7 @@ export async function PUT(
 // DELETE: Delete a page
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -142,7 +144,8 @@ export async function DELETE(
       );
     }
     
-    const id = params.id;
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
     console.log(`🗑️ API: Deleting page with ID: ${id}`);
     
     // Check if page exists before deletion

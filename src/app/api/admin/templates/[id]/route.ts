@@ -4,16 +4,17 @@ import { authOptions } from '@/lib/auth-config';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const templateId = params.id;
+    const templateId = resolvedParams.id;
     
     // Mock template data - in real app, fetch from database
     const mockTemplate = {
@@ -66,16 +67,17 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const templateId = params.id;
+    const templateId = resolvedParams.id;
     const updateData = await request.json();
 
     // In a real app, you would:
@@ -107,16 +109,17 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const templateId = params.id;
+    const templateId = resolvedParams.id;
 
     // In a real app, you would:
     // 1. Check if user has permission to delete templates

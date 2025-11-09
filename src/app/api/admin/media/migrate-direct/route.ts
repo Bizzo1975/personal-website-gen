@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
 
     console.log('🔧 Starting Direct Media Library Migration...');
 
-    const steps = [];
-    const errors = [];
+    const steps: string[] = [];
+    const errors: string[] = [];
 
     try {
       // Step 1: Check if media_files table exists
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         steps.push('✅ Added new columns to media_files table');
       } catch (error) {
         console.error('Error adding columns:', error);
-        errors.push(`Failed to add columns: ${error.message}`);
+        errors.push(`Failed to add columns: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Step 2: Create media_folders table if it doesn't exist
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         steps.push('✅ Created media_folders table');
       } catch (error) {
         console.error('Error creating folders table:', error);
-        errors.push(`Failed to create folders table: ${error.message}`);
+        errors.push(`Failed to create folders table: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Step 3: Create indexes for better performance
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         steps.push('✅ Created performance indexes');
       } catch (error) {
         console.error('Error creating indexes:', error);
-        errors.push(`Failed to create indexes: ${error.message}`);
+        errors.push(`Failed to create indexes: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Step 4: Add default folders
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
         steps.push('✅ Added default folders');
       } catch (error) {
         console.error('Error adding folders:', error);
-        errors.push(`Failed to add folders: ${error.message}`);
+        errors.push(`Failed to add folders: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Step 5: Update existing files to have proper structure
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         steps.push(`✅ Updated ${updateResult.rowCount} existing files`);
       } catch (error) {
         console.error('Error updating files:', error);
-        errors.push(`Failed to update files: ${error.message}`);
+        errors.push(`Failed to update files: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Step 6: Add trigger function for automatic updated_at timestamp
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
         steps.push('✅ Created automatic timestamp triggers');
       } catch (error) {
         console.error('Error creating triggers:', error);
-        errors.push(`Failed to create triggers: ${error.message}`);
+        errors.push(`Failed to create triggers: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Step 7: Create convenience view
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
         steps.push('✅ Created media files view');
       } catch (error) {
         console.error('Error creating view:', error);
-        errors.push(`Failed to create view: ${error.message}`);
+        errors.push(`Failed to create view: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Step 8: Add comments
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
         steps.push('✅ Added table comments');
       } catch (error) {
         console.error('Error adding comments:', error);
-        errors.push(`Failed to add comments: ${error.message}`);
+        errors.push(`Failed to add comments: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Get summary stats
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
 
     } catch (stepError) {
       console.error('Migration step failed:', stepError);
-      errors.push(`Migration step failed: ${stepError.message}`);
+      errors.push(`Migration step failed: ${stepError instanceof Error ? stepError.message : 'Unknown error'}`);
       
       return NextResponse.json({
         success: false,

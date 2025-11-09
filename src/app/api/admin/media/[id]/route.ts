@@ -13,9 +13,10 @@ import { MediaService } from '@/lib/services/media-service';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
@@ -27,7 +28,7 @@ export async function GET(
               created_at, updated_at, created_by
        FROM media_files 
        WHERE id = $1`,
-      [params.id]
+      [resolvedParams.id]
     );
 
     if (result.rows.length === 0) {
@@ -47,9 +48,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
@@ -63,7 +65,7 @@ export async function PUT(
        SET alt_text = $1, original_name = $2, updated_at = CURRENT_TIMESTAMP
        WHERE id = $3
        RETURNING *`,
-      [altText, filename, params.id]
+      [altText, filename, resolvedParams.id]
     );
 
     if (result.rows.length === 0) {
@@ -83,16 +85,17 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const deleteResult = await MediaService.deleteMediaFile(params.id);
+    const deleteResult = await MediaService.deleteMediaFile(resolvedParams.id);
 
     if (!deleteResult) {
       return NextResponse.json(

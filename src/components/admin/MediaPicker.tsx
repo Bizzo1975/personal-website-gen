@@ -420,7 +420,7 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
           }}
           onConfirm={handleResizeConfirm}
           originalFile={fileToResize}
-          resizeType={contentType === 'project' ? 'card' : 'general'}
+          resizeType={contentType === 'project' ? 'card' : 'card'}
         />
       )}
     </div>

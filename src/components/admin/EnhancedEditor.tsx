@@ -17,6 +17,7 @@ interface EnhancedEditorProps {
   onImageUpload?: (file: File) => Promise<string>;
   id?: string;
   ariaLabel?: string;
+  toolbar?: 'basic' | 'full' | 'minimal';
 }
 
 const EnhancedEditor: React.FC<EnhancedEditorProps> = ({
@@ -29,7 +30,8 @@ const EnhancedEditor: React.FC<EnhancedEditorProps> = ({
   maxHeight = '600px',
   onImageUpload,
   id = 'enhanced-editor',
-  ariaLabel = 'Rich text editor'
+  ariaLabel = 'Rich text editor',
+  toolbar = 'full'
 }) => {
   const { theme } = useTheme();
   const [editorValue, setEditorValue] = useState(value);

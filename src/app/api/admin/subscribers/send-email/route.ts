@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     } else if (segment) {
       // Segment-based targeting
       let segmentQuery = '';
-      let segmentParams = [];
+      let segmentParams: any[] = [];
       
       switch (segment) {
         case 'all':
@@ -211,9 +211,10 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error(`Failed to send email to ${subscriber.email}:`, error);
         failed_count++;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         failures.push({
           email: subscriber.email,
-          error: error.message
+          error: errorMessage
         });
       }
     }

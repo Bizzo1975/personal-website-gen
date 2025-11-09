@@ -48,7 +48,7 @@ interface BlogPost {
   id: string;
   title: string;
   slug: string;
-  content: string;
+  content: string; // Explicitly string, never Promise
   excerpt: string;
   publishedAt: string;
   updatedAt?: string;
@@ -110,7 +110,7 @@ export default function BlogPostPage() {
         id: postData.id,
         title: postData.title,
         slug: postData.slug,
-        content: postData.content,
+        content: typeof postData.content === 'string' ? postData.content : String(postData.content || ''),
         excerpt: postData.excerpt || '',
         publishedAt: postData.date || postData.createdAt,
         updatedAt: postData.updatedAt,
@@ -296,38 +296,46 @@ export default function BlogPostPage() {
         {/* Content */}
         <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
           {(() => {
-            if (!post.content || !post.content.trim()) {
+            // Ensure content is a string (not a Promise) - explicit type narrowing
+            if (!post || !post.content) {
+              return <p>No content available.</p>;
+            }
+            // Type assertion to ensure TypeScript knows it's a string
+            const content = String(post.content) as string;
+            
+            if (!content || !content.trim()) {
               return <p>No content available.</p>;
             }
             
             // Check if content is clearly already HTML (has complete HTML tags like <p>, <div>, etc.)
             // Simple regex won't catch markdown headings like # which aren't HTML
-            const hasCompleteHTMLTags = /<[a-z]+[^>]*>[\s\S]*<\/[a-z]+>/i.test(post.content);
-            const startsWithHTMLTag = /^\s*<[a-z]+/i.test(post.content);
+            const hasCompleteHTMLTags = /<[a-z]+[^>]*>[\s\S]*<\/[a-z]+>/i.test(content);
+            const startsWithHTMLTag = /^\s*<[a-z]+/i.test(content);
             const isAlreadyHTML = hasCompleteHTMLTags || startsWithHTMLTag;
             
             let renderedContent: string;
             
             if (isAlreadyHTML) {
               // Content is already HTML, use as-is
-              renderedContent = post.content;
+              renderedContent = content;
             } else {
               // Content is markdown, always parse it
               try {
-                // Use marked() directly like MarkdownEditor does
-                renderedContent = marked(post.content);
+                // Use marked() directly like MarkdownEditor does - ensure result is string
+                const markedResult = marked(content) as string;
+                renderedContent = markedResult;
               } catch (error) {
                 console.error('Error parsing markdown:', error);
-                console.error('Content sample:', post.content.substring(0, 200));
+                console.error('Content sample:', content.substring(0, 200));
                 // Fallback: treat as plain text with paragraphs
-                const paragraphs = post.content
+                const paragraphs = content
                   .split(/\n\s*\n/)
                   .filter(p => p.trim())
                   .map(p => p.trim().replace(/\n/g, ' '));
                 
                 renderedContent = paragraphs.length > 0
                   ? paragraphs.map(p => `<p>${p}</p>`).join('')
-                  : `<p>${post.content.replace(/\n/g, ' ')}</p>`;
+                  : `<p>${content.replace(/\n/g, ' ')}</p>`;
               }
             }
             

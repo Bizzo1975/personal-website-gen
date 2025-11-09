@@ -6,7 +6,7 @@ import { query } from '@/lib/db';
 // GET - Fetch individual newsletter campaign
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,8 @@ export async function GET(
       );
     }
     
-    const { id } = params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
     
     // Get campaign with template information
     const result = await query(
@@ -81,7 +82,7 @@ export async function GET(
 // PUT - Update newsletter campaign
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -93,7 +94,8 @@ export async function PUT(
       );
     }
     
-    const { id } = params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
     const body = await request.json();
     const {
       title,
@@ -208,7 +210,7 @@ export async function PUT(
 // DELETE - Delete newsletter campaign
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -220,7 +222,8 @@ export async function DELETE(
       );
     }
     
-    const { id } = params;
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
     
     // Check if campaign exists and can be deleted
     const campaignResult = await query(

@@ -193,11 +193,21 @@ export default function SubscriberManagementPage() {
   const fetchSubscribers = async () => {
     try {
       setLoading(true);
-      const queryParams = new URLSearchParams({
+      // Convert filters to URLSearchParams-compatible format (all values must be strings)
+      const params: Record<string, string> = {
         page: currentPage.toString(),
         limit: pageSize.toString(),
-        ...filters
-      });
+        search: filters.search || '',
+        status: filters.status || 'all',
+        source: filters.source || '',
+        date_range: filters.date_range || '30d',
+        interests: Array.isArray(filters.interests) ? filters.interests.join(',') : '',
+        gdpr_consent: filters.gdpr_consent || 'all',
+        engagement: filters.engagement || 'all',
+        location: filters.location || ''
+      };
+      
+      const queryParams = new URLSearchParams(params);
       
       const response = await fetch(`/api/admin/subscribers?${queryParams}`);
       if (!response.ok) throw new Error('Failed to fetch subscribers');
@@ -451,7 +461,12 @@ export default function SubscriberManagementPage() {
           <OverviewTab 
             analytics={analytics} 
             loading={loading} 
-            onNavigate={setActiveTab}
+            onNavigate={(tab: string) => {
+              const validTabs: ('overview' | 'subscribers' | 'analytics' | 'campaigns' | 'privacy')[] = ['overview', 'subscribers', 'analytics', 'campaigns', 'privacy'];
+              if (validTabs.includes(tab as any)) {
+                setActiveTab(tab as 'overview' | 'subscribers' | 'analytics' | 'campaigns' | 'privacy');
+              }
+            }}
           />
         )}
 
@@ -811,6 +826,7 @@ const SubscribersTab = ({
           <CardBody className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <AdminSelect
+                id="filter-status"
                 label="Status"
                 value={filters.status}
                 onChange={(e) => onFilterChange('status', e.target.value)}
@@ -824,16 +840,18 @@ const SubscribersTab = ({
               />
 
               <AdminSelect
+                id="filter-source"
                 label="Source"
                 value={filters.source}
                 onChange={(e) => onFilterChange('source', e.target.value)}
                 options={[
                   { value: '', label: 'All Sources' },
-                  ...availableSources.map(source => ({ value: source, label: source }))
+                  ...availableSources.map((source: string) => ({ value: source, label: source }))
                 ]}
               />
 
               <AdminSelect
+                id="filter-date-range"
                 label="Date Range"
                 value={filters.date_range}
                 onChange={(e) => onFilterChange('date_range', e.target.value)}
@@ -847,6 +865,7 @@ const SubscribersTab = ({
               />
 
               <AdminSelect
+                id="filter-gdpr-consent"
                 label="GDPR Consent"
                 value={filters.gdpr_consent}
                 onChange={(e) => onFilterChange('gdpr_consent', e.target.value)}
@@ -859,6 +878,7 @@ const SubscribersTab = ({
               />
 
               <AdminSelect
+                id="filter-engagement"
                 label="Engagement"
                 value={filters.engagement}
                 onChange={(e) => onFilterChange('engagement', e.target.value)}
@@ -872,12 +892,13 @@ const SubscribersTab = ({
               />
 
               <AdminSelect
+                id="filter-location"
                 label="Location"
                 value={filters.location}
                 onChange={(e) => onFilterChange('location', e.target.value)}
                 options={[
                   { value: '', label: 'All Locations' },
-                  ...availableLocations.map(location => ({ value: location, label: location }))
+                  ...availableLocations.map((location: string) => ({ value: location, label: location }))
                 ]}
               />
             </div>
@@ -944,7 +965,7 @@ const SubscribersTab = ({
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {subscribers.map((subscriber) => (
+                {subscribers.map((subscriber: Subscriber) => (
                   <tr key={subscriber.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -1042,7 +1063,7 @@ const SubscribersTab = ({
       {/* Card View */}
       {!loading && viewMode === 'card' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {subscribers.map((subscriber) => (
+          {subscribers.map((subscriber: Subscriber) => (
             <Card key={subscriber.id} className="hover:shadow-lg transition-shadow">
               <CardBody className="p-6">
                 <div className="flex items-start justify-between">
@@ -1252,6 +1273,8 @@ const AnalyticsTab = ({ analytics, loading, subscribers }: {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Analytics Dashboard</h3>
         <AdminSelect
+          id="analytics-time-range"
+          label="Time Range"
           value={timeRange}
           onChange={(e) => setTimeRange(e.target.value)}
           options={[
@@ -1497,6 +1520,7 @@ const CampaignsTab = ({ subscribers, onSendEmail }: {
         </CardHeader>
         <CardBody className="space-y-4">
           <AdminSelect
+            id="campaign-target-segment"
             label="Target Segment"
             value={selectedSegment}
             onChange={(e) => setSelectedSegment(e.target.value)}
@@ -1507,6 +1531,7 @@ const CampaignsTab = ({ subscribers, onSendEmail }: {
           />
 
           <AdminInput
+            id="campaign-subject"
             label="Subject Line"
             value={campaignData.subject}
             onChange={(e) => setCampaignData(prev => ({ ...prev, subject: e.target.value }))}
@@ -1514,6 +1539,7 @@ const CampaignsTab = ({ subscribers, onSendEmail }: {
           />
 
           <AdminTextarea
+            id="campaign-content"
             label="Email Content"
             value={campaignData.content}
             onChange={(e) => setCampaignData(prev => ({ ...prev, content: e.target.value }))}
@@ -1705,6 +1731,8 @@ const PrivacyTab = ({ subscribers, analytics, onViewDetails }: {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Subscriber Compliance Status</h3>
             <AdminSelect
+              id="privacy-compliance-filter"
+              label="Compliance Status"
               value={selectedCompliance}
               onChange={(e) => setSelectedCompliance(e.target.value)}
               options={complianceFilters.map(filter => ({
@@ -1716,7 +1744,7 @@ const PrivacyTab = ({ subscribers, analytics, onViewDetails }: {
         </CardHeader>
         <CardBody>
           <div className="space-y-4">
-            {filteredSubscribers.slice(0, 10).map((subscriber) => (
+            {filteredSubscribers.slice(0, 10).map((subscriber: Subscriber) => (
               <div key={subscriber.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <div className="flex-shrink-0 h-10 w-10">

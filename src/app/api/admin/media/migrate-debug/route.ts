@@ -18,8 +18,8 @@ export async function POST(request: NextRequest) {
 
     console.log('🔧 Starting Media Library Migration Debug...');
 
-    const steps = [];
-    const errors = [];
+    const steps: string[] = [];
+    const errors: string[] = [];
 
     // Step 1: Check current table structure
     try {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       `);
       steps.push(`✅ Current table has ${tableInfo.rows.length} columns: ${tableInfo.rows.map(r => r.column_name).join(', ')}`);
     } catch (error) {
-      const msg = `❌ Step 1 failed: ${error.message}`;
+      const msg = `❌ Step 1 failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
       console.error(msg);
       errors.push(msg);
       return NextResponse.json({ success: false, message: 'Failed at step 1', steps, errors }, { status: 500 });
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         await query(`ALTER TABLE media_files ADD COLUMN IF NOT EXISTS ${col.name} ${col.type} DEFAULT ${col.default}`);
         steps.push(`✅ Added column ${col.name}`);
       } catch (error) {
-        const msg = `❌ Failed to add column ${col.name}: ${error.message}`;
+        const msg = `❌ Failed to add column ${col.name}: ${error instanceof Error ? error.message : 'Unknown error'}`;
         console.error(msg);
         errors.push(msg);
       }
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       `);
       steps.push('✅ Created media_folders table');
     } catch (error) {
-      const msg = `❌ Failed to create media_folders table: ${error.message}`;
+      const msg = `❌ Failed to create media_folders table: ${error instanceof Error ? error.message : 'Unknown error'}`;
       console.error(msg);
       errors.push(msg);
     }
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         await query(idx.sql);
         steps.push(`✅ Created index ${idx.name}`);
       } catch (error) {
-        const msg = `❌ Failed to create index ${idx.name}: ${error.message}`;
+        const msg = `❌ Failed to create index ${idx.name}: ${error instanceof Error ? error.message : 'Unknown error'}`;
         console.error(msg);
         errors.push(msg);
       }
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       `);
       steps.push(`✅ Final table has ${finalTableInfo.rows.length} columns: ${finalTableInfo.rows.map(r => r.column_name).join(', ')}`);
     } catch (error) {
-      const msg = `❌ Failed to check final structure: ${error.message}`;
+      const msg = `❌ Failed to check final structure: ${error instanceof Error ? error.message : 'Unknown error'}`;
       console.error(msg);
       errors.push(msg);
     }
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       const filesCount = filesResult.rows[0].count;
       steps.push(`✅ Total media files: ${filesCount}`);
     } catch (error) {
-      const msg = `❌ Failed to get file count: ${error.message}`;
+      const msg = `❌ Failed to get file count: ${error instanceof Error ? error.message : 'Unknown error'}`;
       console.error(msg);
       errors.push(msg);
     }

@@ -7,9 +7,10 @@ import { revalidatePath } from 'next/cache';
 // DELETE /api/admin/posts/[id] - Delete a post (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // Check authentication
     const session = await getServerSession(authOptions);
     
@@ -21,7 +22,7 @@ export async function DELETE(
     }
 
     // Delete the post
-    const success = await PostService.deletePost(params.id);
+    const success = await PostService.deletePost(resolvedParams.id);
     
     if (!success) {
       return NextResponse.json(
@@ -48,9 +49,10 @@ export async function DELETE(
 // PUT /api/admin/posts/[id] - Update a post (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // Check authentication
     const session = await getServerSession(authOptions);
     
@@ -79,7 +81,7 @@ export async function PUT(
     };
 
     // Update the post
-    const updatedPost = await PostService.updatePost(params.id, updateData);
+    const updatedPost = await PostService.updatePost(resolvedParams.id, updateData);
 
     // Revalidate blog pages
     revalidatePath('/blog');

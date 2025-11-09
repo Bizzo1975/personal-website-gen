@@ -4,7 +4,7 @@ const nextConfig = {
   
   // Performance optimizations
   experimental: {
-    optimizeCss: true,
+    // optimizeCss: true, // Disabled - requires 'critters' package which is not installed
     optimizePackageImports: ['framer-motion', 'react-icons'],
   },
   

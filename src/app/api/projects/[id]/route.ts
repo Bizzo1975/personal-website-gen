@@ -7,10 +7,11 @@ import { ProjectService } from '@/lib/services/project-service';
 // GET /api/projects/[id] - Get a specific project
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const project = await ProjectService.getProjectById(params.id);
+    const resolvedParams = await params;
+    const project = await ProjectService.getProjectById(resolvedParams.id);
     
     if (!project) {
       return NextResponse.json(
@@ -32,9 +33,10 @@ export async function GET(
 // PUT /api/projects/[id] - Update a specific project
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -55,7 +57,7 @@ export async function PUT(
     }
 
     // Update the project using ProjectService
-    const updatedProject = await ProjectService.updateProject(params.id, {
+    const updatedProject = await ProjectService.updateProject(resolvedParams.id, {
       title: projectData.title,
       slug: projectData.slug,
       description: projectData.description,
@@ -104,9 +106,10 @@ export async function PUT(
 // DELETE /api/projects/[id] - Delete a specific project
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -116,7 +119,7 @@ export async function DELETE(
       );
     }
 
-    const success = await ProjectService.deleteProject(params.id);
+    const success = await ProjectService.deleteProject(resolvedParams.id);
     
     if (!success) {
       return NextResponse.json(

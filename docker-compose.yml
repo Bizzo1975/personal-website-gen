@@ -12,8 +12,6 @@ services:
       - DATABASE_URL=postgresql://postgres:admin123@db:5432/personal_website
       - NEXTAUTH_SECRET=dev-secret-key-change-in-production
       - NEXTAUTH_URL=http://localhost:3006
-      - NEXT_WEBPACK_USEPOLLING=1
-      - WATCHPACK_POLLING=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_URL=redis://redis:6379
@@ -41,7 +39,7 @@ services:
       - "5436:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./config/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     networks:
       - app-network
     restart: unless-stopped

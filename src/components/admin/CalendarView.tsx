@@ -155,12 +155,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   }, [onScheduleContent]);
 
   // Handle event selection (clicking on existing event)
-  const handleSelectEvent = useCallback((event: CalendarEvent) => {
-    onEditContent(event.resource);
+  const handleSelectEvent = useCallback((event: object, e?: React.SyntheticEvent<HTMLElement, Event>) => {
+    const calendarEvent = event as CalendarEvent;
+    onEditContent(calendarEvent.resource);
   }, [onEditContent]);
 
   // Custom event component
-  const EventComponent = ({ event }: { event: CalendarEvent }) => {
+  const EventComponent = (props: { event: object }) => {
+    const event = props.event as CalendarEvent;
     const getEventStyle = (type: string, isRecurring: boolean = false) => {
       const baseStyles = 'text-white text-xs font-medium rounded px-1 py-0.5 flex items-center gap-1';
       const recurringIcon = isRecurring ? <ArrowPathIcon className="h-3 w-3" /> : null;
@@ -318,8 +320,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         <DnDCalendar
           localizer={localizer}
           events={filteredEvents}
-          startAccessor="start"
-          endAccessor="end"
+          startAccessor={(event: object) => (event as CalendarEvent).start}
+          endAccessor={(event: object) => (event as CalendarEvent).end}
           style={{ height: 600 }}
           view={Views.MONTH}
           views={[Views.MONTH]}

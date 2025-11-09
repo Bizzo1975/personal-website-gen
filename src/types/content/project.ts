@@ -1,5 +1,7 @@
-import { SortOrder } from 'mongoose';
 import { ContentPermissions } from './permissions';
+
+// SortOrder type (replaces mongoose SortOrder - this project uses PostgreSQL)
+export type SortOrder = 1 | -1 | 'asc' | 'desc';
 
 /**
  * Represents a project in the portfolio

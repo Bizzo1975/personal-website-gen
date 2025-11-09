@@ -240,6 +240,5 @@ export const NewsletterVariantsShowcase: React.FC = () => {
 export default {
   BlogPostWithFeatures,
   MobileAppLayout,
-  TouchFriendlyActions,
   NewsletterVariantsShowcase
 }; 

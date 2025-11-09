@@ -16,6 +16,7 @@ export interface Post {
   permissionLevel: 'all' | 'professional' | 'personal';
   status?: 'draft' | 'scheduled' | 'published';
   published: boolean;
+  featured?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +35,7 @@ export interface PostData {
   date: Date;
   permissionLevel: 'all' | 'professional' | 'personal';
   published: boolean;
+  featured?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -125,6 +127,7 @@ export class PostService {
         permissionLevel: row.permission_level,
         status: row.status,
         published: row.published,
+        featured: row.featured || false,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       };
@@ -161,6 +164,7 @@ export class PostService {
         permissionLevel: row.permission_level,
         status: row.status,
         published: row.published,
+        featured: row.featured || false,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       };
@@ -211,6 +215,7 @@ export class PostService {
         permissionLevel: row.permission_level,
         status: row.status,
         published: row.published,
+        featured: row.featured || false,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       };
@@ -241,6 +246,7 @@ export class PostService {
         date: row.date,
         permissionLevel: row.permission_level,
         published: row.published,
+        featured: row.featured || false,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       }));
@@ -295,6 +301,7 @@ export class PostService {
         date: row.date,
         permissionLevel: row.permission_level,
         published: row.published,
+        featured: row.featured || false,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       };
@@ -474,6 +481,7 @@ export interface PostData {
   date: Date;
   permissionLevel: 'all' | 'professional' | 'personal';
   published: boolean;
+  featured?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

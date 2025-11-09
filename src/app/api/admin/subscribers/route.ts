@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     // Build WHERE clause
     let whereConditions = [];
-    let queryParams = [];
+    let queryParams: any[] = [];
     let paramIndex = 1;
 
     // Search filter

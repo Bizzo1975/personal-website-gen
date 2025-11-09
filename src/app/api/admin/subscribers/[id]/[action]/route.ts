@@ -4,8 +4,10 @@ import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
 
 // POST - Perform actions on subscribers
-export async function POST(request: NextRequest, { params }: { params: { id: string; action: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string; action: string }> }) {
+  let resolvedParams: { id: string; action: string } | null = null;
   try {
+    resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -22,8 +24,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const subscriberId = params.id;
-    const action = params.action;
+    const subscriberId = resolvedParams.id;
+    const action = resolvedParams.action;
 
     // Verify subscriber exists
     const subscriberResult = await query(
@@ -208,7 +210,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
         // Remove specified tags from interests
         const filteredInterests = (subscriber.interests || []).filter(
-          interest => !remove_tags.includes(interest)
+          (interest: string) => !remove_tags.includes(interest)
         );
 
         await query(
@@ -261,9 +263,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
   } catch (error) {
-    console.error(`Error performing action ${params.action}:`, error);
+    const actionName = resolvedParams?.action || 'unknown';
+    console.error(`Error performing action ${actionName}:`, error);
     return NextResponse.json(
-      { error: `Failed to perform action: ${params.action}` },
+      { error: `Failed to perform action: ${actionName}` },
       { status: 500 }
     );
   }

@@ -21,6 +21,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid action. Must be "approve" or "reject"' }, { status: 400 });
     }
 
+    // Ensure email exists
+    if (!session.user?.email) {
+      return NextResponse.json({ error: 'User email not found' }, { status: 400 });
+    }
+
     const enhancedService = new EnhancedAccessRequestService();
     
     // Get admin user ID

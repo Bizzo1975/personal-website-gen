@@ -7,8 +7,29 @@ set -e  # Exit on any error
 
 # Script configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_DIR="/home/deploy/backups"
-APP_DIR="/home/deploy/personal-website"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Detect environment (development or production)
+if [ -f "$PROJECT_ROOT/docker-compose.prod.yml" ] && docker-compose -f "$PROJECT_ROOT/docker-compose.prod.yml" ps >/dev/null 2>&1; then
+    # Production environment
+    ENVIRONMENT="production"
+    APP_DIR="/home/deploy/personal-website"
+    BACKUP_DIR="/home/deploy/backups"
+    COMPOSE_FILE="docker-compose.prod.yml"
+elif [ -f "$PROJECT_ROOT/docker-compose.yml" ] && docker-compose -f "$PROJECT_ROOT/docker-compose.yml" ps >/dev/null 2>&1; then
+    # Development environment
+    ENVIRONMENT="development"
+    APP_DIR="$PROJECT_ROOT"
+    BACKUP_DIR="$PROJECT_ROOT/backups"
+    COMPOSE_FILE="docker-compose.yml"
+else
+    # Default to project root for development
+    ENVIRONMENT="development"
+    APP_DIR="$PROJECT_ROOT"
+    BACKUP_DIR="$PROJECT_ROOT/backups"
+    COMPOSE_FILE="docker-compose.yml"
+fi
+
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=14
 
@@ -50,9 +71,9 @@ setup_backup_environment() {
     # Create backup directory structure
     mkdir -p "$BACKUP_DIR"/{database,content,config,logs,stats}
     
-    # Ensure proper permissions
-    if [ "$USER" != "deploy" ]; then
-        sudo chown -R deploy:deploy "$BACKUP_DIR"
+    # Ensure proper permissions (only in production)
+    if [ "$ENVIRONMENT" = "production" ] && [ "$USER" != "deploy" ]; then
+        sudo chown -R deploy:deploy "$BACKUP_DIR" 2>/dev/null || true
     fi
     
     print_success "Backup environment ready"
@@ -63,7 +84,7 @@ check_prerequisites() {
     print_status "Checking prerequisites..."
     
     # Check if application is running
-    if ! docker-compose -f "$APP_DIR/docker-compose.prod.yml" ps | grep -q "Up"; then
+    if ! docker-compose -f "$APP_DIR/$COMPOSE_FILE" ps 2>/dev/null | grep -q "Up"; then
         print_warning "Application containers are not running"
         print_warning "Backup will continue but may be incomplete"
     fi
@@ -92,7 +113,7 @@ backup_database() {
     local db_compressed_file="${db_backup_file}.gz"
     
     # Create database backup
-    if docker-compose -f "$APP_DIR/docker-compose.prod.yml" exec -T db \
+    if docker-compose -f "$APP_DIR/$COMPOSE_FILE" exec -T db \
         pg_dump -U postgres --verbose --clean --if-exists personal_website > "$db_backup_file" 2>/dev/null; then
         
         # Compress the backup
@@ -182,7 +203,7 @@ generate_database_statistics() {
     local stats_file="$BACKUP_DIR/stats/db_stats_$TIMESTAMP.txt"
     
     # Get table statistics
-    docker-compose -f "$APP_DIR/docker-compose.prod.yml" exec -T db \
+    docker-compose -f "$APP_DIR/$COMPOSE_FILE" exec -T db \
         psql -U postgres -d personal_website -c "
             SELECT 
                 'users' as table_name, COUNT(*) as record_count FROM users
@@ -200,7 +221,7 @@ generate_database_statistics() {
         " > "$stats_file" 2>/dev/null || print_warning "Could not generate complete database statistics"
     
     # Get database size information
-    docker-compose -f "$APP_DIR/docker-compose.prod.yml" exec -T db \
+    docker-compose -f "$APP_DIR/$COMPOSE_FILE" exec -T db \
         psql -U postgres -d personal_website -c "
             SELECT pg_size_pretty(pg_database_size('personal_website')) as database_size;
         " >> "$stats_file" 2>/dev/null
@@ -215,7 +236,14 @@ backup_application_logs() {
     local logs_backup_file="$BACKUP_DIR/logs/app_logs_$TIMESTAMP.txt"
     
     # Get last 1000 lines of application logs
-    docker-compose -f "$APP_DIR/docker-compose.prod.yml" logs --tail=1000 app > "$logs_backup_file" 2>/dev/null || print_warning "Could not backup application logs"
+    # Try 'app' service first, then 'frontend' as fallback
+    if docker-compose -f "$APP_DIR/$COMPOSE_FILE" ps app >/dev/null 2>&1; then
+        docker-compose -f "$APP_DIR/$COMPOSE_FILE" logs --tail=1000 app > "$logs_backup_file" 2>/dev/null || print_warning "Could not backup application logs"
+    elif docker-compose -f "$APP_DIR/$COMPOSE_FILE" ps frontend >/dev/null 2>&1; then
+        docker-compose -f "$APP_DIR/$COMPOSE_FILE" logs --tail=1000 frontend > "$logs_backup_file" 2>/dev/null || print_warning "Could not backup application logs"
+    else
+        print_warning "Could not find application container for log backup"
+    fi
     
     # Get system logs if available
     if [ -d "/var/log/deployment" ]; then
@@ -238,6 +266,7 @@ BACKUP MANIFEST
 
 Backup Date: $(date)
 Backup ID: $TIMESTAMP
+Environment: $ENVIRONMENT
 Server: $(hostname)
 Application Version: $(cat "$APP_DIR/package.json" | grep '"version"' | cut -d'"' -f4 2>/dev/null || echo "Unknown")
 
@@ -275,11 +304,11 @@ CONTENT STATISTICS:
 - Total Files: $(cat "$BACKUP_DIR/stats/content_inventory_$TIMESTAMP.txt" 2>/dev/null | wc -l || echo "Unknown")
 
 RESTORE INSTRUCTIONS:
-1. Stop application: docker-compose -f /home/deploy/personal-website/docker-compose.prod.yml down
-2. Restore database: gunzip -c database_backup_$TIMESTAMP.sql.gz | docker-compose exec -T db psql -U postgres personal_website
-3. Restore content: tar -xzf content_backup_$TIMESTAMP.tar.gz -C /home/deploy/personal-website/
-4. Restore config: tar -xzf config_backup_$TIMESTAMP.tar.gz -C /home/deploy/personal-website/
-5. Start application: docker-compose -f /home/deploy/personal-website/docker-compose.prod.yml up -d
+1. Stop application: docker-compose -f $APP_DIR/$COMPOSE_FILE down
+2. Restore database: gunzip -c $BACKUP_DIR/database/database_backup_$TIMESTAMP.sql.gz | docker-compose -f $APP_DIR/$COMPOSE_FILE exec -T db psql -U postgres personal_website
+3. Restore content: tar -xzf $BACKUP_DIR/content/content_backup_$TIMESTAMP.tar.gz -C $APP_DIR/
+4. Restore config: tar -xzf $BACKUP_DIR/config/config_backup_$TIMESTAMP.tar.gz -C $APP_DIR/
+5. Start application: docker-compose -f $APP_DIR/$COMPOSE_FILE up -d
 
 BACKUP RETENTION:
 This backup will be automatically deleted after $RETENTION_DAYS days.
@@ -380,7 +409,10 @@ main() {
     print_header
     
     print_status "Starting complete system backup..."
+    print_status "Environment: $ENVIRONMENT"
     print_status "Backup ID: $TIMESTAMP"
+    print_status "Application Directory: $APP_DIR"
+    print_status "Backup Directory: $BACKUP_DIR"
     
     setup_backup_environment
     check_prerequisites

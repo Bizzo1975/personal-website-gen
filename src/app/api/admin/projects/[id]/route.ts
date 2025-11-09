@@ -7,9 +7,10 @@ import { revalidatePath } from 'next/cache';
 // DELETE /api/admin/projects/[id] - Delete a project (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // Check authentication
     const session = await getServerSession(authOptions);
     
@@ -21,7 +22,7 @@ export async function DELETE(
     }
 
     // Delete the project
-    const success = await ProjectService.deleteProject(params.id);
+    const success = await ProjectService.deleteProject(resolvedParams.id);
     
     if (!success) {
       return NextResponse.json(
@@ -48,9 +49,10 @@ export async function DELETE(
 // PUT /api/admin/projects/[id] - Update a project (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // Check authentication
     const session = await getServerSession(authOptions);
     
@@ -79,7 +81,7 @@ export async function PUT(
     };
 
     // Update the project
-    const updatedProject = await ProjectService.updateProject(params.id, updateData);
+    const updatedProject = await ProjectService.updateProject(resolvedParams.id, updateData);
 
     // Revalidate project pages
     revalidatePath('/projects');

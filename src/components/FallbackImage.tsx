@@ -11,6 +11,7 @@ interface FallbackImageProps {
   fallbackSrc?: string;
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   priority?: boolean;
+  onLoad?: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void;
 }
 
 /**
@@ -26,6 +27,7 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
   fallbackSrc = '/images/placeholder-image.png',
   objectFit = 'cover',
   priority = false,
+  onLoad,
 }) => {
   const [imgSrc, setImgSrc] = useState<string>(src);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -58,6 +60,7 @@ const FallbackImage: React.FC<FallbackImageProps> = ({
       height={height}
       className={`${className} transition-opacity duration-300`}
       onError={handleError}
+      onLoad={onLoad}
       style={{ objectFit }}
       loading={priority ? 'eager' : 'lazy'}
     />

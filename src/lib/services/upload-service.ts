@@ -21,7 +21,7 @@ const SUPPORTED_IMAGE_TYPES = [
 // Maximum file size (5MB)
 const MAX_FILE_SIZE = config.uploads.maxFileSize;
 
-// Upload directories - using Windows-compatible paths
+// Upload directories - using cross-platform paths
 const UPLOAD_ROOT = pathUtils.resolve(pathUtils.join(process.cwd(), 'public', 'uploads'));
 const UPLOAD_DIRS = {
   images: pathUtils.resolve(pathUtils.join(UPLOAD_ROOT, 'images')),

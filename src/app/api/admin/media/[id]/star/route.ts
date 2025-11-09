@@ -10,16 +10,17 @@ import { query } from '@/lib/db';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const fileId = params.id;
+    const fileId = resolvedParams.id;
 
     if (!fileId) {
       return NextResponse.json({ error: 'File ID is required' }, { status: 400 });

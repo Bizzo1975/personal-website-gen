@@ -43,56 +43,78 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
   const textRotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-5deg", "5deg"]);
   
   // Enhanced 3D text depth transforms
+  // Type assertion needed because useTransform expects homogeneous MotionValue arrays,
+  // but we're mixing number and string MotionValues which is valid at runtime
+  const motionValuesArray = [mouseXSpring, mouseYSpring, textRotateX, textRotateY] as any;
+  
   const titleTransform = useTransform(
-    [mouseXSpring, mouseYSpring, textRotateX, textRotateY],
-    ([mx, my, rx, ry]) => `translateZ(15px) rotateX(${rx}) rotateY(${ry}) translateX(${mx * 10}px) translateY(${my * 10}px)`
+    motionValuesArray,
+    ([mx, my, rx, ry]: [number, number, string, string]) => `translateZ(15px) rotateX(${rx}) rotateY(${ry}) translateX(${mx * 10}px) translateY(${my * 10}px)`
   );
   
   const descriptionTransform = useTransform(
-    [mouseXSpring, mouseYSpring, textRotateX, textRotateY],
-    ([mx, my, rx, ry]) => `translateZ(10px) rotateX(${parseFloat(rx) * 0.5}deg) rotateY(${parseFloat(ry) * 0.5}deg) translateX(${mx * 5}px) translateY(${my * 5}px)`
+    motionValuesArray,
+    ([mx, my, rx, ry]: [number, number, string, string]) => `translateZ(10px) rotateX(${parseFloat(rx) * 0.5}deg) rotateY(${parseFloat(ry) * 0.5}deg) translateX(${mx * 5}px) translateY(${my * 5}px)`
   );
   
   const techTransform = useTransform(
-    [mouseXSpring, mouseYSpring, textRotateX, textRotateY],
-    ([mx, my, rx, ry]) => `translateZ(25px) rotateX(${parseFloat(rx) * 0.7}deg) rotateY(${parseFloat(ry) * 0.7}deg) translateX(${mx * 8}px) translateY(${my * 8}px)`
+    motionValuesArray,
+    ([mx, my, rx, ry]: [number, number, string, string]) => `translateZ(25px) rotateX(${parseFloat(rx) * 0.7}deg) rotateY(${parseFloat(ry) * 0.7}deg) translateX(${mx * 8}px) translateY(${my * 8}px)`
   );
   
   const linkTransform = useTransform(
-    [mouseXSpring, mouseYSpring, textRotateX, textRotateY],
-    ([mx, my, rx, ry]) => `translateZ(35px) rotateX(${parseFloat(rx) * 0.3}deg) rotateY(${parseFloat(ry) * 0.3}deg) translateX(${mx * 12}px) translateY(${my * 12}px)`
+    motionValuesArray,
+    ([mx, my, rx, ry]: [number, number, string, string]) => `translateZ(35px) rotateX(${parseFloat(rx) * 0.3}deg) rotateY(${parseFloat(ry) * 0.3}deg) translateX(${mx * 12}px) translateY(${my * 12}px)`
   );
   
   // Dynamic text shadows for both themes
   const titleTextShadow = useTransform(
     [textShadowX, textShadowY],
-    ([x, y]) => `${x} ${y} 4px rgba(0, 0, 0, 0.3), ${parseFloat(x) * 2}px ${parseFloat(y) * 2}px 8px rgba(0, 0, 0, 0.1), 0 0 20px rgba(59, 130, 246, 0.2)`
+    (values: string[]) => {
+      const [x, y] = values;
+      return `${x} ${y} 4px rgba(0, 0, 0, 0.3), ${parseFloat(x) * 2}px ${parseFloat(y) * 2}px 8px rgba(0, 0, 0, 0.1), 0 0 20px rgba(59, 130, 246, 0.2)`;
+    }
   );
   
   const descTextShadow = useTransform(
     [textShadowX, textShadowY],
-    ([x, y]) => `${x} ${y} 2px rgba(0, 0, 0, 0.2), ${parseFloat(x) * 1.5}px ${parseFloat(y) * 1.5}px 4px rgba(0, 0, 0, 0.1)`
+    (values: string[]) => {
+      const [x, y] = values;
+      return `${x} ${y} 2px rgba(0, 0, 0, 0.2), ${parseFloat(x) * 1.5}px ${parseFloat(y) * 1.5}px 4px rgba(0, 0, 0, 0.1)`;
+    }
   );
   
   const techTextShadow = useTransform(
     [textShadowX, textShadowY],
-    ([x, y]) => `${x} ${y} 1px rgba(0, 0, 0, 0.15), ${parseFloat(x) * 1.2}px ${parseFloat(y) * 1.2}px 3px rgba(0, 0, 0, 0.1)`
+    (values: string[]) => {
+      const [x, y] = values;
+      return `${x} ${y} 1px rgba(0, 0, 0, 0.15), ${parseFloat(x) * 1.2}px ${parseFloat(y) * 1.2}px 3px rgba(0, 0, 0, 0.1)`;
+    }
   );
   
   const linkTextShadow = useTransform(
     [textShadowX, textShadowY],
-    ([x, y]) => `${x} ${y} 2px rgba(59, 130, 246, 0.3), ${parseFloat(x) * 1.5}px ${parseFloat(y) * 1.5}px 4px rgba(59, 130, 246, 0.2)`
+    (values: string[]) => {
+      const [x, y] = values;
+      return `${x} ${y} 2px rgba(59, 130, 246, 0.3), ${parseFloat(x) * 1.5}px ${parseFloat(y) * 1.5}px 4px rgba(59, 130, 246, 0.2)`;
+    }
   );
   
   const iconDropShadow = useTransform(
     [textShadowX, textShadowY],
-    ([x, y]) => `drop-shadow(${x} ${y} 2px rgba(59, 130, 246, 0.4))`
+    (values: string[]) => {
+      const [x, y] = values;
+      return `drop-shadow(${x} ${y} 2px rgba(59, 130, 246, 0.4))`;
+    }
   );
   
   // Dynamic glow for enhanced 3D depth
   const glowOpacity = useTransform(
     [mouseXSpring, mouseYSpring], 
-    ([mx, my]) => Math.min(Math.abs(mx) + Math.abs(my), 0.3)
+    (values: number[]) => {
+      const [mx, my] = values;
+      return Math.min(Math.abs(mx) + Math.abs(my), 0.3);
+    }
   );
   
   // Ensure client-side rendering
@@ -243,22 +265,26 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
             className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-300"
             whileHover={{ x: shouldReduceMotion ? 0 : 8 }}
             transition={{ duration: 0.2 }}
-            style={{ 
-              transform: shouldReduceMotion ? 'none' : titleTransform,
-              textShadow: shouldReduceMotion ? 'none' : titleTextShadow,
+            style={shouldReduceMotion ? {
               transformStyle: 'preserve-3d'
-            }}
+            } : {
+              transform: titleTransform,
+              textShadow: titleTextShadow,
+              transformStyle: 'preserve-3d'
+            } as unknown as React.CSSProperties}
           >
             {project.title}
           </motion.h3>
           
           <motion.p 
             className="text-slate-600 dark:text-slate-400 text-sm mb-4 line-clamp-2 leading-relaxed"
-            style={{ 
-              transform: shouldReduceMotion ? 'none' : descriptionTransform,
-              textShadow: shouldReduceMotion ? 'none' : descTextShadow,
+            style={shouldReduceMotion ? {
               transformStyle: 'preserve-3d'
-            }}
+            } : {
+              transform: descriptionTransform,
+              textShadow: descTextShadow,
+              transformStyle: 'preserve-3d'
+            } as unknown as React.CSSProperties}
           >
             {project.description}
           </motion.p>
@@ -271,11 +297,13 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
                 className="px-2 py-1 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 rounded text-xs font-medium"
                 whileHover={{ scale: shouldReduceMotion ? 1 : 1.08, y: shouldReduceMotion ? 0 : -2 }}
                 transition={{ duration: 0.2 }}
-                style={{ 
-                  transform: shouldReduceMotion ? 'none' : techTransform,
-                  textShadow: shouldReduceMotion ? 'none' : techTextShadow,
+                style={shouldReduceMotion ? {
                   transformStyle: 'preserve-3d'
-                }}
+                } : {
+                  transform: techTransform,
+                  textShadow: techTextShadow,
+                  transformStyle: 'preserve-3d'
+                } as unknown as React.CSSProperties}
               >
                 {tech}
               </motion.span>
@@ -297,11 +325,13 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
           <Link 
             href={`/projects/${project.slug}`}
             className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium text-sm inline-flex items-center transition-colors duration-200 group/link"
-            style={{ 
-              transform: shouldReduceMotion ? 'none' : linkTransform,
-              textShadow: shouldReduceMotion ? 'none' : linkTextShadow,
+            style={shouldReduceMotion ? {
               transformStyle: 'preserve-3d'
-            }}
+            } : {
+              transform: linkTransform,
+              textShadow: linkTextShadow,
+              transformStyle: 'preserve-3d'
+            } as unknown as React.CSSProperties}
           >
             Learn More
             <motion.svg 
@@ -312,10 +342,10 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
               stroke="currentColor"
               whileHover={{ x: shouldReduceMotion ? 0 : 5 }}
               transition={{ duration: 0.2 }}
-              style={{ 
-                transform: shouldReduceMotion ? 'none' : 'translateZ(5px)',
-                filter: shouldReduceMotion ? 'none' : iconDropShadow
-              }}
+              style={shouldReduceMotion ? {} : {
+                transform: 'translateZ(5px)',
+                filter: iconDropShadow
+              } as unknown as React.CSSProperties}
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </motion.svg>

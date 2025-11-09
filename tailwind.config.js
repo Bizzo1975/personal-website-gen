@@ -10,8 +10,6 @@ module.exports = {
   future: {
     hoverOnlyWhenSupported: true, // Optimize hover styles for devices that support hover
   },
-  // Enable just-in-time mode for improved performance
-  mode: 'jit',
   theme: {
     extend: {
       colors: {
@@ -153,32 +151,10 @@ module.exports = {
       addVariant('child-hover', '& > *:hover'); // Add child hover variant
     },
   ],
-  // Production-specific optimizations
-  ...(process.env.NODE_ENV === 'production' ? {
-    purge: {
-      enabled: true,
-      content: [
-        './src/**/*.{js,ts,jsx,tsx,mdx}',
-      ],
-      // Remove unused CSS more aggressively in production
-      options: {
-        safelist: [
-          /^text-/,      // Preserve text utility classes
-          /^bg-/,       // Preserve background classes
-          /^border-/,   // Preserve border classes
-          /^dark:/,     // Preserve dark mode variants
-          /^sm:/,       // Preserve responsive variants
-          /^md:/,
-          /^lg:/,
-          /^xl:/,
-          /^2xl:/,
-          /^h-/,        // Preserve height utilities
-          /^w-/         // Preserve width utilities
-        ],
-        // Remove unused variants
-        removeDeprecatedUtilities: true,
-        removeAllVariants: false,
-      },
+  // Safelist for dynamic classes that might not be detected
+  safelist: [
+    {
+      pattern: /^(text|bg|border|dark|sm|md|lg|xl|2xl|h|w)-/,
     },
-  } : {}),
+  ],
 } 

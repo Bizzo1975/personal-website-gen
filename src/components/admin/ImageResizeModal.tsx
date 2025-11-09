@@ -7,7 +7,7 @@ import { resizeForProject, getImageDimensions, needsResizing, type ResizeResult 
 interface ImageResizeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (resizedFile: File, result: ResizeResult) => void;
+  onConfirm: (resizedFile: File, result?: ResizeResult) => void;
   originalFile: File;
   resizeType?: 'card' | 'detail' | 'thumbnail';
 }
@@ -28,9 +28,9 @@ const ImageResizeModal: React.FC<ImageResizeModalProps> = ({
 
   // Project image configurations
   const configs = {
-    card: { width: 600, height: 400, label: 'Project Card (3:2)' },
-    detail: { width: 800, height: 400, label: 'Project Detail (2:1)' },
-    thumbnail: { width: 300, height: 200, label: 'Thumbnail (3:2)' }
+    card: { width: 600, height: 400, label: 'Project Card (3:2)', quality: 0.85 },
+    detail: { width: 800, height: 400, label: 'Project Detail (2:1)', quality: 0.9 },
+    thumbnail: { width: 300, height: 200, label: 'Thumbnail (3:2)', quality: 0.8 }
   };
 
   const currentConfig = configs[resizeType];
@@ -138,10 +138,10 @@ const ImageResizeModal: React.FC<ImageResizeModalProps> = ({
         }
         
         const resizedFile = new File([ab], originalFile.name, { type: mimeString });
-        await onConfirm(resizedFile);
+        await onConfirm(resizedFile, resizeResult);
       } else {
         // Use original file if no resizing was done
-        await onConfirm(originalFile);
+        await onConfirm(originalFile, undefined);
       }
     } catch (error) {
       console.error('Error in handleConfirm:', error);

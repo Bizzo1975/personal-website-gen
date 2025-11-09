@@ -7,9 +7,10 @@ import { query } from '@/lib/db';
 // GET /api/admin/roles/[id] - Get single role
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -22,7 +23,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
     }
 
-    const roleId = params.id;
+    const roleId = resolvedParams.id;
     
     const roleQuery = `
       SELECT 
@@ -79,9 +80,10 @@ export async function GET(
 // PUT /api/admin/roles/[id] - Update role
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -94,7 +96,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
     }
 
-    const roleId = params.id;
+    const roleId = resolvedParams.id;
     const { name, displayName, description, permissions = [] } = await request.json();
 
     // Check if role exists
@@ -212,9 +214,10 @@ export async function PUT(
 // DELETE /api/admin/roles/[id] - Delete role
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
@@ -227,7 +230,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
     }
 
-    const roleId = params.id;
+    const roleId = resolvedParams.id;
     
     // Check if role exists
     const existingRole = await query('SELECT * FROM roles WHERE id = $1', [roleId]);

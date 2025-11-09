@@ -55,7 +55,9 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
       views: 100 + (index * 50), // Fixed deterministic view count to prevent hydration errors
       author: typeof post.author === 'string' 
         ? { name: post.author, image: '/images/placeholder.jpg' }
-        : post.author
+        : post.author,
+      // Add featured property from post
+      featured: post.featured || false
     };
   });
 
@@ -198,7 +200,7 @@ export default function BlogContent({ posts = [], pageData }: BlogContentProps) 
                     <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
                       <div className="flex items-center gap-1">
                         <CalendarIcon className="h-4 w-4" />
-                        <span>{formatDate(post.date)}</span>
+                        <span>{formatDate(typeof post.date === 'string' ? post.date : post.date instanceof Date ? post.date.toISOString() : String(post.date))}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <ClockIcon className="h-4 w-4" />

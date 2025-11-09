@@ -11,12 +11,16 @@ try {
     redis = new Redis(redisUrl, {
       connectTimeout: 10000,
       lazyConnect: true,
-      retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
-      onError: (error) => {
-        console.warn('Redis connection error:', error.message);
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
       },
       enableOfflineQueue: false,
+    });
+    // Set up error handler via event listener
+    redis.on('error', (error) => {
+      console.warn('Redis connection error:', error.message);
     });
   } else {
     redis = new Redis({
@@ -25,12 +29,16 @@ try {
       password: process.env.REDIS_PASSWORD,
       connectTimeout: 10000,
       lazyConnect: true,
-      retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
-      onError: (error) => {
-        console.warn('Redis connection error:', error.message);
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
       },
       enableOfflineQueue: false,
+    });
+    // Set up error handler via event listener
+    redis.on('error', (error) => {
+      console.warn('Redis connection error:', error.message);
     });
   }
 } catch (error) {

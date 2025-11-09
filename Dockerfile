@@ -1,8 +1,8 @@
 # Multi-stage Dockerfile for Personal Website
-# Optimized for Windows development and production deployment
+# Optimized for Linux/Ubuntu development and production deployment
 
 # Base image with Node.js
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -20,7 +20,17 @@ RUN \
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# Install dependencies needed for building (including dev dependencies)
+RUN apk add --no-cache libc6-compat
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install ALL dependencies (including dev) needed for build
+RUN npm ci
+
+# Copy source code (includes tsconfig.json and next.config.js)
 COPY . .
 
 # Next.js collects completely anonymous telemetry data about general usage.
@@ -45,10 +55,10 @@ RUN apk add --no-cache libc6-compat
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install all dependencies (including dev dependencies)
+# Install all dependencies (including dev dependencies) for development
 RUN npm ci
 
-# Copy source code
+# Copy source code (tsconfig.json and next.config.js are already included in COPY . .)
 COPY . .
 
 # Create a non-root user for security
@@ -64,10 +74,6 @@ RUN chown -R nextjs:nodejs /app
 EXPOSE 3006
 
 ENV PORT 3000
-
-# Windows & Docker compatibility settings
-ENV NEXT_WEBPACK_USEPOLLING 1
-ENV WATCHPACK_POLLING true
 
 CMD ["npm", "run", "dev:docker"]
 

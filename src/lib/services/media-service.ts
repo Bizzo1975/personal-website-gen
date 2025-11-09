@@ -27,6 +27,7 @@ export interface MediaUploadOptions {
   altText?: string;
   maxSize?: number; // in bytes
   allowedTypes?: string[];
+  folder?: string | null;
 }
 
 export interface MediaFilterOptions {
@@ -414,12 +415,12 @@ export class MediaService {
               deletedFiles.push(filePath);
             }
           }
-        } catch (dirError: any) {
-          errors.push(`Could not process directory ${contentType}: ${dirError.message}`);
+        } catch (dirError) {
+          errors.push(`Could not process directory ${contentType}: ${dirError instanceof Error ? dirError.message : 'Unknown error'}`);
         }
       }
-    } catch (error: any) {
-      errors.push(`Cleanup failed: ${error.message}`);
+    } catch (error) {
+      errors.push(`Cleanup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     return { deletedFiles, errors };

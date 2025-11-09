@@ -50,6 +50,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
+    // Ensure email exists
+    if (!session.user?.email) {
+      return NextResponse.json({ error: 'User email not found' }, { status: 400 });
+    }
+
     const enhancedService = new EnhancedAccessRequestService();
     
     // Get admin user ID

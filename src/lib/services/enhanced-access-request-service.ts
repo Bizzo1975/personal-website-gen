@@ -283,8 +283,8 @@ export class EnhancedAccessRequestService {
       );
 
       const approvedRequest = updatedRequest.rows[0];
-      let createdUser = null;
-      let generatedPassword = null;
+      let createdUser: any = null;
+      let generatedPassword: string | undefined = undefined;
 
       // Create user account if requested and doesn't exist
       if (createUserAccount) {
@@ -314,7 +314,7 @@ export class EnhancedAccessRequestService {
           accessLevel: approvedRequest.requested_access_level,
           submittedAt: approvedRequest.submitted_at,
           adminNotes,
-          generatedPassword,
+          generatedPassword: generatedPassword || undefined,
         });
       } catch (emailError) {
         console.warn('Failed to send approval notification email:', emailError);
@@ -323,7 +323,7 @@ export class EnhancedAccessRequestService {
       return { 
         request: approvedRequest, 
         user: createdUser, 
-        generatedPassword 
+        generatedPassword: generatedPassword || undefined
       };
     } catch (error) {
       console.error('Error approving access request:', error);
@@ -429,7 +429,8 @@ export class EnhancedAccessRequestService {
         ]
       );
     } catch (activityError) {
-      console.warn('Could not log user activity:', activityError.message);
+      const errorMessage = activityError instanceof Error ? activityError.message : 'Unknown error';
+      console.warn('Could not log user activity:', errorMessage);
     }
 
     return { user: newUser, password: generatedPassword };

@@ -7,9 +7,10 @@ import { PostService } from '@/lib/services/post-service';
 // GET /api/posts/[id] - Get a specific post by ID
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const { searchParams } = new URL(request.url);
     const isPreview = searchParams.get('preview') === 'true';
     
@@ -25,7 +26,7 @@ export async function GET(
       );
     }
     
-    const post = await PostService.getPostById(params.id);
+    const post = await PostService.getPostById(resolvedParams.id);
     
     if (!post) {
       return NextResponse.json(
@@ -55,9 +56,10 @@ export async function GET(
 // PUT /api/posts/[id] - Update a specific post
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -95,7 +97,7 @@ export async function PUT(
     };
 
     // Update the post using PostService
-    const updatedPost = await PostService.updatePost(params.id, updateData);
+    const updatedPost = await PostService.updatePost(resolvedParams.id, updateData);
 
     // Revalidate blog pages
     revalidatePath('/blog');
@@ -125,9 +127,10 @@ export async function PUT(
 // DELETE /api/posts/[id] - Delete a specific post
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -137,7 +140,7 @@ export async function DELETE(
       );
     }
 
-    const success = await PostService.deletePost(params.id);
+    const success = await PostService.deletePost(resolvedParams.id);
     
     if (!success) {
       return NextResponse.json(

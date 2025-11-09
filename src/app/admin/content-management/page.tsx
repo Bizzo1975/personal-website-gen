@@ -14,6 +14,7 @@ import {
 interface DraftItem {
   id: string;
   title: string;
+  slug?: string;
   type: 'post' | 'project' | 'page';
   author: string;
   lastModified: string;
@@ -78,7 +79,7 @@ interface Post {
   tags: string[];
   featured_image?: string;
   meta_description: string;
-  status: 'draft' | 'published' | 'archived';
+  status: 'draft' | 'published' | 'archived' | 'scheduled';
   read_time: number;
   created_at: string;
   updated_at: string;

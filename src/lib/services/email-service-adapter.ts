@@ -36,8 +36,16 @@ export class EmailServiceAdapter {
       if (this.provider === 'sendgrid') {
         await this.sendGridService.sendAccessRequestNotification(requestData);
       } else {
-        // Convert to SMTP format
-        await this.smtpService.sendApprovalNotification(requestData);
+        // Convert to SMTP format - AccessRequestEmailData from sendgrid has different structure
+        const smtpRequestData = {
+          requestId: requestData.requestDate || Date.now().toString(),
+          userName: requestData.name,
+          userEmail: requestData.email,
+          accessLevel: (requestData.requestType === 'professional' ? 'professional' : 'personal') as 'personal' | 'professional',
+          submittedAt: new Date(requestData.requestDate || Date.now()),
+          adminNotes: requestData.message
+        };
+        await this.smtpService.sendAdminNotification(smtpRequestData);
       }
     } catch (error) {
       console.error(`❌ Failed to send access request notification via ${this.provider}:`, error);
@@ -54,13 +62,14 @@ export class EmailServiceAdapter {
       if (this.provider === 'sendgrid') {
         await this.sendGridService.sendApprovalNotification(userEmail, userName, accessLevel);
       } else {
-        // Convert to SMTP format - may need adjustment based on your existing SMTP service
+        // Convert to SMTP format - AccessRequestEmailData structure
         const requestData = {
-          email: userEmail,
-          name: userName,
-          requestType: accessLevel,
-          message: `Access granted for ${accessLevel} level`,
-          requestDate: new Date().toISOString()
+          requestId: Date.now().toString(),
+          userName: userName,
+          userEmail: userEmail,
+          accessLevel: (accessLevel === 'professional' ? 'professional' : 'personal') as 'personal' | 'professional',
+          submittedAt: new Date(),
+          adminNotes: `Access granted for ${accessLevel} level`
         };
         await this.smtpService.sendApprovalNotification(requestData);
       }
@@ -202,7 +211,7 @@ export class EmailServiceAdapter {
   /**
    * Fallback mechanism when primary provider fails
    */
-  private async sendWithFallback(type: string, data: any, primaryError: any): Promise<void> {
+  private async sendWithFallback(type: string, data: any, primaryError: unknown): Promise<void> {
     const fallbackProvider = this.provider === 'sendgrid' ? 'smtp' : 'sendgrid';
     
     // Only attempt fallback if both providers are configured
@@ -220,10 +229,12 @@ export class EmailServiceAdapter {
         console.log(`✅ Fallback to ${fallbackProvider.toUpperCase()} successful`);
       } catch (fallbackError) {
         console.error(`❌ Fallback to ${fallbackProvider.toUpperCase()} also failed:`, fallbackError);
-        throw new Error(`Both email providers failed. Primary: ${primaryError.message}, Fallback: ${fallbackError.message}`);
+        const primaryMessage = primaryError instanceof Error ? primaryError.message : 'Unknown error';
+        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Unknown error';
+        throw new Error(`Both email providers failed. Primary: ${primaryMessage}, Fallback: ${fallbackMessage}`);
       }
     } else {
-      throw primaryError;
+      throw primaryError instanceof Error ? primaryError : new Error(String(primaryError));
     }
   }
 

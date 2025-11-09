@@ -67,7 +67,16 @@ export default function MarkdownEditor({
               {value ? (
                 <div 
                   className="prose prose-sm dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: marked(value) }}
+                  dangerouslySetInnerHTML={{ __html: (() => {
+                    const result = marked(value);
+                    // marked() returns string when used synchronously (without async options)
+                    // Type assertion needed because TypeScript infers the union type
+                    if (typeof result === 'string') {
+                      return result;
+                    }
+                    // Fallback for Promise case (shouldn't occur in sync usage)
+                    return '';
+                  })() as string }}
                 />
               ) : (
                 <p className="text-slate-400 dark:text-slate-500 italic">
