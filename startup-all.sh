@@ -197,6 +197,12 @@ print_status "Stopping existing containers..."
 if timeout 10 $COMPOSE_CMD ps >/dev/null 2>&1; then
     # Containers exist, stop them gracefully with timeout
     timeout 30 $COMPOSE_CMD down >/dev/null 2>&1 || true
+    # If down fails, try force removal of app container specifically
+    # Check if app container exists and force remove it to avoid permission issues
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "personal-website-gen_app_1"; then
+        print_status "Force removing app container due to permission issues..."
+        docker rm -f personal-website-gen_app_1 2>/dev/null || true
+    fi
 else
     print_status "No existing containers to stop"
 fi
@@ -204,6 +210,16 @@ fi
 # Clean cache
 print_status "Cleaning build cache..."
 rm -rf .next >/dev/null 2>&1 || true
+
+# Only clear Docker build cache if explicitly needed (not every run)
+# This was causing issues - Docker cache allows skipping unnecessary stages
+# Uncomment the lines below ONLY if you're experiencing cache corruption issues
+# print_status "Clearing Docker build cache..."
+# if [ "$EUID" -eq 0 ]; then
+#     docker builder prune -f >/dev/null 2>&1 || true
+# else
+#     $DOCKER_CMD builder prune -f >/dev/null 2>&1 || true
+# fi
 
 # [3/7] Setup environment
 print_status "[3/7] Setting up environment configuration..."
@@ -270,8 +286,58 @@ fi
 print_status "Starting containers..."
 print_status "Using: $COMPOSE_CMD"
 
-if $COMPOSE_CMD up -d --build 2>&1; then
-    print_success "Containers started successfully"
+# Build and start containers
+# Only enable BuildKit if buildx is available, otherwise use legacy builder
+if docker buildx version >/dev/null 2>&1; then
+    export DOCKER_BUILDKIT=1
+    print_status "Using BuildKit (buildx available)"
+else
+    unset DOCKER_BUILDKIT
+    print_status "Using legacy Docker builder (buildx not available)"
+fi
+
+# Build without --no-cache to use cache and avoid building unnecessary stages
+# The development target doesn't need the builder stage, so Docker will skip it
+if $COMPOSE_CMD build app 2>&1; then
+    # Check for stuck container with permission issues
+    CONTAINER_ID=$(docker ps -a --filter "name=personal-website-gen_app_1" --format "{{.ID}}" 2>/dev/null | head -1)
+    if [ -n "$CONTAINER_ID" ]; then
+        # Find the containerd-shim process for this container
+        SHIM_PID=$(ps aux | grep "containerd-shim.*$CONTAINER_ID" | grep -v grep | awk '{print $2}' | head -1)
+        if [ -n "$SHIM_PID" ]; then
+            # Check if we can kill it (if owned by root, we can't)
+            if kill -0 "$SHIM_PID" 2>/dev/null; then
+                # Process exists, try to kill it
+                kill -9 "$SHIM_PID" 2>/dev/null || {
+                    print_error "Cannot remove stuck container due to permission issues!"
+                    print_error "The container process (PID: $SHIM_PID) is owned by root."
+                    print_error ""
+                    print_error "Docker appears to be in a corrupted state. Please run:"
+                    echo "  sudo ./force-cleanup-containers.sh"
+                    echo ""
+                    print_error "OR restart Docker service (will kill all containers):"
+                    echo "  sudo systemctl restart docker"
+                    echo ""
+                    print_error "Then run this script again: ./startup-all.sh"
+                    exit 1
+                }
+                sleep 2
+            fi
+        fi
+        # Try to remove the container
+        docker rm -f "$CONTAINER_ID" 2>&1 || true
+    fi
+    # Use docker-compose down to clean up
+    $COMPOSE_CMD down --remove-orphans 2>&1 || true
+    sleep 2
+    # Now start containers fresh
+    print_status "Starting containers..."
+    if $COMPOSE_CMD up -d 2>&1; then
+        print_success "Containers started successfully"
+    else
+        print_error "Failed to start containers after build"
+        exit 1
+    fi
 else
     print_error "Failed to start Docker containers!"
     print_error "Check the error messages above for details."
@@ -338,87 +404,228 @@ sleep 5
 
 # Check for database backup and restore it
 print_status "Checking for database backup to restore..."
-BACKUP_DIR="./backups/database"
-if [ -d "$BACKUP_DIR" ]; then
-    # Find the most recent backup file (compatible with all find versions)
-    LATEST_BACKUP=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+
+# Function to restore SQL file
+restore_sql_file() {
+    local sql_file=$1
+    local backup_name=$2
+    
+    print_status "Found backup: $backup_name"
+    print_status "Restoring database backup..."
+    
+    # Check if database exists, create if not
+    if ! ($COMPOSE_CMD exec -T db psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'personal_website'" 2>/dev/null | grep -q 1); then
+        print_status "Creating database..."
+        $COMPOSE_CMD exec -T db psql -U postgres -c "CREATE DATABASE personal_website;" >/dev/null 2>&1 || true
+    fi
+    
+    # Drop all existing tables to ensure clean restore
+    print_status "Clearing existing database for clean restore..."
+    $COMPOSE_CMD exec -T db psql -U postgres -d personal_website -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" >/dev/null 2>&1 || true
+    
+    # Restore the backup (handle encoding issues - UTF-16 to UTF-8 conversion)
+    print_status "Restoring backup (this may take a moment)..."
+    # Convert UTF-16 to UTF-8 if needed, and clean BOM/invalid sequences
+    CLEAN_SQL=$(mktemp)
+    
+    # Try UTF-16 conversion first (common for Windows backups)
+    if iconv -f UTF-16LE -t UTF-8 "$sql_file" > "$CLEAN_SQL" 2>/dev/null; then
+        print_status "Converted UTF-16LE backup to UTF-8"
+    elif iconv -f UTF-16 -t UTF-8 "$sql_file" > "$CLEAN_SQL" 2>/dev/null; then
+        print_status "Converted UTF-16 backup to UTF-8"
+    else
+        # Try to detect encoding with file command if available
+        if command -v file >/dev/null 2>&1 && file "$sql_file" | grep -q "UTF-16"; then
+            print_status "Detected UTF-16 encoding, converting..."
+            iconv -f UTF-16LE -t UTF-8 "$sql_file" > "$CLEAN_SQL" 2>/dev/null || iconv -f UTF-16 -t UTF-8 "$sql_file" > "$CLEAN_SQL" 2>/dev/null || cp "$sql_file" "$CLEAN_SQL"
+        else
+            # Remove BOM and invalid UTF-8 sequences for UTF-8 files
+            sed '1s/^\xEF\xBB\xBF//' "$sql_file" | sed 's/\xFF//g' | iconv -f UTF-8 -t UTF-8 -c > "$CLEAN_SQL" 2>/dev/null || sed '1s/^\xEF\xBB\xBF//' "$sql_file" | sed 's/\xFF//g' > "$CLEAN_SQL" 2>/dev/null || cp "$sql_file" "$CLEAN_SQL"
+        fi
+    fi
+    
+    if cat "$CLEAN_SQL" | $COMPOSE_CMD exec -T db psql -U postgres -d personal_website >/dev/null 2>&1; then
+        rm -f "$CLEAN_SQL"
+        print_success "Database backup restored successfully"
+        
+        # Verify data was restored
+        TABLE_COUNT=$($COMPOSE_CMD exec -T db psql -U postgres -d personal_website -tc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs || echo "0")
+        POSTS_COUNT=$($COMPOSE_CMD exec -T db psql -U postgres -d personal_website -tc "SELECT COUNT(*) FROM posts;" 2>/dev/null | xargs || echo "0")
+        PROJECTS_COUNT=$($COMPOSE_CMD exec -T db psql -U postgres -d personal_website -tc "SELECT COUNT(*) FROM projects;" 2>/dev/null | xargs || echo "0")
+        
+        print_success "Database restored: $TABLE_COUNT tables, $POSTS_COUNT posts, $PROJECTS_COUNT projects"
+        rm -f "$CLEAN_SQL"
+        return 0
+    else
+        print_warning "Database backup restoration had issues"
+        rm -f "$CLEAN_SQL"
+        return 1
+    fi
+}
+
+# Search for backup files in multiple locations
+LATEST_BACKUP=""
+BACKUP_FILE=""
+TEMP_SQL=""
+
+# Check /home/dev-admin for backup files
+if [ -d "/home/dev-admin" ]; then
+    # Look for .zip files first
+    ZIP_BACKUP=$(ls -t /home/dev-admin/database_backup_complete_*.zip 2>/dev/null | head -1)
+    if [ -n "$ZIP_BACKUP" ] && [ -f "$ZIP_BACKUP" ]; then
+        print_status "Found ZIP backup: $(basename "$ZIP_BACKUP")"
+        print_status "Extracting backup..."
+        TEMP_DIR=$(mktemp -d)
+        if unzip -q "$ZIP_BACKUP" -d "$TEMP_DIR" 2>/dev/null; then
+            # Find SQL file in extracted directory
+            SQL_FILE=$(find "$TEMP_DIR" -name "*.sql" -type f | head -1)
+            if [ -n "$SQL_FILE" ] && [ -f "$SQL_FILE" ]; then
+                BACKUP_FILE="$SQL_FILE"
+                LATEST_BACKUP="$ZIP_BACKUP"
+            fi
+        fi
+    fi
+    
+    # Also check for .sql.gz files
+    if [ -z "$BACKUP_FILE" ]; then
+        GZ_BACKUP=$(ls -t /home/dev-admin/*.sql.gz 2>/dev/null | head -1)
+        if [ -n "$GZ_BACKUP" ] && [ -f "$GZ_BACKUP" ]; then
+            print_status "Found GZ backup: $(basename "$GZ_BACKUP")"
+            TEMP_SQL=$(mktemp)
+            if gunzip -c "$GZ_BACKUP" > "$TEMP_SQL" 2>/dev/null; then
+                BACKUP_FILE="$TEMP_SQL"
+                LATEST_BACKUP="$GZ_BACKUP"
+            fi
+        fi
+    fi
+    
+    # Also check for .sql files directly
+    if [ -z "$BACKUP_FILE" ]; then
+        SQL_BACKUP=$(ls -t /home/dev-admin/*.sql 2>/dev/null | head -1)
+        if [ -n "$SQL_BACKUP" ] && [ -f "$SQL_BACKUP" ]; then
+            BACKUP_FILE="$SQL_BACKUP"
+            LATEST_BACKUP="$SQL_BACKUP"
+        fi
+    fi
+fi
+
+# Check local backups directory
+if [ -z "$BACKUP_FILE" ] && [ -d "./backups/database" ]; then
+    # Find the most recent backup file
+    LATEST_BACKUP=$(find "./backups/database" -name "*.sql.gz" -type f 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
     
     # Alternative method if xargs fails
     if [ -z "$LATEST_BACKUP" ]; then
-        LATEST_BACKUP=$(ls -t "$BACKUP_DIR"/*.sql.gz 2>/dev/null | head -1)
+        LATEST_BACKUP=$(ls -t "./backups/database"/*.sql.gz 2>/dev/null | head -1)
     fi
     
     if [ -n "$LATEST_BACKUP" ] && [ -f "$LATEST_BACKUP" ]; then
-        print_status "Found backup: $(basename "$LATEST_BACKUP")"
-        print_status "Restoring database backup..."
-        
-        # Check if database exists, create if not
-        if ! ($COMPOSE_CMD exec -T db psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'personal_website'" 2>/dev/null | grep -q 1); then
-            print_status "Creating database..."
-            $COMPOSE_CMD exec -T db psql -U postgres -c "CREATE DATABASE personal_website;" >/dev/null 2>&1 || true
+        TEMP_SQL=$(mktemp)
+        if gunzip -c "$LATEST_BACKUP" > "$TEMP_SQL" 2>/dev/null; then
+            BACKUP_FILE="$TEMP_SQL"
         fi
-        
-        # Restore the backup
-        print_status "Restoring backup (this may take a moment)..."
-        if gunzip -c "$LATEST_BACKUP" | $COMPOSE_CMD exec -T db psql -U postgres -d personal_website >/dev/null 2>&1; then
-            print_success "Database backup restored successfully"
-        else
-            print_warning "Database backup restoration had issues, but continuing..."
-            print_status "Database will use schema from init.sql"
-        fi
+    fi
+fi
+
+# Restore backup if found
+if [ -n "$BACKUP_FILE" ] && [ -f "$BACKUP_FILE" ]; then
+    if restore_sql_file "$BACKUP_FILE" "$(basename "${LATEST_BACKUP:-backup}")"; then
+        # Cleanup temp files
+        [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" 2>/dev/null
+        [ -n "$TEMP_SQL" ] && rm -f "$TEMP_SQL" 2>/dev/null
     else
-        print_status "No database backup found"
-        # Ensure database is initialized from init.sql
-        print_status "Ensuring database is initialized from schema..."
-        
-        # Check if database has tables (indicates it's been initialized)
-        TABLE_COUNT=$($COMPOSE_CMD exec -T db psql -U postgres -d personal_website -tc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs || echo "0")
-        
-        if [ "$TABLE_COUNT" = "0" ] || [ -z "$TABLE_COUNT" ]; then
-            print_status "Database appears empty, checking if init.sql needs to be run..."
-            # init.sql should run automatically on first container start via docker-entrypoint-initdb.d
-            # But if the volume already existed, we need to run it manually
-            if [ -f "./init.sql" ]; then
-                print_status "Running init.sql to initialize database schema..."
-                if $COMPOSE_CMD exec -T db psql -U postgres -d personal_website -f /docker-entrypoint-initdb.d/01-init.sql >/dev/null 2>&1; then
-                    print_success "Database schema initialized from init.sql"
-                else
-                    # Try running init.sql from host
-                    print_status "Trying to run init.sql from host..."
-                    if $COMPOSE_CMD exec -T db psql -U postgres -d personal_website < ./init.sql >/dev/null 2>&1; then
-                        print_success "Database schema initialized from init.sql"
-                    else
-                        print_warning "Could not run init.sql automatically"
-                        print_warning "Database may need manual initialization"
-                    fi
-                fi
-            else
-                print_warning "init.sql not found - database may not be properly initialized"
-            fi
-        else
-            print_success "Database already initialized ($TABLE_COUNT tables found)"
-        fi
+        print_warning "Backup restoration failed, initializing from schema..."
+        # Cleanup temp files
+        [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" 2>/dev/null
+        [ -n "$TEMP_SQL" ] && rm -f "$TEMP_SQL" 2>/dev/null
+        # Fall through to schema initialization
     fi
 else
-    print_status "No backups directory found"
-    # Ensure database is initialized from init.sql
-    print_status "Ensuring database is initialized from schema..."
-    
-    # Check if database has tables
-    TABLE_COUNT=$($COMPOSE_CMD exec -T db psql -U postgres -d personal_website -tc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs || echo "0")
-    
-    if [ "$TABLE_COUNT" = "0" ] || [ -z "$TABLE_COUNT" ]; then
-        print_status "Database appears empty, initializing from init.sql..."
-        if [ -f "./init.sql" ]; then
-            if $COMPOSE_CMD exec -T db psql -U postgres -d personal_website < ./init.sql >/dev/null 2>&1; then
-                print_success "Database schema initialized from init.sql"
-            else
-                print_warning "Could not run init.sql - database may need manual initialization"
-            fi
+    print_status "No database backup found, initializing from schema..."
+fi
+
+# If no backup was restored, ensure database is initialized from init.sql
+TABLE_COUNT=$($COMPOSE_CMD exec -T db psql -U postgres -d personal_website -tc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | xargs || echo "0")
+
+if [ "$TABLE_COUNT" = "0" ] || [ -z "$TABLE_COUNT" ]; then
+    print_status "Database appears empty, initializing from init.sql..."
+    if [ -f "./config/init.sql" ]; then
+        print_status "Running init.sql to initialize database schema..."
+        if cat "./config/init.sql" | $COMPOSE_CMD exec -T db psql -U postgres -d personal_website >/dev/null 2>&1; then
+            print_success "Database schema initialized from init.sql"
+        else
+            print_warning "Could not run init.sql automatically"
+            print_warning "Database may need manual initialization"
+        fi
+    elif [ -f "./init.sql" ]; then
+        print_status "Running init.sql to initialize database schema..."
+        if cat "./init.sql" | $COMPOSE_CMD exec -T db psql -U postgres -d personal_website >/dev/null 2>&1; then
+            print_success "Database schema initialized from init.sql"
+        else
+            print_warning "Could not run init.sql automatically"
         fi
     else
-        print_success "Database already initialized ($TABLE_COUNT tables found)"
+        print_warning "init.sql not found - database may not be properly initialized"
     fi
+else
+    print_success "Database already initialized ($TABLE_COUNT tables found)"
+fi
+
+# Check for content/media backup and restore it
+print_status "Checking for content/media backup to restore..."
+CONTENT_BACKUP=""
+CONTENT_BACKUP_FOUND=false
+
+# Check /home/dev-admin for content backups
+if [ -d "/home/dev-admin" ]; then
+    # Look for content backup files
+    CONTENT_BACKUP=$(ls -t /home/dev-admin/content_backup_*.tar.gz 2>/dev/null | head -1)
+    if [ -z "$CONTENT_BACKUP" ]; then
+        CONTENT_BACKUP=$(ls -t /home/dev-admin/*content*.tar.gz 2>/dev/null | head -1)
+    fi
+    if [ -z "$CONTENT_BACKUP" ]; then
+        CONTENT_BACKUP=$(ls -t /home/dev-admin/*media*.tar.gz 2>/dev/null | head -1)
+    fi
+    if [ -z "$CONTENT_BACKUP" ]; then
+        CONTENT_BACKUP=$(ls -t /home/dev-admin/*uploads*.tar.gz 2>/dev/null | head -1)
+    fi
+fi
+
+# Check local backups directory
+if [ -z "$CONTENT_BACKUP" ] && [ -d "./backups/content" ]; then
+    CONTENT_BACKUP=$(ls -t ./backups/content/content_backup_*.tar.gz 2>/dev/null | head -1)
+fi
+
+# Restore content backup if found
+if [ -n "$CONTENT_BACKUP" ] && [ -f "$CONTENT_BACKUP" ]; then
+    print_status "Found content backup: $(basename "$CONTENT_BACKUP")"
+    print_status "Restoring media files and uploads..."
+    
+    # Ensure public directory exists
+    mkdir -p public/uploads public/images
+    
+    # Extract content backup
+    if tar -xzf "$CONTENT_BACKUP" -C . 2>/dev/null; then
+        print_success "Content backup restored successfully"
+        
+        # Verify media files were restored
+        UPLOAD_COUNT=$(find public/uploads -type f 2>/dev/null | wc -l || echo "0")
+        IMAGE_COUNT=$(find public/images -type f 2>/dev/null | wc -l || echo "0")
+        print_success "Media files restored: $UPLOAD_COUNT uploads, $IMAGE_COUNT images"
+        CONTENT_BACKUP_FOUND=true
+    else
+        print_warning "Content backup restoration had issues"
+    fi
+else
+    print_status "No content backup found"
+    print_warning "Media files (images/uploads) are not restored"
+    print_warning "If you have a content backup, place it in /home/dev-admin/ or ./backups/content/"
+    
+    # Create upload directories structure even without backup
+    print_status "Creating upload directories structure..."
+    mkdir -p public/uploads/{general,project,blog,profile,slideshow}
+    mkdir -p public/images/{projects,profiles,slideshow}
+    print_success "Upload directories created"
 fi
 
 # Wait for application to start

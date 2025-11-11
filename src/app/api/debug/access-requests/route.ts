@@ -6,6 +6,14 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
+    // Security: Disable debug routes in production
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ 
+        error: 'Debug endpoints are disabled in production',
+        message: 'This endpoint is only available in development mode'
+      }, { status: 403 });
+    }
+
     console.log('🔍 Debug: Starting access requests debug check...');
     
     // Step 1: Check authentication

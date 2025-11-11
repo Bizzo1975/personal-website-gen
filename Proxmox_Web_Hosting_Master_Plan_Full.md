@@ -6,7 +6,25 @@
 
 ## Deployment Guide
 
-This comprehensive guide provides the full step-by-step configuration for hosting a Next.js + TypeScript website on an Ubuntu VM within a Proxmox VE environment. The setup uses a Netgear GS308EP managed switch and a Netgear Nighthawk CAX30 router, ensuring network isolation and secure remote management through Tailscale and Cloudflare Tunnel.
+This comprehensive guide provides the full step-by-step configuration for hosting a Next.js + TypeScript website on Ubuntu VMs within a Proxmox VE environment. The setup uses a Netgear GS308EP managed switch and a Netgear Nighthawk CAX30 router, ensuring network isolation and secure remote management through Tailscale and Cloudflare Tunnel.
+
+**Architecture Overview:**
+- **Development VM:** Already running on Proxmox (Ubuntu VM for development/testing)
+  - IP Address: 192.168.20.10
+  - Purpose: Local development, testing changes before production
+  - Access: Via Tailscale or direct DMZ access
+  - Port: Typically runs on port 3006 (as configured in your docker-compose.yml)
+  
+- **Production VM:** Will be created on the same Proxmox host (Ubuntu Server for live production)
+  - IP Address: 192.168.20.20
+  - Purpose: Live production website accessible to the public
+  - Access: Via Cloudflare Tunnel (public internet) and Tailscale (management)
+  - Port: Runs on port 3000 (as configured in docker-compose.prod.yml)
+  
+- Both VMs will run on the DMZ network (VLAN 20) but with separate IP addresses
+- Both VMs can run simultaneously without conflicts
+- Production VM will be accessible via Cloudflare Tunnel for public internet access
+- Development VM remains private and is not exposed to the public internet
 
 **Note for Beginners:** This guide is written for someone with high school education and no coding experience. Each step includes detailed explanations of what you're doing and why. If you encounter any errors, read the error message carefully and refer to the troubleshooting sections throughout this guide.
 
@@ -33,10 +51,10 @@ Before beginning configuration, define the IP and VLAN structure.
   - Isolated from other networks for security
   - Only accessible through Tailscale (secure VPN)
   
-- **DMZ (VLAN 20):** 192.168.20.0/24 — For the Ubuntu web server and public traffic  
+- **DMZ (VLAN 20):** 192.168.20.0/24 — For Ubuntu VMs and public traffic  
   - DMZ stands for "Demilitarized Zone" - it's a separate network for public-facing services
-  - The web server lives here, isolated from your private networks
-  - Even if compromised, it can't access your management or private networks
+  - Both development and production VMs will live here, isolated from your private networks
+  - Even if compromised, they can't access your management or private networks
 
 ### Assigned IPs
 
@@ -49,8 +67,13 @@ Write these down - you'll need them throughout the setup:
   - This allows the DMZ network to access the internet
   - Acts as a router for VLAN 20
   
-- **Ubuntu Web Server:** 192.168.20.10  
-  - This is where your website will run
+- **Development VM IP:** 192.168.20.10  
+  - Your existing development Ubuntu VM
+  - Used for testing and development work
+  
+- **Production VM IP:** 192.168.20.20  
+  - Your production Ubuntu Server VM (will be created)
+  - This is where your live website will run
   - Accessible through Cloudflare Tunnel to the public internet
 
 **Important:** Your admin PC stays on VLAN 1 with normal internet access. You'll connect to everything else through Tailscale (secure VPN).
@@ -579,9 +602,9 @@ Then authenticate the same way as Proxmox.
 
 ---
 
-## Step 6: Create and Configure the Ubuntu Server VM
+## Step 6: Create and Configure the Production Ubuntu Server VM
 
-**What you're doing:** Creating a virtual machine (VM) that will run your website. This VM will be isolated on the DMZ network for security.
+**What you're doing:** Creating a production virtual machine (VM) that will run your live website. This VM will be isolated on the DMZ network for security. Your development VM already exists at 192.168.20.10 - this step creates a separate production VM at 192.168.20.20 on the same Proxmox host.
 
 ### Step 6.1: Create the VM in Proxmox
 
@@ -593,8 +616,8 @@ Then authenticate the same way as Proxmox.
    - This opens the VM creation wizard
 
 3. **General tab:**
-   - **VM ID:** Auto-generated (e.g., 100) - just note it down
-   - **Name:** `ubuntu-webserver` (or any name you prefer)
+   - **VM ID:** Auto-generated (e.g., 200) - just note it down (use a different ID than your dev VM)
+   - **Name:** `ubuntu-prod-webserver` (or `ubuntu-production` - make it clear this is production)
    - **Resource Pool:** Leave default
    - Click **Next**
 
@@ -673,7 +696,7 @@ Then authenticate the same way as Proxmox.
 
 ### Step 6.3: Configure Static IP Address
 
-**Why:** We need a fixed IP address (192.168.20.10) so we can always find the web server and configure it properly.
+**Why:** We need a fixed IP address (192.168.20.20) for the production VM so we can always find it and configure it properly. This is different from your development VM which uses 192.168.20.10.
 
 1. **Log in to the VM:**
    - Use the username and password you set during installation
@@ -692,7 +715,7 @@ network:
   ethernets:
     ens18:
       dhcp4: no
-      addresses: [192.168.20.10/24]
+      addresses: [192.168.20.20/24]
       routes:
         - to: default
           via: 192.168.20.1
@@ -703,7 +726,7 @@ network:
    **Breaking this down:**
    - `ens18`: Your network interface name (might be different - check with `ip link show`)
    - `dhcp4: no`: Don't use automatic IP assignment
-   - `addresses: [192.168.20.10/24]`: Use this fixed IP address
+   - `addresses: [192.168.20.20/24]`: Use this fixed IP address for production (dev VM uses .10)
    - `via: 192.168.20.1`: Use Proxmox as the gateway (router)
    - `nameservers`: DNS servers for internet lookups (Cloudflare and Google)
 
@@ -729,7 +752,7 @@ sudo netplan apply
    ip addr show
    ```
    
-   **What to look for:** You should see `192.168.20.10` listed under your network interface.
+   **What to look for:** You should see `192.168.20.20` listed under your network interface (production VM). Your dev VM should have `192.168.20.10`.
 
 7. **Test internet connectivity:**
    ```bash
@@ -814,12 +837,16 @@ sudo tailscale up --ssh
 - If internet doesn't work, verify NAT is configured correctly on Proxmox (Step 4)
 - If you can't ping 8.8.8.8, check that Proxmox's iptables rules are correct
 - If you CAN ping 192.168.1.1 or 192.168.10.10, that's a security issue - check iptables rules on Proxmox
+- If you can't distinguish between dev and prod VMs, check their IPs: dev should be 192.168.20.10, prod should be 192.168.20.20
+- Both VMs can run simultaneously on the same Proxmox host without conflicts
 
 ---
 
-## Step 7: Deploy Next.js Website with Docker
+## Step 7: Deploy Next.js Website with Docker on Production VM
 
-**What you're doing:** Installing Docker (a container platform) and deploying your website. Docker packages your application and all its dependencies together, making deployment easier and more reliable.
+**What you're doing:** Installing Docker (a container platform) and deploying your production website on the production VM (192.168.20.20). Docker packages your application and all its dependencies together, making deployment easier and more reliable.
+
+**Important:** This step is for the **production VM only**. Your development VM (192.168.20.10) likely already has Docker and your dev environment running. This production deployment will be separate and isolated.
 
 **What is Docker?** Think of it like shipping containers for software. Your application, database, web server - everything is packaged in "containers" that run the same way everywhere.
 
@@ -1060,7 +1087,196 @@ cd /opt/app
    docker-compose -f docker-compose.prod.yml logs db
    ```
 
-### Step 7.6: Verify the Application is Running
+### Step 7.6: Configure Auto-Startup After Power Outage
+
+**What you're doing:** Ensuring your website automatically restarts after a power outage. This requires configuration at multiple levels: Proxmox VM auto-start, Docker service auto-start, and Docker Compose containers auto-start.
+
+**Why this is important:** After a power outage, you want your website to come back online automatically without manual intervention. This requires:
+1. Proxmox to automatically start the VM
+2. Docker service to start on VM boot
+3. Docker Compose containers to start automatically
+4. Cloudflare Tunnel to reconnect automatically
+
+#### Step 7.6.1: Configure Proxmox VM Auto-Start
+
+**On the Proxmox host (via web interface or CLI):**
+
+1. **Via Web Interface (Recommended):**
+   - Log into Proxmox web interface: `https://<proxmox-tailscale-ip>:8006`
+   - Find your production VM in the left sidebar (e.g., `ubuntu-prod-webserver`)
+   - Right-click on the VM → **"More"** → **"Configure"** → **"Options"** tab
+   - Find **"Start at boot"** option
+   - **Enable** it (toggle to "Yes")
+   - Click **"OK"** to save
+
+2. **Via Command Line (Alternative):**
+   ```bash
+   # SSH into Proxmox host
+   ssh root@<proxmox-tailscale-ip>
+   
+   # Find your VM ID (e.g., 200 for production)
+   qm list
+   
+   # Enable auto-start for production VM (replace 200 with your VM ID)
+   qm set 200 --onboot 1
+   
+   # Verify it's enabled
+   qm config 200 | grep onboot
+   ```
+   
+   **What this does:** Configures Proxmox to automatically start the VM when the Proxmox host boots up after a power outage.
+
+#### Step 7.6.2: Verify Docker Service Auto-Start
+
+**On the production VM (192.168.20.20):**
+
+1. **Check Docker service is enabled:**
+   ```bash
+   sudo systemctl is-enabled docker
+   ```
+   
+   **What to look for:** Should output `enabled`. If it says `disabled`, enable it:
+   ```bash
+   sudo systemctl enable docker
+   ```
+
+2. **Verify Docker starts on boot:**
+   ```bash
+   sudo systemctl status docker
+   ```
+   
+   **What to look for:** Should show "Loaded: loaded" and "Active: active (running)"
+
+#### Step 7.6.3: Configure Docker Compose Auto-Start
+
+**Why:** Even though Docker containers have `restart: unless-stopped`, they won't start automatically after a reboot unless Docker Compose runs. We need a systemd service to start the containers on boot.
+
+**On the production VM:**
+
+1. **Create a systemd service file:**
+   ```bash
+   sudo nano /etc/systemd/system/docker-compose-app.service
+   ```
+
+2. **Add the following content:**
+   ```ini
+   [Unit]
+   Description=Docker Compose Application Service
+   Requires=docker.service
+   After=docker.service network-online.target
+   Wants=network-online.target
+
+   [Service]
+   Type=oneshot
+   RemainAfterExit=yes
+   WorkingDirectory=/opt/app/site
+   ExecStart=/usr/bin/docker-compose -f docker-compose.prod.yml up -d
+   ExecStop=/usr/bin/docker-compose -f docker-compose.prod.yml down
+   TimeoutStartSec=0
+   User=ubuntu
+   Group=docker
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+   
+   **Breaking this down:**
+   - `Requires=docker.service`: Ensures Docker is running first
+   - `After=docker.service`: Starts after Docker is ready
+   - `WorkingDirectory=/opt/app/site`: Where your docker-compose.prod.yml file is
+   - `ExecStart`: Command to start containers
+   - `ExecStop`: Command to stop containers gracefully
+   - `User=ubuntu`: Run as your user (replace with your actual username if different)
+   - `RemainAfterExit=yes`: Service stays active even after containers start
+
+3. **Save and exit:**
+   - Press `Ctrl + O`, then `Enter`
+   - Press `Ctrl + X`
+
+4. **Reload systemd to recognize the new service:**
+   ```bash
+   sudo systemctl daemon-reload
+   ```
+
+5. **Enable the service to start on boot:**
+   ```bash
+   sudo systemctl enable docker-compose-app.service
+   ```
+
+6. **Start the service now (optional - to test):**
+   ```bash
+   sudo systemctl start docker-compose-app.service
+   ```
+
+7. **Verify the service is enabled:**
+   ```bash
+   sudo systemctl is-enabled docker-compose-app.service
+   ```
+   
+   **What to look for:** Should output `enabled`
+
+8. **Check service status:**
+   ```bash
+   sudo systemctl status docker-compose-app.service
+   ```
+
+#### Step 7.6.4: Verify Cloudflare Tunnel Auto-Start
+
+**On the production VM:**
+
+1. **Check Cloudflare Tunnel is enabled:**
+   ```bash
+   sudo systemctl is-enabled cloudflared
+   ```
+   
+   **What to look for:** Should output `enabled`. If not, enable it:
+   ```bash
+   sudo systemctl enable cloudflared
+   ```
+
+2. **Verify it's running:**
+   ```bash
+   sudo systemctl status cloudflared
+   ```
+
+#### Step 7.6.5: Test Auto-Startup (Optional but Recommended)
+
+**To verify everything works after a reboot:**
+
+1. **Reboot the production VM:**
+   ```bash
+   sudo reboot
+   ```
+
+2. **Wait 2-3 minutes for everything to start**
+
+3. **SSH back into the VM and verify:**
+   ```bash
+   # Check Docker is running
+   sudo systemctl status docker
+   
+   # Check containers are running
+   cd /opt/app/site
+   docker-compose -f docker-compose.prod.yml ps
+   
+   # Check Cloudflare Tunnel is running
+   sudo systemctl status cloudflared
+   
+   # Test website locally
+   curl -I http://127.0.0.1:3000
+   ```
+
+4. **Test from your Admin PC:**
+   - Visit `https://www.willworkforlunch.com` in a browser
+   - Should load successfully
+
+**Troubleshooting:**
+- If containers don't start, check logs: `sudo journalctl -u docker-compose-app.service -n 50`
+- If Docker service fails, check: `sudo journalctl -u docker -n 50`
+- If Cloudflare Tunnel doesn't start, check: `sudo journalctl -u cloudflared -n 50`
+- Verify file paths in systemd service match your actual setup
+
+### Step 7.7: Verify the Application is Running
 
 1. **Test the application locally:**
    ```bash
@@ -1073,7 +1289,7 @@ cd /opt/app
 
 2. **Test with a web browser (if you have GUI access):**
    - Open a browser on the VM (if you installed a desktop)
-   - Or from your Admin PC via Tailscale, you might be able to access `http://192.168.20.10:3000`
+   - Or from your Admin PC via Tailscale, you might be able to access `http://192.168.20.20:3000` (production) or `http://192.168.20.10:3006` (development)
    - You should see your website homepage
 
 **Troubleshooting:**
@@ -1082,6 +1298,7 @@ cd /opt/app
 - If port 3000 is already in use, check what's using it: `sudo netstat -tulpn | grep 3000`
 - If build fails, check you have enough disk space: `df -h`
 - If you see "permission denied" errors, make sure you're in the docker group: `groups`
+- If auto-start doesn't work after reboot, check systemd service logs: `sudo journalctl -u docker-compose-app.service`
 
 ---
 
@@ -1117,11 +1334,15 @@ cd /opt/app
 
 1. **From your development machine, transfer the file:**
    ```bash
-   # If using Tailscale to access the server:
-   scp backups/database/your-backup-file.sql.gz ubuntu@<server-tailscale-ip>:/home/ubuntu/
+   # If using Tailscale to access the production server:
+   scp backups/database/your-backup-file.sql.gz ubuntu@<prod-server-tailscale-ip>:/home/ubuntu/
    
    # Or if using the DMZ IP (if you have direct access):
-   scp backups/database/your-backup-file.sql.gz ubuntu@192.168.20.10:/home/ubuntu/
+   # For production VM:
+   scp backups/database/your-backup-file.sql.gz ubuntu@192.168.20.20:/home/ubuntu/
+   
+   # Note: If you're transferring from your dev VM (192.168.20.10), you can also do:
+   scp backups/database/your-backup-file.sql.gz ubuntu@192.168.20.20:/home/ubuntu/
    ```
    
    **What this does:** Copies the file from your computer to the server's home directory.
@@ -1141,7 +1362,7 @@ cd /opt/app
 
 ### Step 7A.3: Ensure Database Container is Running
 
-**On the production server (Ubuntu VM):**
+**On the production server (Production Ubuntu VM at 192.168.20.20):**
 
 1. **Check if database container is running:**
    ```bash
@@ -1236,7 +1457,7 @@ cd /opt/app
    curl http://127.0.0.1:3000
    ```
    
-   Or access via browser at `http://192.168.20.10:3000` (if accessible via Tailscale)
+   Or access via browser at `http://192.168.20.20:3000` (production VM, if accessible via Tailscale)
    
    **What to check:**
    - Homepage loads
@@ -1353,8 +1574,10 @@ ingress:
      - **Replace `<uuid>`** with the actual UUID from Step 8.3
      - To find it: `ls /root/.cloudflared/` - it will be the `.json` file
    - `hostname: www.willworkforlunch.com`: Your domain name
-   - `service: http://127.0.0.1:3000`: Where your website is running (localhost port 3000)
+   - `service: http://127.0.0.1:3000`: Where your production website is running (localhost port 3000 on the production VM)
    - `service: http_status:404`: Catch-all for any other hostnames (returns 404 error)
+   
+   **Note:** This configuration is for the production VM. Your development VM can run on a different port (e.g., 3006) and won't be exposed via Cloudflare Tunnel.
 
 4. **Find the correct credentials file path:**
    ```bash
@@ -1470,8 +1693,9 @@ sudo systemctl enable --now cloudflared
 
 1. **SSH into the production server:**
 ```bash
-   ssh ubuntu@<server-tailscale-ip>
-   # Or: ssh ubuntu@192.168.20.10
+   ssh ubuntu@<prod-server-tailscale-ip>
+   # Or: ssh ubuntu@192.168.20.20 (production VM)
+   # Note: Your dev VM is at 192.168.20.10 if you need to access it
    ```
 
 2. **Navigate to the application directory:**
@@ -1692,7 +1916,7 @@ chmod 600 .env.production
 
 ### Step 10.1: Test Internet Connectivity from DMZ
 
-**On the Ubuntu web server VM:**
+**On the Production Ubuntu web server VM (192.168.20.20):**
 
 1. **Test internet connectivity:**
 ```bash
@@ -1718,7 +1942,7 @@ curl -I https://cloudflare.com
 
 **CRITICAL:** These tests should FAIL. If they succeed, your DMZ is not properly isolated!
 
-**On the Ubuntu web server VM:**
+**On the Production Ubuntu web server VM (192.168.20.20):**
 
 1. **Test that DMZ CANNOT reach LAN network:**
    ```bash
@@ -1816,7 +2040,7 @@ curl -I https://cloudflare.com
 
 2. **Check server resources:**
    ```bash
-   # On the web server VM
+   # On the production web server VM (192.168.20.20)
    docker stats
    ```
    
@@ -1873,12 +2097,14 @@ Congratulations! You now have a fully isolated, securely managed self-hosted Nex
 2. ✅ Set up Proxmox with proper network bridges for each VLAN
 3. ✅ Configured NAT and firewall rules to isolate the DMZ
 4. ✅ Secured access to Proxmox via Tailscale VPN
-5. ✅ Created and configured an Ubuntu web server VM
-6. ✅ Deployed your Next.js application with Docker
+5. ✅ Created and configured a production Ubuntu Server VM (separate from your dev VM)
+6. ✅ Deployed your Next.js application with Docker on the production VM
 7. ✅ Restored your development database to production
-8. ✅ Configured Cloudflare Tunnel for public access
+8. ✅ Configured Cloudflare Tunnel for public access to production
 9. ✅ Set up automated backups and maintenance procedures
 10. ✅ Verified everything is working and secure
+
+**Note:** Your development VM (192.168.20.10) and production VM (192.168.20.20) now coexist on the same Proxmox host, both isolated on the DMZ network but serving different purposes.
 
 ### Next Steps
 

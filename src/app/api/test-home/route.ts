@@ -4,6 +4,14 @@ import { serializeMarkdown } from '@/lib/mdx';
 
 export async function GET() {
   try {
+    // Security: Disable test routes in production
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ 
+        error: 'Test endpoints are disabled in production',
+        message: 'This endpoint is only available in development mode'
+      }, { status: 403 });
+    }
+
     console.log('Test endpoint: Loading home page...');
     
     const homePage = await getPageBySlug('home');

@@ -10,10 +10,15 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
+# Increase Node.js memory limit to prevent SIGSEGV during npm install
+# Reduced for low-memory VMs (3-4GB RAM)
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+
 # Install dependencies based on the preferred package manager
+# Use npm install instead of npm ci for deps stage to reduce memory usage
 COPY package.json package-lock.json* ./
 RUN \
-  if [ -f package-lock.json ]; then npm ci --only=production; \
+  if [ -f package-lock.json ]; then npm install --only=production --prefer-offline --no-audit; \
   else echo "Lockfile not found." && exit 1; \
   fi
 
@@ -21,14 +26,24 @@ RUN \
 FROM base AS builder
 WORKDIR /app
 
+# Build argument to control whether to actually build (for production only)
+ARG BUILD_TARGET=production
+ARG SKIP_BUILD=false
+
 # Install dependencies needed for building (including dev dependencies)
 RUN apk add --no-cache libc6-compat
+
+# Increase Node.js memory limit to prevent SIGSEGV during build
+# Production builds need more memory - use 4096MB for production builds
+# This stage is only built for production (runner target), not development
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Copy package files
 COPY package.json package-lock.json* ./
 
 # Install ALL dependencies (including dev) needed for build
-RUN npm ci
+# Suppress npm warnings to reduce noise
+RUN npm ci --no-audit --loglevel=error
 
 # Copy source code (includes tsconfig.json and next.config.js)
 COPY . .
@@ -38,8 +53,14 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Build the application
-RUN npm run build
+# Build the application - only if building for production
+# Skip build for development to avoid SIGSEGV and unnecessary work
+RUN if [ "$SKIP_BUILD" != "true" ] && [ "$BUILD_TARGET" = "production" ]; then \
+        npm run build; \
+    else \
+        echo "Skipping build for development target"; \
+        mkdir -p .next/static .next/standalone public; \
+    fi
 
 # Development image, copy all the files and run next dev
 FROM base AS development
@@ -52,11 +73,17 @@ ENV NEXT_TELEMETRY_DISABLED 1
 # Install dependencies
 RUN apk add --no-cache libc6-compat
 
+# Increase Node.js memory limit for development (set before npm commands)
+# Use more memory for npm ci to prevent SIGSEGV
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+
 # Copy package files
 COPY package.json package-lock.json* ./
 
 # Install all dependencies (including dev dependencies) for development
-RUN npm ci
+# Use npm install instead of npm ci for development to reduce memory pressure
+# Suppress npm warnings to reduce noise
+RUN npm install --no-audit --loglevel=error
 
 # Copy source code (tsconfig.json and next.config.js are already included in COPY . .)
 COPY . .
@@ -101,7 +128,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-EXPOSE 3006
+EXPOSE 3000
 
 ENV PORT 3000
 

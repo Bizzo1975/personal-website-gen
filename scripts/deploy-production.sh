@@ -110,7 +110,9 @@ deploy_services() {
     cd $APP_DIR
     
     # Build the application
-    docker-compose -f docker-compose.prod.yml build --no-cache
+    # Use cache for faster builds - only use --no-cache if explicitly needed
+    # Production builds need the builder stage, so ensure sufficient memory
+    docker-compose -f docker-compose.prod.yml build
     
     # Start services
     docker-compose -f docker-compose.prod.yml up -d

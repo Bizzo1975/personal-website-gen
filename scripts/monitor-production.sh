@@ -222,7 +222,8 @@ update_application() {
     git pull origin main
     
     # Rebuild and restart
-    docker-compose -f docker-compose.prod.yml build --no-cache
+    # Use cache for faster builds - only use --no-cache if explicitly needed
+    docker-compose -f docker-compose.prod.yml build
     docker-compose -f docker-compose.prod.yml up -d
     
     print_success "Application updated"

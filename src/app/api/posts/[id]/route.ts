@@ -11,6 +11,15 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params;
+    const postId = resolvedParams.id;
+    
+    if (!postId) {
+      return NextResponse.json(
+        { error: 'Post ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const { searchParams } = new URL(request.url);
     const isPreview = searchParams.get('preview') === 'true';
     
@@ -26,7 +35,7 @@ export async function GET(
       );
     }
     
-    const post = await PostService.getPostById(resolvedParams.id);
+    const post = await PostService.getPostById(postId);
     
     if (!post) {
       return NextResponse.json(
@@ -46,8 +55,9 @@ export async function GET(
     return NextResponse.json({ data: post });
   } catch (error) {
     console.error('Error fetching post by ID:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch post' },
+      { error: 'Failed to fetch post', details: errorMessage },
       { status: 500 }
     );
   }

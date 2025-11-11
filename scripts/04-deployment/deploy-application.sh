@@ -233,7 +233,9 @@ build_and_deploy() {
     
     # Build and start containers
     print_status "Building Docker containers (this may take several minutes)..."
-    docker-compose -f docker-compose.prod.yml build --no-cache
+    # Use cache for faster builds - only use --no-cache if explicitly needed
+    # Production builds need the builder stage, so ensure sufficient memory
+    docker-compose -f docker-compose.prod.yml build
     
     print_status "Starting application containers..."
     docker-compose -f docker-compose.prod.yml up -d

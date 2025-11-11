@@ -2,6 +2,9 @@ const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["@prisma/client", "bcryptjs", "pg"],
   
+  // Output mode for Docker deployment (standalone)
+  output: 'standalone',
+  
   // Performance optimizations
   experimental: {
     // optimizeCss: true, // Disabled - requires 'critters' package which is not installed

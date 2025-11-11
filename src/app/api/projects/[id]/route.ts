@@ -11,7 +11,16 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params;
-    const project = await ProjectService.getProjectById(resolvedParams.id);
+    const projectId = resolvedParams.id;
+    
+    if (!projectId) {
+      return NextResponse.json(
+        { error: 'Project ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    const project = await ProjectService.getProjectById(projectId);
     
     if (!project) {
       return NextResponse.json(
@@ -23,8 +32,9 @@ export async function GET(
     return NextResponse.json({ data: project });
   } catch (error) {
     console.error('Error fetching project:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch project' },
+      { error: 'Failed to fetch project', details: errorMessage },
       { status: 500 }
     );
   }

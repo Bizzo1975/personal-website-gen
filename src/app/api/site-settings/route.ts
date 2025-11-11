@@ -38,7 +38,23 @@ export async function GET() {
     return NextResponse.json(defaultSettings);
   } catch (error) {
     console.error('Error fetching site settings:', error);
-    return NextResponse.json({ error: 'Failed to fetch site settings' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Return default settings on error to prevent frontend crashes
+    return NextResponse.json({
+      logoUrl: '/images/jlk-logo.png',
+      logoText: 'Jonathan L Keck',
+      footerText: 'Built with Next.js and Tailwind CSS',
+      bioText: 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.',
+      navbarStyle: 'default',
+      navbarLinks: [
+        { label: 'Home', url: '/', isExternal: false },
+        { label: 'About', url: '/about', isExternal: false },
+        { label: 'Projects', url: '/projects', isExternal: false },
+        { label: 'Blog', url: '/blog', isExternal: false },
+        { label: 'Contact', url: '/contact', isExternal: false },
+      ],
+      error: errorMessage
+    }, { status: 200 }); // Return 200 with error in response to prevent frontend crashes
   }
 }
 

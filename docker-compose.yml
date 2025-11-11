@@ -5,6 +5,9 @@ services:
       context: .
       dockerfile: Dockerfile
       target: development
+      args:
+        BUILD_TARGET: development
+        SKIP_BUILD: "true"
     ports:
       - "3006:3006"
     environment:
