@@ -57,33 +57,32 @@ export default function ProjectsPage({ projects = [] }: ProjectsPageProps) {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {displayedProjects.map((project) => (
-          <Card key={project.id} variant="elevated" className="hover-card">
-            <CardHeader>
-              <h3 className="text-xl font-semibold">{project.title}</h3>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-4">
-                <p className="text-slate-600 dark:text-slate-400">
-                  {project.description}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {project.technologies.map((tech, index) => (
-                    <Badge key={index} variant={index % 3 === 0 ? 'primary' : index % 3 === 1 ? 'secondary' : 'info'}>
-                      {tech}
-                    </Badge>
-                  ))}
+          <Link key={project.id} href={project.slug || '#'} className="block h-full">
+            <Card variant="elevated" className="hover-card h-full">
+              <CardHeader>
+                <h3 className="text-xl font-semibold">{project.title}</h3>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-4">
+                  <p className="text-slate-600 dark:text-slate-400">
+                    {project.description}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {project.technologies.map((tech, index) => (
+                      <Badge key={index} variant={index % 3 === 0 ? 'primary' : index % 3 === 1 ? 'secondary' : 'info'}>
+                        {tech}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="pt-2">
+                    <span className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">
+                      View Project →
+                    </span>
+                  </div>
                 </div>
-                <div className="pt-2">
-                  <Link 
-                    href={project.slug || '#'} 
-                    className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
-                  >
-                    View Project →
-                  </Link>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
+              </CardBody>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>

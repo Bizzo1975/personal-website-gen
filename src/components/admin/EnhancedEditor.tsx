@@ -2,9 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import TextArea from '../TextArea';
+import dynamic from 'next/dynamic';
 
-// MDEditor configuration is handled internally
+// Use SimpleMDE (markdown editor) - already in project, doesn't cause build issues
+// Provides better visual formatting than plain textarea
+const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
+import 'easymde/dist/easymde.min.css';
 
 interface EnhancedEditorProps {
   value: string;
@@ -51,7 +54,7 @@ const EnhancedEditor: React.FC<EnhancedEditorProps> = ({
     return () => {
       // Cleanup if needed
     };
-  }, [theme, onImageUpload]);
+  }, []);
   
   // Handle editor value changes
   const handleChange = (content: string) => {
@@ -59,38 +62,101 @@ const EnhancedEditor: React.FC<EnhancedEditorProps> = ({
     onChange(content);
   };
   
+  // Configure toolbar based on prop
+  const getToolbar = () => {
+    const baseToolbar = ['bold', 'italic', 'strikethrough', '|', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen'];
+    
+    if (toolbar === 'minimal') {
+      return ['bold', 'italic', '|', 'link'];
+    } else if (toolbar === 'basic') {
+      return ['bold', 'italic', '|', 'heading', '|', 'unordered-list', 'ordered-list', '|', 'link', 'image'];
+    } else {
+      return baseToolbar;
+    }
+  };
+  
   if (!mounted) {
     return (
       <div 
-        className="h-60 w-full bg-gray-100 dark:bg-gray-800 animate-pulse rounded-md" 
+        className="h-60 w-full bg-gray-100 dark:bg-gray-800 animate-pulse rounded-md flex items-center justify-center" 
         aria-label="Loading editor..."
-      />
+      >
+        <div className="text-gray-500 dark:text-gray-400">Loading editor...</div>
+      </div>
     );
   }
   
   return (
     <div 
       className={`enhanced-editor ${theme === 'dark' ? 'dark-theme' : 'light-theme'} ${className}`}
-      style={{ height }}
+      style={{ height, maxHeight }}
       id={`${id}-container`}
     >
-      <TextArea
+      <style jsx global>{`
+        .enhanced-editor .EasyMDEContainer {
+          min-height: ${height};
+          max-height: ${maxHeight};
+        }
+        .enhanced-editor .EasyMDEContainer .CodeMirror {
+          min-height: ${height};
+          max-height: ${maxHeight};
+          font-family: inherit;
+          font-size: 1rem;
+        }
+        .enhanced-editor.dark-theme .EasyMDEContainer {
+          background-color: #1f2937;
+        }
+        .enhanced-editor.dark-theme .EasyMDEContainer .CodeMirror {
+          background-color: #1f2937;
+          color: #f3f4f6;
+          border-color: #374151;
+        }
+        .enhanced-editor.dark-theme .EasyMDEContainer .editor-toolbar {
+          background-color: #111827;
+          border-color: #374151;
+        }
+        .enhanced-editor.dark-theme .EasyMDEContainer .editor-toolbar button {
+          color: #d1d5db;
+        }
+        .enhanced-editor.dark-theme .EasyMDEContainer .editor-toolbar button:hover,
+        .enhanced-editor.dark-theme .EasyMDEContainer .editor-toolbar button.active {
+          background-color: #374151;
+          border-color: #4b5563;
+        }
+        .enhanced-editor.light-theme .EasyMDEContainer .CodeMirror {
+          background-color: #ffffff;
+          color: #111827;
+          border-color: #e5e7eb;
+        }
+        .enhanced-editor.light-theme .EasyMDEContainer .editor-toolbar {
+          background-color: #f9fafb;
+          border-color: #e5e7eb;
+        }
+      `}</style>
+      <SimpleMDE
         value={editorValue}
-        onChange={(e) => handleChange(e.target.value)}
-        placeholder={placeholder}
-        readOnly={readOnly}
-        id={id}
-        aria-label={ariaLabel}
-        rows={15}
-        className="w-full min-h-[300px] resize-y"
+        onChange={handleChange}
+        options={{
+          placeholder: placeholder,
+          spellChecker: false,
+          status: false,
+          autofocus: false,
+          toolbar: getToolbar(),
+          minHeight: height,
+          maxHeight: maxHeight,
+          lineNumbers: false,
+          lineWrapping: true,
+          renderingConfig: {
+            singleLineBreaks: false,
+            codeSyntaxHighlighting: true,
+          }
+        }}
       />
       
       {/* Accessibility description */}
       <div className="sr-only" id={`${id}-description`}>
-        Text editor for content creation. Supports markdown formatting.
+        Markdown editor for content creation with formatting options and live preview.
       </div>
-      
-      {/* MDEditor handles its own theming */}
     </div>
   );
 };

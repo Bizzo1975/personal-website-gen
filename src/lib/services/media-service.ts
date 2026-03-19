@@ -74,10 +74,23 @@ export class MediaService {
 
       // Ensure directory exists
       await fs.mkdir(uploadDir, { recursive: true });
+      console.log(`📁 Upload directory: ${uploadDir}`);
 
       // Save file to disk
       const buffer = Buffer.from(await file.arrayBuffer());
       await fs.writeFile(filePath, buffer);
+      
+      // Verify file was written
+      try {
+        const stats = await fs.stat(filePath);
+        if (stats.size !== file.size) {
+          throw new Error(`File size mismatch: expected ${file.size}, got ${stats.size}`);
+        }
+        console.log(`✅ File written successfully: ${filePath} (${stats.size} bytes)`);
+      } catch (verifyError) {
+        console.error(`❌ File verification failed for ${filePath}:`, verifyError);
+        throw new Error(`Failed to verify file was written: ${verifyError}`);
+      }
 
       // Save metadata to database
       const result = await query(
@@ -100,6 +113,17 @@ export class MediaService {
 
       const mediaFile = result.rows[0] as MediaFile;
       console.log(`✅ Uploaded file: ${file.name} -> ${publicPath}`);
+      console.log(`📂 File saved at: ${filePath}`);
+      console.log(`🌐 Public URL: ${publicPath}`);
+      
+      // Double-check file exists and is readable
+      try {
+        const finalCheck = await fs.access(filePath);
+        console.log(`✅ File accessibility verified: ${filePath}`);
+      } catch (accessError) {
+        console.error(`⚠️ File accessibility check failed: ${filePath}`, accessError);
+        // Don't throw - file might still be accessible via web server
+      }
       
       return mediaFile;
     } catch (error) {

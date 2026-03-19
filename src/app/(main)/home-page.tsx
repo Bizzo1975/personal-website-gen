@@ -219,7 +219,7 @@ export default function HomePage({
               <div className="flex flex-col gap-8 items-center">
                 {/* Creative code animation element - only render on client */}
                 {isMounted && (
-                  <div className="backdrop-blur-md rounded-2xl rotate-3 hover:rotate-0 transition-transform duration-500 border-0 outline-0" style={{ width: '400px', height: '250px' }}>
+                  <div className="backdrop-blur-md rounded-2xl rotate-0 md:hover:rotate-3 transition-transform duration-500 border-0 outline-0" style={{ width: '400px', height: '250px' }}>
                     <CreativeCodeElement 
                       className="rounded-2xl border-0"
                       width={400}
@@ -229,7 +229,7 @@ export default function HomePage({
                 )}
                 
                 {!isMounted && (
-                  <div className="backdrop-blur-md rounded-2xl rotate-3 hover:rotate-0 transition-transform duration-500 border-0 outline-0 bg-slate-800/90 dark:bg-slate-900/90 flex items-center justify-center" style={{ width: '400px', height: '250px' }}>
+                  <div className="backdrop-blur-md rounded-2xl rotate-0 md:hover:rotate-3 transition-transform duration-500 border-0 outline-0 bg-slate-800/90 dark:bg-slate-900/90 flex items-center justify-center" style={{ width: '400px', height: '250px' }}>
                     <div className="text-white/50 text-center">
                       <div className="text-blue-400 mb-2">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mx-auto">
@@ -241,7 +241,7 @@ export default function HomePage({
                   </div>
                 )}
                 
-                <div className="bg-slate-800/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg p-4 rounded-2xl rotate-2 hover:rotate-0 transition-transform duration-500" style={{ width: '400px', height: '220px' }}>
+                <div className="bg-slate-800/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg p-4 rounded-2xl rotate-0 md:hover:rotate-2 transition-transform duration-500" style={{ width: '400px', height: '220px' }}>
                   <div className="flex items-center text-white mb-3">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mr-3 text-blue-400">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />

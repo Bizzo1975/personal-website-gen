@@ -1,5 +1,4 @@
 import { query } from '@/lib/db';
-import { EmailNotificationService } from './email-notification-service';
 import bcrypt from 'bcryptjs';
 
 interface AccessRequestData {
@@ -25,10 +24,18 @@ interface AccessRequestResult {
 }
 
 export class EnhancedAccessRequestService {
-  private emailService: EmailNotificationService;
+  // Lazy load email service to avoid build-time evaluation
+  private _emailService: any = null;
+  private async getEmailService() {
+    if (!this._emailService) {
+      const { EmailNotificationService } = await import('./email-notification-service');
+      this._emailService = new EmailNotificationService();
+    }
+    return this._emailService;
+  }
 
   constructor() {
-    this.emailService = new EmailNotificationService();
+    // No initialization at build time
   }
 
   /**
@@ -229,7 +236,8 @@ export class EnhancedAccessRequestService {
 
       // Send admin notification email
       try {
-        await this.emailService.sendAdminNotification({
+        const emailService = await this.getEmailService();
+        await emailService.sendAdminNotification({
           requestId: newRequest.id,
           userName: newRequest.name,
           userEmail: newRequest.email,
@@ -307,15 +315,68 @@ export class EnhancedAccessRequestService {
 
       // Send approval notification email
       try {
-        await this.emailService.sendApprovalNotification({
-          requestId: approvedRequest.id,
-          userName: approvedRequest.name,
-          userEmail: approvedRequest.email,
-          accessLevel: approvedRequest.requested_access_level,
-          submittedAt: approvedRequest.submitted_at,
-          adminNotes,
-          generatedPassword: generatedPassword || undefined,
+        // Get custom welcome email template and SendGrid settings from site settings
+        // Use existing query import (already at top of file)
+        const settingsResult = await query(
+          `SELECT setting_key, setting_value FROM site_settings 
+           WHERE setting_key IN ('accessRequestWelcomeEmailEnabled', 'accessRequestWelcomeEmailSubject', 'accessRequestWelcomeEmailMessage', 'sendgridApiKey', 'sendgridFromEmail')`
+        );
+        
+        const settings: any = {};
+        settingsResult.rows.forEach((row: any) => {
+          if (row.setting_key === 'accessRequestWelcomeEmailEnabled') {
+            settings.enabled = row.setting_value === 'true' || row.setting_value === true;
+          } else if (row.setting_key === 'accessRequestWelcomeEmailSubject') {
+            settings.subject = row.setting_value;
+          } else if (row.setting_key === 'accessRequestWelcomeEmailMessage') {
+            settings.message = row.setting_value;
+          } else if (row.setting_key === 'sendgridApiKey') {
+            settings.apiKey = row.setting_value;
+          } else if (row.setting_key === 'sendgridFromEmail') {
+            settings.fromEmail = row.setting_value;
+          }
         });
+
+        // Only send if enabled (defaults to true if not set)
+        if (settings.enabled !== false) {
+          // Get SendGrid API key (from settings or environment) - use dynamic env access
+          const env = typeof process !== 'undefined' ? process.env : {};
+          const apiKey = settings.apiKey || env.SENDGRID_API_KEY;
+          const fromEmail = settings.fromEmail || env.FROM_EMAIL || env.ADMIN_EMAIL || 'admin@willworkforlunch.com';
+          
+          if (apiKey) {
+            // Use SendGrid service directly for custom template support (fully lazy import)
+            const sendGridModule = await import('./sendgrid-email-service');
+            const SendGridEmailService = sendGridModule.SendGridEmailService;
+            const sendGridService = SendGridEmailService.getInstance(apiKey, fromEmail);
+            
+            const customTemplate = settings.subject || settings.message 
+              ? { 
+                  subject: settings.subject || undefined,
+                  message: settings.message || undefined
+                }
+              : undefined;
+
+            await sendGridService.sendApprovalNotification(
+              approvedRequest.email,
+              approvedRequest.name,
+              approvedRequest.requested_access_level,
+              customTemplate
+            );
+          } else {
+            // Fallback to email notification service if SendGrid not configured
+            const emailService = await this.getEmailService();
+            await emailService.sendApprovalNotification({
+              requestId: approvedRequest.id,
+              userName: approvedRequest.name,
+              userEmail: approvedRequest.email,
+              accessLevel: approvedRequest.requested_access_level,
+              submittedAt: approvedRequest.submitted_at,
+              adminNotes,
+              generatedPassword: generatedPassword || undefined,
+            });
+          }
+        }
       } catch (emailError) {
         console.warn('Failed to send approval notification email:', emailError);
       }
@@ -365,7 +426,8 @@ export class EnhancedAccessRequestService {
 
       // Send rejection notification email
       try {
-        await this.emailService.sendRejectionNotification({
+        const emailService = await this.getEmailService();
+        await emailService.sendRejectionNotification({
           requestId: rejectedRequest.id,
           userName: rejectedRequest.name,
           userEmail: rejectedRequest.email,

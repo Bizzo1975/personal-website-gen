@@ -198,22 +198,23 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
       whileInView="visible"
       viewport={{ once: true, amount: 0.3 }}
     >
-      <motion.div
-        className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden h-full group cursor-pointer relative"
-        style={{
-          transformStyle: "preserve-3d",
-          ...(shouldReduceMotion ? {} : {
-            rotateX,
-            rotateY,
-            translateZ
-          })
-        }}
-        variants={hoverVariants}
-        initial="rest"
-        whileHover="hover"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      >
+      <Link href={`/projects/${project.slug}`} className="block h-full">
+        <motion.div
+          className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden h-full group cursor-pointer relative"
+          style={{
+            transformStyle: "preserve-3d",
+            ...(shouldReduceMotion ? {} : {
+              rotateX,
+              rotateY,
+              translateZ
+            })
+          }}
+          variants={hoverVariants}
+          initial="rest"
+          whileHover="hover"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
         {/* Enhanced 3D shadow layer */}
         {!shouldReduceMotion && (
           <motion.div
@@ -322,8 +323,7 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
           </div>
           
           {/* Enhanced 3D Learn More Link */}
-          <Link 
-            href={`/projects/${project.slug}`}
+          <div
             className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium text-sm inline-flex items-center transition-colors duration-200 group/link"
             style={shouldReduceMotion ? {
               transformStyle: 'preserve-3d'
@@ -349,9 +349,10 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </motion.svg>
-          </Link>
+          </div>
         </div>
       </motion.div>
+      </Link>
     </motion.div>
   );
 };

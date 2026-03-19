@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
     const result = await query(
       `INSERT INTO newsletter_subscribers 
        (email, name, first_name, last_name, phone, company, interests, 
-        subscription_source, metadata, created_at, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        subscription_source, metadata, is_active, created_at, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING id, email, name, created_at`,
       [
         email.toLowerCase().trim(),

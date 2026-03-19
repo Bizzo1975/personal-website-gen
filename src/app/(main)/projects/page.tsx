@@ -4,6 +4,10 @@ import { getProjects, ProjectData } from '@/lib/services/project-service';
 import { getPageBySlug, PageData } from '@/lib/services/page-service';
 import EnhancedProjectsPage from './enhanced-projects';
 
+// Force dynamic rendering to fetch fresh data from database at runtime
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'Projects | Personal Website',

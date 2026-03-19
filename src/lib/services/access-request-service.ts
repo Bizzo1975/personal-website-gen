@@ -56,7 +56,13 @@ export class AccessRequestService {
       return result.rows[0];
     } catch (error) {
       console.error('Error creating access request:', error);
-      throw new Error('Failed to create access request');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Database error details:', {
+        message: errorMessage,
+        data: data,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error; // Re-throw the original error to preserve details
     }
   }
 

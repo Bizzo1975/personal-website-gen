@@ -5,6 +5,11 @@ import { ProjectService } from '@/lib/services/project-service';
 import { PostService } from '@/lib/services/post-service';
 import { serializeMarkdown } from '@/lib/mdx';
 
+// Force dynamic rendering to fetch fresh data from database at runtime
+// This prevents Next.js from using stale static HTML generated at build time
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function Page() {
   // Fetch the home page content from database
   console.log('🔄 Fetching Home page content...');

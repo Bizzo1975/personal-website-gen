@@ -166,7 +166,12 @@ export class PermissionService {
   /**
    * Check if user is admin (has admin role in users table)
    */
-  static async isUserAdmin(email: string): Promise<boolean> {
+  static async isUserAdmin(email: string | undefined | null): Promise<boolean> {
+    // If no email provided, user is not admin
+    if (!email) {
+      return false;
+    }
+    
     try {
       const result = await query(
         'SELECT role FROM users WHERE email = $1 AND role = $2',

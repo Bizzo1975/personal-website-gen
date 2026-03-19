@@ -5,6 +5,10 @@ import { getPageBySlug, getAllPages } from '@/lib/services/page-service';
 import { serializeMarkdown } from '@/lib/mdx';
 import DynamicPage from './dynamic-page';
 
+// Force dynamic rendering to fetch fresh data from database at runtime
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Define the page props with params containing the slug
 interface PageProps {
   params: Promise<{
@@ -16,6 +20,7 @@ interface PageProps {
 const DEDICATED_PATHS = ['about', 'blog', 'projects', 'contact', 'admin'];
 
 // Generate static params for pages that exist in the database
+// Note: With force-dynamic, this will still run but pages will be rendered dynamically
 export async function generateStaticParams() {
   const pages = await getAllPages();
   

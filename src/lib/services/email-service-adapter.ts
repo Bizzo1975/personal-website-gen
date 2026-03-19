@@ -1,5 +1,31 @@
-import { sendGridEmailService, EmailData, AccessRequestEmailData } from './sendgrid-email-service';
-import { EmailNotificationService } from './email-notification-service';
+// Lazy import SendGrid to avoid loading during build
+// Define types locally to prevent build-time analysis of sendgrid-email-service
+
+// Local type definitions to avoid importing from sendgrid-email-service at build time
+export interface EmailData {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+  from?: string;
+  replyTo?: string;
+  cc?: string | string[];
+  bcc?: string | string[];
+  attachments?: Array<{
+    content: string;
+    filename: string;
+    type?: string;
+    disposition?: string;
+  }>;
+}
+
+export interface AccessRequestEmailData {
+  name: string;
+  email: string;
+  message: string;
+  requestType?: 'personal' | 'professional';
+  requestDate?: string;
+}
 
 export type EmailProvider = 'sendgrid' | 'smtp';
 
@@ -10,13 +36,26 @@ export type EmailProvider = 'sendgrid' | 'smtp';
 export class EmailServiceAdapter {
   private static instance: EmailServiceAdapter;
   private provider: EmailProvider;
-  private sendGridService = sendGridEmailService;
-  private smtpService = new EmailNotificationService();
+  private getSendGridService = async () => {
+    const { SendGridEmailService } = await import('./sendgrid-email-service');
+    return SendGridEmailService.getInstance();
+  };
+  // Lazy load SMTP service to avoid build-time evaluation
+  private _smtpService: any = null;
+  private async getSmtpService() {
+    if (!this._smtpService) {
+      const { EmailNotificationService } = await import('./email-notification-service');
+      this._smtpService = new EmailNotificationService();
+    }
+    return this._smtpService;
+  }
 
   constructor() {
     // Determine which email provider to use based on environment
-    this.provider = process.env.EMAIL_PROVIDER as EmailProvider || 
-                   (process.env.SENDGRID_API_KEY ? 'sendgrid' : 'smtp');
+    // Use safe runtime check to avoid build-time evaluation
+    const env = typeof process !== 'undefined' ? process.env : {};
+    this.provider = (env.EMAIL_PROVIDER as EmailProvider) || 
+                   (env.SENDGRID_API_KEY ? 'sendgrid' : 'smtp');
     
     console.log(`📧 Email Service: Using ${this.provider.toUpperCase()} provider`);
   }
@@ -34,7 +73,8 @@ export class EmailServiceAdapter {
   async sendAccessRequestNotification(requestData: AccessRequestEmailData): Promise<void> {
     try {
       if (this.provider === 'sendgrid') {
-        await this.sendGridService.sendAccessRequestNotification(requestData);
+        const sendGridService = await this.getSendGridService();
+        await sendGridService.sendAccessRequestNotification(requestData);
       } else {
         // Convert to SMTP format - AccessRequestEmailData from sendgrid has different structure
         const smtpRequestData = {
@@ -45,7 +85,8 @@ export class EmailServiceAdapter {
           submittedAt: new Date(requestData.requestDate || Date.now()),
           adminNotes: requestData.message
         };
-        await this.smtpService.sendAdminNotification(smtpRequestData);
+        const smtpService = await this.getSmtpService();
+        await smtpService.sendAdminNotification(smtpRequestData);
       }
     } catch (error) {
       console.error(`❌ Failed to send access request notification via ${this.provider}:`, error);
@@ -60,7 +101,8 @@ export class EmailServiceAdapter {
   async sendApprovalNotification(userEmail: string, userName: string, accessLevel: string): Promise<void> {
     try {
       if (this.provider === 'sendgrid') {
-        await this.sendGridService.sendApprovalNotification(userEmail, userName, accessLevel);
+        const sendGridService = await this.getSendGridService();
+        await sendGridService.sendApprovalNotification(userEmail, userName, accessLevel);
       } else {
         // Convert to SMTP format - AccessRequestEmailData structure
         const requestData = {
@@ -71,7 +113,8 @@ export class EmailServiceAdapter {
           submittedAt: new Date(),
           adminNotes: `Access granted for ${accessLevel} level`
         };
-        await this.smtpService.sendApprovalNotification(requestData);
+        const smtpService = await this.getSmtpService();
+        await smtpService.sendApprovalNotification(requestData);
       }
     } catch (error) {
       console.error(`❌ Failed to send approval notification via ${this.provider}:`, error);
@@ -91,12 +134,14 @@ export class EmailServiceAdapter {
   }): Promise<void> {
     try {
       if (this.provider === 'sendgrid') {
-        await this.sendGridService.sendContactFormNotification(formData);
+        const sendGridService = await this.getSendGridService();
+        await sendGridService.sendContactFormNotification(formData);
       } else {
         // Use existing SMTP contact form logic
         // This would integrate with your existing contact API logic
+        const env = typeof process !== 'undefined' ? process.env : {};
         await this.sendGenericEmail({
-          to: process.env.ADMIN_EMAIL!,
+          to: env.ADMIN_EMAIL || 'admin@willworkforlunch.com',
           subject: `Contact Form: ${formData.subject}`,
           html: this.generateContactFormHtml(formData)
         });
@@ -113,7 +158,8 @@ export class EmailServiceAdapter {
   async sendContactAutoResponse(name: string, email: string, category: string): Promise<void> {
     try {
       if (this.provider === 'sendgrid') {
-        await this.sendGridService.sendContactAutoResponse(name, email, category);
+        const sendGridService = await this.getSendGridService();
+        await sendGridService.sendContactAutoResponse(name, email, category);
       } else {
         await this.sendGenericEmail({
           to: email,
@@ -133,7 +179,8 @@ export class EmailServiceAdapter {
   async sendNewsletterEmail(subscribers: string[], subject: string, content: string): Promise<void> {
     try {
       if (this.provider === 'sendgrid') {
-        await this.sendGridService.sendNewsletterEmail(subscribers, subject, content);
+        const sendGridService = await this.getSendGridService();
+        await sendGridService.sendNewsletterEmail(subscribers, subject, content);
       } else {
         // Send individual emails via SMTP (less efficient but works)
         for (const subscriber of subscribers) {
@@ -156,10 +203,12 @@ export class EmailServiceAdapter {
   async sendGenericEmail(emailData: EmailData): Promise<void> {
     try {
       if (this.provider === 'sendgrid') {
-        await this.sendGridService.sendEmail(emailData);
+        const sendGridService = await this.getSendGridService();
+        await sendGridService.sendEmail(emailData);
       } else {
         // Convert to SMTP service format
-        await this.smtpService.sendEmail(
+        const smtpService = await this.getSmtpService();
+        await smtpService.sendEmail(
           emailData.to,
           emailData.subject,
           emailData.html
@@ -177,11 +226,13 @@ export class EmailServiceAdapter {
   async testConfiguration(): Promise<boolean> {
     try {
       if (this.provider === 'sendgrid') {
-        return await this.sendGridService.testConfiguration();
+        const sendGridService = await this.getSendGridService();
+        return await sendGridService.testConfiguration();
       } else {
         // Test SMTP configuration
+        const env = typeof process !== 'undefined' ? process.env : {};
         await this.sendGenericEmail({
-          to: process.env.ADMIN_EMAIL!,
+          to: env.ADMIN_EMAIL || 'admin@willworkforlunch.com',
           subject: 'SMTP Test - Configuration Working',
           html: '<p>This is a test email to verify SMTP configuration is working correctly.</p>'
         });
@@ -242,10 +293,11 @@ export class EmailServiceAdapter {
    * Check if a provider is properly configured
    */
   private isProviderConfigured(provider: EmailProvider): boolean {
+    const env = typeof process !== 'undefined' ? process.env : {};
     if (provider === 'sendgrid') {
-      return !!process.env.SENDGRID_API_KEY;
+      return !!env.SENDGRID_API_KEY;
     } else {
-      return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+      return !!(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
     }
   }
 
@@ -288,5 +340,10 @@ export class EmailServiceAdapter {
   }
 }
 
-// Export singleton instance
-export const emailService = EmailServiceAdapter.getInstance(); 
+// Export getter function instead of instance to avoid loading during build
+export const getEmailService = () => EmailServiceAdapter.getInstance();
+
+// For backward compatibility (but should be avoided - use getEmailService() instead)
+export const emailService = {
+  getInstance: () => EmailServiceAdapter.getInstance()
+}; 

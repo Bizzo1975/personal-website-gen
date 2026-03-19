@@ -1,7 +1,12 @@
-import sgMail from '@sendgrid/mail';
+// Lazy import SendGrid to avoid loading during build
+let sgMail: any = null;
 
-// Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+const getSendGridMail = async () => {
+  if (!sgMail) {
+    sgMail = (await import('@sendgrid/mail')).default;
+  }
+  return sgMail;
+};
 
 export interface EmailData {
   to: string;
@@ -22,16 +27,43 @@ export interface AccessRequestEmailData {
 export class SendGridEmailService {
   private static instance: SendGridEmailService;
   private fromEmail: string;
+  private apiKey: string | null = null;
 
-  constructor() {
-    this.fromEmail = process.env.FROM_EMAIL || process.env.ADMIN_EMAIL || 'admin@willworkforlunch.com';
+  constructor(apiKey?: string, fromEmail?: string) {
+    // Use safe runtime check to avoid build-time evaluation
+    const env = typeof process !== 'undefined' ? process.env : {};
+    this.apiKey = apiKey || env.SENDGRID_API_KEY || null;
+    this.fromEmail = fromEmail || env.FROM_EMAIL || env.ADMIN_EMAIL || 'admin@willworkforlunch.com';
+    // API key will be set when first used (lazy initialization)
   }
 
-  public static getInstance(): SendGridEmailService {
+  public static getInstance(apiKey?: string, fromEmail?: string): SendGridEmailService {
     if (!SendGridEmailService.instance) {
-      SendGridEmailService.instance = new SendGridEmailService();
+      SendGridEmailService.instance = new SendGridEmailService(apiKey, fromEmail);
+    } else if (apiKey) {
+      // Update API key if provided and instance exists (will be set when first used)
+      SendGridEmailService.instance.apiKey = apiKey;
+      if (fromEmail) {
+        SendGridEmailService.instance.setFromEmail(fromEmail);
+      }
     }
     return SendGridEmailService.instance;
+  }
+
+  /**
+   * Set API key dynamically
+   */
+  public async setApiKey(apiKey: string): Promise<void> {
+    this.apiKey = apiKey;
+    const mail = await getSendGridMail();
+    mail.setApiKey(apiKey);
+  }
+
+  /**
+   * Set from email dynamically
+   */
+  public setFromEmail(fromEmail: string): void {
+    this.fromEmail = fromEmail;
   }
 
   /**
@@ -39,6 +71,13 @@ export class SendGridEmailService {
    */
   async sendEmail(emailData: EmailData): Promise<void> {
     try {
+      const mail = await getSendGridMail();
+      
+      // Ensure API key is set
+      if (this.apiKey) {
+        mail.setApiKey(this.apiKey);
+      }
+      
       const msg = {
         to: emailData.to,
         from: emailData.from || this.fromEmail,
@@ -47,7 +86,7 @@ export class SendGridEmailService {
         text: emailData.text || this.stripHtml(emailData.html),
       };
 
-      await sgMail.send(msg);
+      await mail.send(msg);
       console.log(`✅ Email sent successfully to ${emailData.to}`);
     } catch (error) {
       console.error('❌ SendGrid email error:', error);
@@ -59,6 +98,9 @@ export class SendGridEmailService {
    * Send access request notification to admin
    */
   async sendAccessRequestNotification(requestData: AccessRequestEmailData): Promise<void> {
+    // Safe access to process.env to avoid build-time evaluation
+    const env = typeof process !== 'undefined' ? process.env : {};
+    const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
@@ -81,7 +123,7 @@ export class SendGridEmailService {
         <div style="margin-top: 30px; padding: 20px; background-color: #e9ecef; border-radius: 5px;">
           <p style="margin: 0;">
             <strong>Action Required:</strong> 
-            <a href="${process.env.NEXTAUTH_URL}/admin/access-requests" 
+            <a href="${websiteUrl}/admin/access-requests" 
                style="color: #007bff; text-decoration: none; font-weight: bold;">
               Review Access Request →
             </a>
@@ -95,7 +137,7 @@ export class SendGridEmailService {
     `;
 
     await this.sendEmail({
-      to: process.env.ADMIN_EMAIL!,
+      to: env.ADMIN_EMAIL || 'admin@willworkforlunch.com',
       subject: `New Access Request from ${requestData.name}`,
       html: htmlContent
     });
@@ -104,8 +146,13 @@ export class SendGridEmailService {
   /**
    * Send approval notification to user
    */
-  async sendApprovalNotification(userEmail: string, userName: string, accessLevel: string): Promise<void> {
-    const htmlContent = `
+  async sendApprovalNotification(userEmail: string, userName: string, accessLevel: string, customTemplate?: { subject?: string; message?: string }): Promise<void> {
+    // Safe access to process.env to avoid build-time evaluation
+    const env = typeof process !== 'undefined' ? process.env : {};
+    const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
+    
+    // Default template
+    let htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 10px;">
           Access Request Approved! 🎉
@@ -128,7 +175,7 @@ export class SendGridEmailService {
         </div>
 
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.NEXTAUTH_URL}" 
+          <a href="${websiteUrl}" 
              style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
             Visit Website
           </a>
@@ -141,9 +188,25 @@ export class SendGridEmailService {
       </div>
     `;
 
+    // Use custom template if provided
+    if (customTemplate?.message) {
+      htmlContent = customTemplate.message
+        .replace(/\{userName\}/g, userName)
+        .replace(/\{accessLevel\}/g, accessLevel)
+        .replace(/\{websiteUrl\}/g, websiteUrl);
+    }
+
+    let subject = `Access Approved - Welcome to ${accessLevel} content!`;
+    if (customTemplate?.subject) {
+      subject = customTemplate.subject
+        .replace(/\{userName\}/g, userName)
+        .replace(/\{accessLevel\}/g, accessLevel)
+        .replace(/\{websiteUrl\}/g, websiteUrl);
+    }
+
     await this.sendEmail({
       to: userEmail,
-      subject: `Access Approved - Welcome to ${accessLevel} content!`,
+      subject: subject,
       html: htmlContent
     });
   }
@@ -157,39 +220,95 @@ export class SendGridEmailService {
     subject: string;
     message: string;
     category: string;
-  }): Promise<void> {
+    company?: string;
+    phone?: string;
+    timeline?: string;
+    budget?: string;
+    attachments?: string[];
+  }, adminEmail?: string): Promise<void> {
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
+        <h2 style="color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
           New Contact Form Submission
         </h2>
         
-        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
-          <h3 style="color: #007bff; margin-top: 0;">Contact Details:</h3>
-          <p><strong>Name:</strong> ${formData.name}</p>
-          <p><strong>Email:</strong> ${formData.email}</p>
-          <p><strong>Category:</strong> ${formData.category}</p>
-          <p><strong>Subject:</strong> ${formData.subject}</p>
+        <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <div style="display: flex; align-items: center; margin-bottom: 15px;">
+            <span style="background: #2563eb; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
+              ${formData.category.replace('-', ' ')}
+            </span>
+          </div>
+          
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #374151; width: 30%;">Name:</td>
+              <td style="padding: 8px 0; color: #1f2937;">${formData.name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #374151;">Email:</td>
+              <td style="padding: 8px 0; color: #1f2937;">${formData.email}</td>
+            </tr>
+            ${formData.company ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #374151;">Company:</td>
+              <td style="padding: 8px 0; color: #1f2937;">${formData.company}</td>
+            </tr>
+            ` : ''}
+            ${formData.phone ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #374151;">Phone:</td>
+              <td style="padding: 8px 0; color: #1f2937;">${formData.phone}</td>
+            </tr>
+            ` : ''}
+            ${formData.timeline ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #374151;">Timeline:</td>
+              <td style="padding: 8px 0; color: #1f2937;">${formData.timeline}</td>
+            </tr>
+            ` : ''}
+            ${formData.budget ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #374151;">Budget:</td>
+              <td style="padding: 8px 0; color: #1f2937;">${formData.budget}</td>
+            </tr>
+            ` : ''}
+          </table>
         </div>
-
-        <div style="background-color: #fff; padding: 20px; border: 1px solid #dee2e6; border-radius: 5px;">
-          <h4 style="color: #333; margin-top: 0;">Message:</h4>
-          <p style="line-height: 1.6;">${formData.message}</p>
+        
+        <div style="margin: 20px 0;">
+          <h3 style="color: #1f2937; margin-bottom: 10px;">Subject:</h3>
+          <p style="background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 0; color: #1f2937;">
+            ${formData.subject}
+          </p>
         </div>
-
-        <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
-          <p style="margin: 0;"><strong>Reply to:</strong> ${formData.email}</p>
+        
+        <div style="margin: 20px 0;">
+          <h3 style="color: #1f2937; margin-bottom: 10px;">Message:</h3>
+          <div style="background: #f3f4f6; padding: 15px; border-radius: 6px; color: #1f2937; white-space: pre-wrap;">
+            ${formData.message}
+          </div>
         </div>
-
-        <footer style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 12px; color: #666;">
-          <p>This message was sent via the contact form on willworkforlunch.com</p>
-        </footer>
+        
+        ${formData.attachments && formData.attachments.length > 0 ? `
+        <div style="margin: 20px 0;">
+          <h3 style="color: #1f2937; margin-bottom: 10px;">Attachments:</h3>
+          <ul style="background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 0;">
+            ${formData.attachments.map(file => `<li style="color: #1f2937;">${file}</li>`).join('')}
+          </ul>
+        </div>
+        ` : ''}
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px;">
+          <p>Submitted at: ${new Date().toLocaleString()}</p>
+          <p>Reply to: ${formData.email}</p>
+        </div>
       </div>
     `;
 
+    const env = typeof process !== 'undefined' ? process.env : {};
     await this.sendEmail({
-      to: process.env.ADMIN_EMAIL!,
-      subject: `Contact Form: ${formData.subject}`,
+      to: adminEmail || env.ADMIN_EMAIL || 'admin@willworkforlunch.com',
+      subject: `New Contact Form Submission - ${formData.category.toUpperCase()}`,
       html: htmlContent
     });
   }
@@ -198,14 +317,18 @@ export class SendGridEmailService {
    * Send auto-responder to contact form submitter
    */
   async sendContactAutoResponse(name: string, email: string, category: string): Promise<void> {
+    // Safe access to process.env to avoid build-time evaluation
+    const env = typeof process !== 'undefined' ? process.env : {};
+    const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
+    
     const responseTemplates = {
       'general': `
         <p>I've received your general inquiry and will get back to you within 24 hours.</p>
-        <p>In the meantime, feel free to explore my <a href="${process.env.NEXTAUTH_URL}/blog">blog</a> or <a href="${process.env.NEXTAUTH_URL}/projects">projects</a>.</p>
+        <p>In the meantime, feel free to explore my <a href="${websiteUrl}/blog">blog</a> or <a href="${websiteUrl}/projects">projects</a>.</p>
       `,
       'project': `
         <p>I'm excited about the possibility of working together on your project. I'll review your requirements and get back to you within 24 hours with next steps.</p>
-        <p>You can also check out my <a href="${process.env.NEXTAUTH_URL}/projects">portfolio</a> to see examples of my work.</p>
+        <p>You can also check out my <a href="${websiteUrl}/projects">portfolio</a> to see examples of my work.</p>
       `,
       'collaboration': `
         <p>I'm always interested in collaboration opportunities. I'll review your proposal and get back to you soon.</p>
@@ -226,9 +349,9 @@ export class SendGridEmailService {
         <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
           <p style="margin: 0; font-weight: bold;">Quick Links:</p>
           <ul style="margin: 10px 0;">
-            <li><a href="${process.env.NEXTAUTH_URL}/blog">Latest Blog Posts</a></li>
-            <li><a href="${process.env.NEXTAUTH_URL}/projects">Project Portfolio</a></li>
-            <li><a href="${process.env.NEXTAUTH_URL}/about">About Me</a></li>
+            <li><a href="${websiteUrl}/blog">Latest Blog Posts</a></li>
+            <li><a href="${websiteUrl}/projects">Project Portfolio</a></li>
+            <li><a href="${websiteUrl}/about">About Me</a></li>
           </ul>
         </div>
 
@@ -259,7 +382,14 @@ export class SendGridEmailService {
         text: this.stripHtml(content),
       };
 
-      await sgMail.sendMultiple(msg);
+      const mail = await getSendGridMail();
+      
+      // Ensure API key is set
+      if (this.apiKey) {
+        mail.setApiKey(this.apiKey);
+      }
+      
+      await mail.sendMultiple(msg);
       console.log(`✅ Newsletter sent to ${subscribers.length} subscribers`);
     } catch (error) {
       console.error('❌ SendGrid newsletter error:', error);
@@ -279,8 +409,9 @@ export class SendGridEmailService {
    */
   async testConfiguration(): Promise<boolean> {
     try {
+      const env = typeof process !== 'undefined' ? process.env : {};
       await this.sendEmail({
-        to: process.env.ADMIN_EMAIL!,
+        to: env.ADMIN_EMAIL || 'admin@willworkforlunch.com',
         subject: 'SendGrid Test - Configuration Working',
         html: '<p>This is a test email to verify SendGrid configuration is working correctly.</p>'
       });
@@ -292,5 +423,11 @@ export class SendGridEmailService {
   }
 }
 
-// Export singleton instance
-export const sendGridEmailService = SendGridEmailService.getInstance(); 
+// Export getter function instead of instance to avoid loading during build
+export const getSendGridEmailService = () => SendGridEmailService.getInstance();
+
+// For backward compatibility, but this should be avoided
+// Use getSendGridEmailService() or SendGridEmailService.getInstance() directly
+export const sendGridEmailService = {
+  getInstance: () => SendGridEmailService.getInstance()
+}; 

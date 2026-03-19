@@ -226,12 +226,65 @@ export default function SubscriberManagementPage() {
   const fetchAnalytics = async () => {
     try {
       const response = await fetch('/api/admin/subscribers/analytics');
-      if (!response.ok) throw new Error('Failed to fetch analytics');
+      if (!response.ok) {
+        console.error('Failed to fetch analytics:', response.status, response.statusText);
+        // Set default analytics structure if fetch fails
+        setAnalytics({
+          total_subscribers: 0,
+          active_subscribers: 0,
+          inactive_subscribers: 0,
+          confirmed_subscribers: 0,
+          pending_subscribers: 0,
+          unsubscribed_subscribers: 0,
+          bounced_subscribers: 0,
+          growth_rate: 0,
+          churn_rate: 0,
+          average_open_rate: 0,
+          average_click_rate: 0,
+          subscription_sources: {},
+          geographic_distribution: {},
+          device_breakdown: {},
+          content_preferences: {},
+          engagement_trends: [],
+          top_interests: {},
+          gdpr_compliance: {
+            consented: 0,
+            pending_consent: 0,
+            expired_consent: 0
+          }
+        });
+        return;
+      }
       
       const data = await response.json();
       setAnalytics(data);
     } catch (err) {
       console.error('Failed to fetch analytics:', err);
+      // Set default analytics structure on error
+      setAnalytics({
+        total_subscribers: 0,
+        active_subscribers: 0,
+        inactive_subscribers: 0,
+        confirmed_subscribers: 0,
+        pending_subscribers: 0,
+        unsubscribed_subscribers: 0,
+        bounced_subscribers: 0,
+        growth_rate: 0,
+        churn_rate: 0,
+        average_open_rate: 0,
+        average_click_rate: 0,
+        subscription_sources: {},
+        geographic_distribution: {},
+        device_breakdown: {},
+        content_preferences: {},
+        engagement_trends: [],
+        top_interests: {},
+        gdpr_compliance: {
+          consented: 0,
+          pending_consent: 0,
+          expired_consent: 0
+        }
+      });
     }
   };
 
@@ -483,10 +536,22 @@ export default function SubscriberManagementPage() {
             availableSources={availableSources}
             availableLocations={availableLocations}
             onAction={handleAction}
-            onViewDetails={setSelectedSubscriber}
-            onEdit={setSelectedSubscriber}
-            onDelete={setSelectedSubscriber}
-            onSendEmail={setSelectedSubscriber}
+            onViewDetails={(subscriber: Subscriber) => {
+              setSelectedSubscriber(subscriber);
+              setShowDetailModal(true);
+            }}
+            onEdit={(subscriber: Subscriber) => {
+              setSelectedSubscriber(subscriber);
+              setShowEditModal(true);
+            }}
+            onDelete={(subscriber: Subscriber) => {
+              setSelectedSubscriber(subscriber);
+              setShowDeleteModal(true);
+            }}
+            onSendEmail={(subscriber: Subscriber) => {
+              setSelectedSubscriber(subscriber);
+              setShowEmailModal(true);
+            }}
             getStatusColor={getStatusColor}
             getStatusText={getStatusText}
             getEngagementLevel={getEngagementLevel}
@@ -518,8 +583,158 @@ export default function SubscriberManagementPage() {
           <PrivacyTab 
             subscribers={subscribers}
             analytics={analytics}
-            onViewDetails={setSelectedSubscriber}
+            onViewDetails={(subscriber: Subscriber) => {
+              setSelectedSubscriber(subscriber);
+              setShowDetailModal(true);
+            }}
           />
+        )}
+
+        {/* Modals */}
+        {showDetailModal && selectedSubscriber && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowDetailModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Subscriber Details</h2>
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setSelectedSubscriber(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                  <p className="text-gray-900 dark:text-white">{selectedSubscriber.email}</p>
+                </div>
+                {selectedSubscriber.name && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                    <p className="text-gray-900 dark:text-white">{selectedSubscriber.name}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+                  <p className="text-gray-900 dark:text-white">{getStatusText(selectedSubscriber)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Subscribed</label>
+                  <p className="text-gray-900 dark:text-white">{formatDate(selectedSubscriber.subscription_date)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showEditModal && selectedSubscriber && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowEditModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Edit Subscriber</h2>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedSubscriber(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Edit functionality for subscriber: {selectedSubscriber.email}
+              </p>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedSubscriber(null);
+                }}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedSubscriber(null);
+                }}>
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDeleteModal && selectedSubscriber && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowDeleteModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Delete Subscriber</h2>
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setSelectedSubscriber(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Are you sure you want to delete {selectedSubscriber.email}? This action cannot be undone.
+              </p>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => {
+                  setShowDeleteModal(false);
+                  setSelectedSubscriber(null);
+                }}>
+                  Cancel
+                </Button>
+                <Button variant="primary" className="bg-red-600 hover:bg-red-700" onClick={async () => {
+                  await handleDelete(selectedSubscriber);
+                }}>
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showEmailModal && selectedSubscriber && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowEmailModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Send Email</h2>
+                <button
+                  onClick={() => {
+                    setShowEmailModal(false);
+                    setSelectedSubscriber(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Send email to: {selectedSubscriber.email}
+              </p>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => {
+                  setShowEmailModal(false);
+                  setSelectedSubscriber(null);
+                }}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={() => {
+                  setShowEmailModal(false);
+                  setSelectedSubscriber(null);
+                }}>
+                  Send Email
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </AdminPageLayout>
     </AdminLayout>
@@ -532,7 +747,7 @@ const OverviewTab = ({ analytics, loading, onNavigate }: {
   loading: boolean;
   onNavigate: (tab: string) => void;
 }) => {
-  if (loading || !analytics) {
+  if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(8)].map((_, i) => (
@@ -541,6 +756,21 @@ const OverviewTab = ({ analytics, loading, onNavigate }: {
             <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="text-center py-12">
+        <ExclamationTriangleIcon className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Unable to Load Analytics</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          There was an error loading the analytics data. Please try refreshing the page.
+        </p>
+        <Button variant="primary" onClick={() => window.location.reload()}>
+          Refresh Page
+        </Button>
       </div>
     );
   }
@@ -1021,10 +1251,34 @@ const SubscribersTab = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
+                        {/* Approve/Deny buttons for pending subscribers */}
+                        {!subscriber.is_confirmed && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onAction('confirm', subscriber)}
+                              className="text-green-600 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900/20"
+                              title="Approve subscriber"
+                            >
+                              <CheckCircleIcon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onAction('deactivate', subscriber)}
+                              className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20"
+                              title="Deny subscriber"
+                            >
+                              <XCircleIcon className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => onViewDetails(subscriber)}
+                          title="View details"
                         >
                           <EyeIcon className="h-4 w-4" />
                         </Button>
@@ -1032,6 +1286,7 @@ const SubscribersTab = ({
                           variant="outline"
                           size="sm"
                           onClick={() => onEdit(subscriber)}
+                          title="Edit subscriber"
                         >
                           <PencilIcon className="h-4 w-4" />
                         </Button>
@@ -1039,6 +1294,7 @@ const SubscribersTab = ({
                           variant="outline"
                           size="sm"
                           onClick={() => onSendEmail(subscriber)}
+                          title="Send email"
                         >
                           <EnvelopeIcon className="h-4 w-4" />
                         </Button>
@@ -1047,6 +1303,7 @@ const SubscribersTab = ({
                           size="sm"
                           onClick={() => onDelete(subscriber)}
                           className="text-red-600 hover:text-red-700"
+                          title="Delete subscriber"
                         >
                           <TrashIcon className="h-4 w-4" />
                         </Button>
@@ -1085,10 +1342,34 @@ const SubscribersTab = ({
                     </div>
                   </div>
                   <div className="flex items-center space-x-1">
+                    {/* Approve/Deny buttons for pending subscribers */}
+                    {!subscriber.is_confirmed && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onAction('confirm', subscriber)}
+                          className="text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
+                          title="Approve subscriber"
+                        >
+                          <CheckCircleIcon className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onAction('deactivate', subscriber)}
+                          className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                          title="Deny subscriber"
+                        >
+                          <XCircleIcon className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onViewDetails(subscriber)}
+                      title="View details"
                     >
                       <EyeIcon className="h-4 w-4" />
                     </Button>
@@ -1096,6 +1377,7 @@ const SubscribersTab = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => onEdit(subscriber)}
+                      title="Edit subscriber"
                     >
                       <PencilIcon className="h-4 w-4" />
                     </Button>
@@ -1103,6 +1385,7 @@ const SubscribersTab = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => onSendEmail(subscriber)}
+                      title="Send email"
                     >
                       <EnvelopeIcon className="h-4 w-4" />
                     </Button>
@@ -1249,7 +1532,7 @@ const AnalyticsTab = ({ analytics, loading, subscribers }: {
   const [timeRange, setTimeRange] = useState('30d');
   const [selectedMetric, setSelectedMetric] = useState('subscribers');
 
-  if (loading || !analytics) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1263,6 +1546,21 @@ const AnalyticsTab = ({ analytics, loading, subscribers }: {
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm animate-pulse">
           <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
         </div>
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="text-center py-12">
+        <ExclamationTriangleIcon className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Unable to Load Analytics</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          There was an error loading the analytics data. Please try refreshing the page.
+        </p>
+        <Button variant="primary" onClick={() => window.location.reload()}>
+          Refresh Page
+        </Button>
       </div>
     );
   }

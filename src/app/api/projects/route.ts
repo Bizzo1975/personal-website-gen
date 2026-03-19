@@ -9,12 +9,26 @@ import { query } from '@/lib/db';
 // GET /api/projects - Get all projects with permission filtering
 export async function GET(request: Request) {
   try {
-    // Get user session for permission filtering
-    const session = await getServerSession(authOptions);
+    // Get user session for permission filtering (wrap in try/catch to handle errors gracefully)
+    let session = null;
+    try {
+      session = await getServerSession(authOptions);
+    } catch (sessionError) {
+      // If session check fails, continue without user context (public access)
+      console.warn('Session check failed, continuing as public:', sessionError);
+    }
     const userEmail = session?.user?.email;
 
-    // Check if user is admin
-    const isAdmin = userEmail ? await PermissionService.isUserAdmin(userEmail) : false;
+    // Check if user is admin (only if userEmail exists)
+    let isAdmin = false;
+    if (userEmail) {
+      try {
+        isAdmin = await PermissionService.isUserAdmin(userEmail);
+      } catch (adminError) {
+        console.warn('Error checking admin status, defaulting to false:', adminError);
+        isAdmin = false;
+      }
+    }
 
     let projects;
     
@@ -40,8 +54,16 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching projects:', error);
+    // Log full error details for debugging
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     return NextResponse.json(
-      { error: 'Failed to fetch projects' },
+      { 
+        error: 'Failed to fetch projects',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+      },
       { status: 500 }
     );
   }

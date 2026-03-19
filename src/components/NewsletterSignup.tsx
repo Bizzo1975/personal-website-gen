@@ -106,7 +106,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
 
     const fetchSubscriberCount = async () => {
       try {
-        const response = await fetch('/api/newsletter/admin/stats');
+        const response = await fetch('/api/public/newsletter/stats');
         if (response.ok) {
           const data = await response.json();
           setDbSubscriberCount(data.totalSubscribers || 0);
@@ -220,55 +220,68 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
     if (!validateForm()) return;
     
     setIsSubmitting(true);
+    setFormErrors({});
     
     try {
-      // Simulate API call - in a real app, this would integrate with email service
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const subscriptionData: SubscriptionData = {
+      const subscriptionData = {
         email: email.toLowerCase().trim(),
         firstName: firstName.trim() || undefined,
         interests: selectedInterests.length > 0 ? selectedInterests : undefined,
-        source: variant,
-        timestamp: new Date()
+        source: variant || 'website'
       };
 
-      // In a real app, send to your email service (Mailchimp, ConvertKit, etc.)
-      console.log('Newsletter subscription:', subscriptionData);
-      
-      // Simulate different outcomes
-      const success = Math.random() > 0.1; // 90% success rate
-      
-      if (success) {
-        setIsSubscribed(true);
-        onSuccess?.(email);
-        
-        // Track successful subscription
-        if (typeof window !== 'undefined' && (window as any).gtag) {
-          (window as any).gtag('event', 'newsletter_signup', {
-            event_category: 'engagement',
-            event_label: variant,
-            value: 1
-          });
-        }
-        
-        // Reset form after delay
-        setTimeout(() => {
-          setEmail('');
-          setFirstName('');
-          setSelectedInterests([]);
-          setShowAdvancedOptions(false);
-          if (variant === 'popup' || variant === 'modal') {
-            setShowModal(false);
-          }
-          setIsSubscribed(false);
-        }, 5000);
-      } else {
-        setFormErrors({ submit: 'Something went wrong. Please try again.' });
+      // Call the real API endpoint
+      const response = await fetch('/api/newsletter/subscribers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(subscriptionData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle API errors
+        setFormErrors({ 
+          submit: data.error || 'Failed to subscribe. Please try again.' 
+        });
+        onError?.(data);
+        return;
       }
+
+      // Success - subscription was created
+      setIsSubscribed(true);
+      onSuccess?.(email);
+      
+      // Update subscriber count after successful subscription
+      setDbSubscriberCount(prev => prev + 1);
+      
+      // Track successful subscription
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'newsletter_signup', {
+          event_category: 'engagement',
+          event_label: variant,
+          value: 1
+        });
+      }
+      
+      // Reset form after delay
+      setTimeout(() => {
+        setEmail('');
+        setFirstName('');
+        setSelectedInterests([]);
+        setShowAdvancedOptions(false);
+        if (variant === 'popup' || variant === 'modal') {
+          setShowModal(false);
+        }
+        setIsSubscribed(false);
+      }, 5000);
     } catch (error) {
       console.error('Newsletter subscription error:', error);
-      setFormErrors({ submit: 'Network error. Please check your connection and try again.' });
+      setFormErrors({ 
+        submit: 'Network error. Please check your connection and try again.' 
+      });
       onError?.(error);
     } finally {
       setIsSubmitting(false);

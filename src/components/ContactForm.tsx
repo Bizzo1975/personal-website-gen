@@ -119,19 +119,38 @@ const ContactForm: React.FC<ContactFormProps> = ({
       // Prepare request data based on type
       const requestData = formData.requestType === 'access_request' 
         ? {
-            name: formData.name,
-            email: formData.email,
-            message: formData.message,
+            name: (formData.name || '').trim(),
+            email: (formData.email || '').trim(),
+            message: (formData.message || '').trim(),
             requestedAccessLevel: formData.requestedAccessLevel,
-            recaptchaToken
+            recaptchaToken: recaptchaToken || null
           }
         : {
-            name: formData.name,
-            email: formData.email,
-            subject: formData.subject,
-            message: formData.message,
-            recaptchaToken
+            name: (formData.name || '').trim(),
+            email: (formData.email || '').trim(),
+            subject: (formData.subject || '').trim(),
+            message: (formData.message || '').trim(),
+            recaptchaToken: recaptchaToken || null
           };
+      
+      // Validate data before sending
+      if (!requestData.name || !requestData.email) {
+        setSubmitError('Name and email are required');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Stringify with error handling
+      let requestBody;
+      try {
+        requestBody = JSON.stringify(requestData);
+        console.log('Sending request data:', { ...requestData, recaptchaToken: requestData.recaptchaToken ? '[REDACTED]' : null });
+      } catch (stringifyError) {
+        console.error('Error stringifying request data:', stringifyError);
+        setSubmitError('Error preparing request data. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
       
       // Send the form data to the appropriate API
       const response = await fetch(endpoint, {
@@ -139,12 +158,30 @@ const ContactForm: React.FC<ContactFormProps> = ({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestData),
+        body: requestBody,
       });
       
-      const data = await response.json();
+      // Check if response is JSON
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // If not JSON, read as text for error details
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        setSubmitError(`Server error (${response.status}): ${text.substring(0, 200)}`);
+        setIsSubmitting(false);
+        return;
+      }
       
       if (!response.ok) {
+        console.error('API error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data
+        });
+        
         // Handle validation errors
         if (data.errors && Array.isArray(data.errors)) {
           setFieldErrors(data.errors);
@@ -154,8 +191,14 @@ const ContactForm: React.FC<ContactFormProps> = ({
             nameInputRef.current.focus();
           }
         } else {
-          // Handle general error
-          setSubmitError(data.error || 'Failed to submit. Please try again.');
+          // Handle general error with more details
+          const errorMsg = data.error || data.message || `Failed to submit (${response.status}). Please try again.`;
+          setSubmitError(errorMsg);
+          
+          // Log additional details in development
+          if (process.env.NODE_ENV === 'development' && data.details) {
+            console.error('Error details:', data.details);
+          }
         }
         
         setIsSubmitting(false);
@@ -184,8 +227,16 @@ const ContactForm: React.FC<ContactFormProps> = ({
       }
       
     } catch (error) {
-      setSubmitError('An unexpected error occurred. Please try again later.');
       console.error('Form submission error:', error);
+      
+      // Provide more detailed error messages
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setSubmitError('Network error: Unable to connect to the server. Please check your internet connection and try again.');
+      } else if (error instanceof Error) {
+        setSubmitError(`Error: ${error.message}. Please try again later.`);
+      } else {
+        setSubmitError('An unexpected error occurred. Please try again later.');
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -32,6 +32,8 @@ export default function AdminAccessRequestsPage() {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [stats, setStats] = useState<RequestStats | null>(null);
   const [showBulkActions, setShowBulkActions] = useState(false);
+  const [editingAccessLevel, setEditingAccessLevel] = useState<string | null>(null);
+  const [newAccessLevel, setNewAccessLevel] = useState<'personal' | 'professional' | ''>('');
 
   // Fetch access requests
   const fetchAccessRequests = async () => {
@@ -434,10 +436,62 @@ export default function AdminAccessRequestsPage() {
                         <span className={getStatusBadge(request.status)}>
                           {request.status}
                         </span>
-                        {request.accessLevel && (
-                          <span className={getAccessLevelBadge(request.accessLevel)}>
-                            {request.accessLevel}
-                          </span>
+                        {editingAccessLevel === request._id ? (
+                          <div className="flex items-center space-x-2">
+                            <select
+                              value={newAccessLevel || request.accessLevel || ''}
+                              onChange={(e) => setNewAccessLevel(e.target.value as 'personal' | 'professional')}
+                              className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              disabled={processingId === request._id}
+                            >
+                              <option value="personal">Personal</option>
+                              <option value="professional">Professional</option>
+                            </select>
+                            <button
+                              onClick={() => {
+                                if (newAccessLevel && newAccessLevel !== request.accessLevel) {
+                                  handleAccessLevelUpdate(request._id!, newAccessLevel);
+                                } else {
+                                  setEditingAccessLevel(null);
+                                  setNewAccessLevel('');
+                                }
+                              }}
+                              disabled={processingId === request._id || !newAccessLevel}
+                              className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingAccessLevel(null);
+                                setNewAccessLevel('');
+                              }}
+                              disabled={processingId === request._id}
+                              className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            {request.accessLevel && (
+                              <span className={getAccessLevelBadge(request.accessLevel)}>
+                                {request.accessLevel}
+                              </span>
+                            )}
+                            {request.status === 'pending' && (
+                              <button
+                                onClick={() => {
+                                  setEditingAccessLevel(request._id!);
+                                  setNewAccessLevel(request.accessLevel as 'personal' | 'professional' || 'personal');
+                                }}
+                                className="px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded border border-blue-300 dark:border-blue-700"
+                                title="Edit access level"
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

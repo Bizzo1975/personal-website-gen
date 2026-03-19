@@ -55,7 +55,25 @@ export default function AdminAboutPageEditor() {
         
         if (aboutPage) {
           console.log('Found about page:', aboutPage);
-          setPageData(aboutPage);
+          // Decode HTML entities in content to fix garbled text (server-safe method)
+          const decodeHtmlEntities = (text: string): string => {
+            if (!text) return '';
+            // Use server-safe string replacement instead of DOM API
+            return text
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&amp;/g, '&')
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/&#x27;/g, "'")
+              .replace(/&nbsp;/g, ' ')
+              .replace(/&#x2F;/g, '/');
+          };
+          const decodedContent = decodeHtmlEntities(aboutPage.content || '');
+          setPageData({
+            ...aboutPage,
+            content: decodedContent
+          });
         } else {
           console.log('No about page found, using defaults');
           setPageData({

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import ThemeSwitcher from './ThemeSwitcher';
+import { AccessibilityToolbar } from './AccessibilityEnhancements';
 import Image from 'next/image';
 
 // Define interfaces for site settings
@@ -57,9 +58,9 @@ const Header: React.FC<HeaderProps> = ({ profileName, siteSettings }) => {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
+          <div className="hidden md:flex items-center space-x-4">
             <nav>
-              <ul className="flex space-x-6">
+              <ul className="flex space-x-4">
                 {navbarLinks.map((link, index) => (
                   <li key={index}>
                     <Link href={link.url} className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium">
@@ -76,23 +77,26 @@ const Header: React.FC<HeaderProps> = ({ profileName, siteSettings }) => {
                 )}
               </ul>
             </nav>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4 ml-4">
               <ThemeSwitcher />
               {isAuthenticated ? (
                 <button 
                   onClick={() => signOut({ callbackUrl: '/' })}
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
+                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium whitespace-nowrap"
                 >
                   Logout
                 </button>
               ) : (
                 <Link 
                   href="/admin/login" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium"
+                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium whitespace-nowrap"
                 >
                   Login
                 </Link>
               )}
+              <div className="ml-4 relative z-10">
+                <AccessibilityToolbar inline={true} />
+              </div>
             </div>
           </div>
 

@@ -61,15 +61,15 @@ export default function AboutContent({ content, profile, pageData }: AboutConten
         <div className="container-modern">
           <div className="grid md:grid-cols-3 gap-8 items-start">
             {/* Sidebar with profile photo and details */}
-            <div className="sticky top-24">
+            <div className="md:sticky md:top-24">
               {/* Remove all vertical margin/padding from image container */}
-              <div className="overflow-hidden rounded-xl">
+              <div className="overflow-hidden rounded-xl mb-6 md:mb-0">
                 <FallbackImage
                   src={profile?.imageUrl || '/images/placeholder.jpg'}
                   alt={profile?.name || 'Profile Image'}
                   width={400}
                   height={500}
-                  className="w-full object-cover"
+                  className="w-full h-auto max-h-[400px] md:max-h-none object-cover"
                   fallbackSrc="/images/placeholder.jpg"
                 />
               </div>
