@@ -3,39 +3,102 @@ name: Deploy to Production
 on:
   push:
     branches: [ production ]
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  # ─────────────────────────────────────────────
+  # JOB 1: Run tests before any deployment happens
+  # If tests fail, the deployment is cancelled
+  # ─────────────────────────────────────────────
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Run tests
-      run: npm run test:ci || echo "Tests skipped - script not found"
-    
-    - name: Build application
-      run: npm run build
-    
-    - name: Deploy to server
-      uses: appleboy/ssh-action@v0.1.8
-      with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.SSH_KEY }}
-        script: |
-          cd /home/deploy/personal-website
-          git pull origin production
-          docker compose -f docker-compose.prod.yml down
-          docker compose -f docker-compose.prod.yml up --build -d
-          docker compose -f docker-compose.prod.yml ps
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:ci
+
+  # ─────────────────────────────────────────────
+  # JOB 2: Deploy to the production server
+  # Only runs when the test job passes
+  # ─────────────────────────────────────────────
+  deploy:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SERVER_IP }}
+          username: ${{ secrets.PROD_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Build can take 10-20 minutes — set a generous timeout
+          command_timeout: 30m
+          script: |
+            set -e
+
+            echo "=== Starting deployment at $(date) ==="
+
+            # Navigate to the app directory
+            cd /opt/app/site
+
+            # ── Pull latest code from the production branch ──
+            # git reset --hard ensures the working directory exactly matches
+            # what is in GitHub, discarding any manual changes on the server.
+            # Files NOT tracked by git (like .env.production and uploads/) are
+            # left untouched.
+            echo "--- Fetching latest code from GitHub..."
+            git fetch origin
+            git checkout production
+            git reset --hard origin/production
+
+            # ── Safety check: .env.production must exist ──
+            # This file is never stored in git (it contains secrets).
+            # If it is missing, we stop before anything breaks.
+            if [ ! -f .env.production ]; then
+              echo "ERROR: .env.production not found on server!"
+              echo "Copy it from your secure backup before deploying."
+              exit 1
+            fi
+
+            # ── Ensure all shell scripts are executable ──
+            chmod +x scripts/*.sh 2>/dev/null || true
+
+            # ── Rebuild Docker image and restart all services ──
+            echo "--- Rebuilding and restarting (this takes 10-20 minutes)..."
+            ./scripts/rebuild-and-start-production.sh
+
+            # ── Post-deployment health check ──
+            # Poll /api/health for up to 5 minutes to confirm the app is up.
+            echo "--- Waiting for app to respond..."
+            MAX_RETRIES=10
+            RETRY=0
+            until curl -fs http://localhost:3000/api/health > /dev/null; do
+              RETRY=$((RETRY + 1))
+              if [ $RETRY -ge $MAX_RETRIES ]; then
+                echo "ERROR: App did not become healthy after $MAX_RETRIES attempts."
+                echo "Check logs: docker compose -f docker-compose.prod.yml logs app --tail 50"
+                exit 1
+              fi
+              echo "  App not ready yet, waiting 30 seconds... (attempt $RETRY/$MAX_RETRIES)"
+              sleep 30
+            done
+
+            echo "=== Deployment successful at $(date) ==="
