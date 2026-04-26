@@ -1,69 +1,21 @@
-name: CI/CD Pipeline
+name: Deploy to Dev — willworkforlunch.com
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [dev]
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Run ESLint
-        run: npm run lint
-
-  test:
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Run tests
-        run: npm test
-      - name: Upload test coverage
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage
-          path: coverage/
-          
-  build:
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Build application
-        run: npm run build
-        
   deploy:
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v3
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
+      - name: Deploy to dev-personal-website (10.30.0.201)
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          zeit-token: ${{ secrets.VERCEL_TOKEN }} # Required for backwards compatibility
-          vercel-args: '--prod'
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/app/site
+            git pull origin dev
+            docker compose up --build -d
+            docker compose ps

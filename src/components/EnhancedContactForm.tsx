@@ -9,7 +9,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
-interface FormData {
+interface ContactFormData {
   name: string;
   email: string;
   subject: string;
@@ -32,7 +32,7 @@ interface ValidationErrors {
 
 export default function EnhancedContactForm() {
   const { data: session, status } = useSession();
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
     subject: '',
@@ -62,7 +62,11 @@ export default function EnhancedContactForm() {
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.category) newErrors.category = 'Please select a category';
     if (!formData.subject.trim()) newErrors.subject = 'Subject is required';
-    if (!formData.message.trim()) newErrors.message = 'Message is required';
+    if (!formData.message.trim()) {
+      newErrors.message = 'Message is required';
+    } else if (formData.message.trim().length < 10) {
+      newErrors.message = 'Message must be at least 10 characters long';
+    }
     if (!formData.terms) newErrors.terms = 'You must accept the terms and conditions';
 
     // Access request specific validation
@@ -177,14 +181,75 @@ export default function EnhancedContactForm() {
       // Determine API endpoint based on category
       const apiEndpoint = formData.category === 'access-request' ? '/api/access-requests' : '/api/contact';
 
+      console.log('📧 Submitting contact form:', {
+        category: formData.category,
+        endpoint: apiEndpoint,
+        hasName: !!formData.name,
+        hasEmail: !!formData.email,
+        hasSubject: !!formData.subject,
+        hasMessage: !!formData.message
+      });
+
+      // For access-requests, send JSON. For contact, send FormData
+      let requestBody: globalThis.FormData | string;
+      let headers: HeadersInit = {};
+      
+      if (formData.category === 'access-request') {
+        // Send JSON for access-requests endpoint
+        requestBody = JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          requestedAccessLevel: formData.requestedAccessLevel || 'personal',
+          recaptchaToken: null // Add if you have reCAPTCHA
+        });
+        headers = { 'Content-Type': 'application/json' };
+      } else {
+        // Send FormData for contact endpoint (supports file uploads)
+        requestBody = submitData;
+      }
+
       // Submit to API
       const response = await fetch(apiEndpoint, {
         method: 'POST',
-        body: submitData,
+        headers,
+        body: requestBody,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        let errorData: any;
+        let errorMessage = `Server error: ${response.status}`;
+        
+        try {
+          const responseText = await response.text();
+          console.error('❌ Contact form API error response (status ' + response.status + '):', responseText);
+          
+          if (responseText) {
+            try {
+              errorData = JSON.parse(responseText);
+              errorMessage = errorData?.error || errorData?.message || errorData?.details || errorMessage;
+              console.error('❌ Parsed error data:', JSON.stringify(errorData, null, 2));
+            } catch (parseError) {
+              console.error('❌ Failed to parse JSON, raw response:', responseText);
+              errorMessage = responseText.substring(0, 200) || errorMessage;
+            }
+          }
+        } catch (textError) {
+          console.error('❌ Failed to read error response:', textError);
+          errorData = { error: `Server error: ${response.status} ${response.statusText}` };
+        }
+        
+        // Log the actual error message clearly
+        console.error('❌ CONTACT FORM ERROR:', errorMessage);
+        console.error('❌ Full error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          endpoint: apiEndpoint,
+          category: formData.category,
+          errorMessage: errorMessage
+        });
+        
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -526,7 +591,12 @@ export default function EnhancedContactForm() {
                     : "Tell me about your question or how I can help you..."
                 }
               />
-              {errors.message && <p className="mt-1 text-sm text-red-600">{errors.message}</p>}
+              <div className="mt-1">
+                {errors.message && <p className="text-sm text-red-600 dark:text-red-400 mb-1">{errors.message}</p>}
+                <p className={`text-xs ${formData.message.trim().length < 10 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                  Minimum 10 characters required ({formData.message.trim().length}/10)
+                </p>
+              </div>
             </div>
 
             {/* File Attachments */}

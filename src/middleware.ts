@@ -73,31 +73,18 @@ export async function middleware(request: NextRequest) {
   // Enhanced security headers
   const response = NextResponse.next();
   
-  // Development mode - more relaxed CSP for hot reloading
-  if (process.env.NODE_ENV === 'development') {
-    response.headers.set(
-      'Content-Security-Policy',
-      "default-src 'self'; " +
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: https:; " +
-      "font-src 'self' data:; " +
-      "connect-src 'self' ws: wss:; " +
-      "frame-ancestors 'none';"
-    );
-  } else {
-    // Production CSP
-    response.headers.set(
-      'Content-Security-Policy',
-      "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline'; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: https:; " +
-      "font-src 'self' data:; " +
-      "connect-src 'self'; " +
-      "frame-ancestors 'none';"
-    );
-  }
+  // CSP - Next.js requires 'unsafe-eval' for runtime features (both dev and prod)
+  // Always set the same CSP to avoid issues with NODE_ENV detection
+  response.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self' http: https: data: blob:; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' http: https:; " +
+    "style-src 'self' 'unsafe-inline' http: https:; " +
+    "img-src 'self' data: https:; " +
+    "font-src 'self' data: https:; " +
+    "connect-src 'self' http: https: ws: wss:; " +
+    "frame-ancestors 'none';"
+  );
 
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -135,6 +122,7 @@ export async function middleware(request: NextRequest) {
       pathname === '/api/contact' ||
       pathname === '/api/newsletter' ||
       pathname === '/api/comments' ||
+      pathname === '/api/access-requests' ||
       pathname.startsWith('/api/auth/')
     ) {
       return response;

@@ -32,7 +32,7 @@ export async function GET() {
       newSubscribersResult,
       unsubscribesResult
     ] = await Promise.all([
-      query('SELECT COUNT(*) as count FROM newsletter_subscribers WHERE subscription_date >= $1', [thirtyDaysAgo]),
+      query('SELECT COUNT(*) as count FROM newsletter_subscribers WHERE created_at >= $1', [thirtyDaysAgo]),
       query('SELECT COUNT(*) as count FROM newsletter_subscribers WHERE unsubscribed_at >= $1', [thirtyDaysAgo])
     ]);
 

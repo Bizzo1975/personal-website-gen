@@ -7,8 +7,12 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
+    env_file:
+      - .env.production
     environment:
       - NODE_ENV=production
+      - HOSTNAME=0.0.0.0
+      - PORT=3000
       - DATABASE_URL=${DATABASE_URL}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - NEXTAUTH_URL=${NEXTAUTH_URL}
@@ -47,14 +51,17 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "nginx", "-t"]
+      test: ["CMD-SHELL", "test -f /var/run/nginx.pid || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
 
   # PostgreSQL Database (Production)
   db:
     image: postgres:15-alpine
+    env_file:
+      - .env.production
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -86,6 +93,8 @@ services:
   # Redis for session storage and caching (Production)
   redis:
     image: redis:7-alpine
+    env_file:
+      - .env.production
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -110,6 +119,8 @@ services:
   # Note: Create ./ssl and ./ssl-challenges directories before running
   certbot:
     image: certbot/certbot:latest
+    env_file:
+      - .env.production
     volumes:
       - ./ssl:/etc/letsencrypt
       - ./ssl-challenges:/var/www/certbot

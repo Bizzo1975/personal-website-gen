@@ -1,4 +1,12 @@
-import nodemailer from 'nodemailer';
+// Lazy import nodemailer to avoid loading during build
+let nodemailer: any = null;
+
+const getNodemailer = async () => {
+  if (!nodemailer) {
+    nodemailer = (await import('nodemailer')).default;
+  }
+  return nodemailer;
+};
 
 interface AccessRequestEmailData {
   requestId: string;
@@ -11,18 +19,28 @@ interface AccessRequestEmailData {
 }
 
 export class EmailNotificationService {
-  private transporter: nodemailer.Transporter;
+  private transporter: any = null;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER!,
-        pass: process.env.SMTP_PASS!,
-      },
-    });
+    // No initialization at build time - transporter will be created lazily
+  }
+
+  private async getTransporter() {
+    if (!this.transporter) {
+      const nm = await getNodemailer();
+      // Safe access to process.env to avoid build-time evaluation
+      const env = typeof process !== 'undefined' ? process.env : {};
+      this.transporter = nm.createTransport({
+        host: env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(env.SMTP_PORT || '587'),
+        secure: false,
+        auth: {
+          user: env.SMTP_USER || '',
+          pass: env.SMTP_PASS || '',
+        },
+      });
+    }
+    return this.transporter;
   }
 
   /**
@@ -30,7 +48,10 @@ export class EmailNotificationService {
    */
   async sendAdminNotification(requestData: AccessRequestEmailData): Promise<void> {
     try {
-      const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+      const env = typeof process !== 'undefined' ? process.env : {};
+      const adminEmail = env.ADMIN_EMAIL || env.SMTP_USER || 'admin@willworkforlunch.com';
+      const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
+      const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
       
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -68,7 +89,7 @@ export class EmailNotificationService {
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.NEXTAUTH_URL}/admin/access-requests" 
+              <a href="${websiteUrl}/admin/access-requests" 
                  style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; display: inline-block;">
                 📋 Review Request
               </a>
@@ -77,8 +98,9 @@ export class EmailNotificationService {
         </div>
       `;
 
-      await this.transporter.sendMail({
-        from: process.env.SMTP_USER,
+      const transporter = await this.getTransporter();
+      await transporter.sendMail({
+        from: smtpUser,
         to: adminEmail,
         subject: `🔔 New ${requestData.accessLevel} Access Request - ${requestData.userName}`,
         html: htmlContent,
@@ -96,6 +118,9 @@ export class EmailNotificationService {
    */
   async sendApprovalNotification(requestData: AccessRequestEmailData): Promise<void> {
     try {
+      const env = typeof process !== 'undefined' ? process.env : {};
+      const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
+      const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0;">
@@ -129,7 +154,7 @@ export class EmailNotificationService {
             ` : ''}
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.NEXTAUTH_URL}/auth/signin" 
+              <a href="${websiteUrl}/auth/signin" 
                  style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; display: inline-block;">
                 🚀 Access Your Account
               </a>
@@ -138,8 +163,9 @@ export class EmailNotificationService {
         </div>
       `;
 
-      await this.transporter.sendMail({
-        from: process.env.SMTP_USER,
+      const transporter = await this.getTransporter();
+      await transporter.sendMail({
+        from: smtpUser,
         to: requestData.userEmail,
         subject: `🎉 Access Approved - Welcome to ${requestData.accessLevel.charAt(0).toUpperCase() + requestData.accessLevel.slice(1)} Access!`,
         html: htmlContent,
@@ -157,6 +183,9 @@ export class EmailNotificationService {
    */
   async sendRejectionNotification(requestData: AccessRequestEmailData): Promise<void> {
     try {
+      const env = typeof process !== 'undefined' ? process.env : {};
+      const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
+      const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0;">
@@ -182,7 +211,7 @@ export class EmailNotificationService {
             ` : ''}
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.NEXTAUTH_URL}/contact" 
+              <a href="${websiteUrl}/contact" 
                  style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; display: inline-block;">
                 💬 Contact Us
               </a>
@@ -191,8 +220,9 @@ export class EmailNotificationService {
         </div>
       `;
 
-      await this.transporter.sendMail({
-        from: process.env.SMTP_USER,
+      const transporter = await this.getTransporter();
+      await transporter.sendMail({
+        from: smtpUser,
         to: requestData.userEmail,
         subject: `📋 Access Request Update - ${requestData.accessLevel.charAt(0).toUpperCase() + requestData.accessLevel.slice(1)} Access`,
         html: htmlContent,
@@ -210,8 +240,9 @@ export class EmailNotificationService {
    */
   async sendEmail(to: string, subject: string, html: string): Promise<void> {
     try {
-      await this.transporter.sendMail({
-        from: process.env.SMTP_USER,
+      const transporter = await this.getTransporter();
+      await transporter.sendMail({
+        from: smtpUser,
         to: to,
         subject: subject,
         html: html,

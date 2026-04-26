@@ -63,8 +63,13 @@ export class ProjectService {
         filteredProjects = projects.filter(project => project.permission_level === 'all');
       }
 
-      // Cache the results for 30 minutes
-      await cache.set(cacheKey, filteredProjects, 1800);
+      // Cache the results for 30 minutes (ignore cache errors)
+      try {
+        await cache.set(cacheKey, filteredProjects, 1800);
+      } catch (cacheError) {
+        console.warn('Failed to cache projects (continuing anyway):', cacheError);
+        // Continue even if caching fails
+      }
 
       return filteredProjects;
     } catch (error) {

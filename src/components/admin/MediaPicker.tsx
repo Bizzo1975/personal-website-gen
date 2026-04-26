@@ -312,7 +312,7 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
                   <div className="aspect-square">
                     {isImage(file.mime_type) ? (
                       <img
-                        src={file.file_path}
+                        src={file.file_path.startsWith('/uploads/') ? '/api' + file.file_path : file.file_path}
                         alt={file.alt_text || file.original_name}
                         className="w-full h-full object-cover"
                       />
@@ -350,7 +350,7 @@ const MediaPicker: React.FC<MediaPickerProps> = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         // Create a file object from the image URL for resizing
-                        fetch(file.file_path)
+                        fetch(file.file_path.startsWith('/uploads/') ? '/api' + file.file_path : file.file_path)
                           .then(response => response.blob())
                           .then(blob => {
                             const resizeFile = new File([blob], file.original_name, { type: file.mime_type });

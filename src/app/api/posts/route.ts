@@ -9,8 +9,14 @@ import { query } from '@/lib/db';
 // GET /api/posts - Get all posts with permission filtering
 export async function GET(request: Request) {
   try {
-    // Get user session for permission filtering
-    const session = await getServerSession(authOptions);
+    // Get user session for permission filtering (wrap in try/catch to handle errors gracefully)
+    let session = null;
+    try {
+      session = await getServerSession(authOptions);
+    } catch (sessionError) {
+      // If session check fails, continue without user context (public access)
+      console.warn('Session check failed, continuing as public:', sessionError);
+    }
     const userEmail = session?.user?.email;
 
     // Get posts with permission filtering
@@ -29,8 +35,16 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching posts:', error);
+    // Log full error details for debugging
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     return NextResponse.json(
-      { error: 'Failed to fetch posts' },
+      { 
+        error: 'Failed to fetch posts',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+      },
       { status: 500 }
     );
   }

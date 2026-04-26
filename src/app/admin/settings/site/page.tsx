@@ -28,6 +28,9 @@ interface SiteSettings {
   sendgridReplyTo?: string;
   newsletterEnabled?: boolean;
   newsletterDoubleOptin?: boolean;
+  accessRequestWelcomeEmailEnabled?: boolean;
+  accessRequestWelcomeEmailSubject?: string;
+  accessRequestWelcomeEmailMessage?: string;
 }
 
 export default function SiteSettingsPage() {
@@ -330,27 +333,46 @@ export default function SiteSettingsPage() {
             </div>
 
             <h4 className="text-md font-semibold mb-4">SendGrid Configuration</h4>
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="text-sm">
-                  <p className="text-blue-800 dark:text-blue-200 font-medium">SendGrid Setup Required</p>
-                  <p className="text-blue-700 dark:text-blue-300 mt-1">
-                    To enable newsletter functionality, you need to configure SendGrid API credentials. 
-                    <a href="https://sendgrid.com/docs/for-developers/sending-email/api-getting-started/" 
-                       target="_blank" 
-                       rel="noopener noreferrer" 
-                       className="underline hover:no-underline">
-                      Learn how to get your API key
-                    </a>
-                  </p>
+            {!siteSettings.sendgridApiKey && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-blue-800 dark:text-blue-200 font-medium">SendGrid Setup Required</p>
+                    <p className="text-blue-700 dark:text-blue-300 mt-1">
+                      To enable newsletter functionality, you need to configure SendGrid API credentials. 
+                      <a href="https://sendgrid.com/docs/for-developers/sending-email/api-getting-started/" 
+                         target="_blank" 
+                         rel="noopener noreferrer" 
+                         className="underline hover:no-underline">
+                        Learn how to get your API key
+                      </a>
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+            {siteSettings.sendgridApiKey && (
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-green-800 dark:text-green-200 font-medium">SendGrid Configured</p>
+                    <p className="text-green-700 dark:text-green-300 mt-1">
+                      SendGrid is properly configured and ready to send emails.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <AdminInput
@@ -395,6 +417,72 @@ export default function SiteSettingsPage() {
                 placeholder="contact@yoursite.com"
                 helpText="Email address for subscriber replies"
               />
+            </div>
+
+            {/* Access Request Welcome Email Configuration */}
+            <div className="mt-8">
+              <h4 className="text-md font-semibold mb-4">Access Request Welcome Email</h4>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-blue-800 dark:text-blue-200 font-medium">Welcome Email Configuration</p>
+                    <p className="text-blue-700 dark:text-blue-300 mt-1">
+                      When an access request is approved, a welcome email is automatically sent to the user. 
+                      You can customize the email subject and message below. Use {"{"}userName{"}"}, {"{"}accessLevel{"}"}, and {"{"}websiteUrl{"}"} as placeholders.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="accessRequestWelcomeEmailEnabled"
+                    name="accessRequestWelcomeEmailEnabled"
+                    checked={siteSettings.accessRequestWelcomeEmailEnabled !== false}
+                    onChange={(e) => handleInputChange({ target: { name: 'accessRequestWelcomeEmailEnabled', value: e.target.checked } } as any)}
+                    className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <label htmlFor="accessRequestWelcomeEmailEnabled" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Enable welcome email on access request approval
+                  </label>
+                </div>
+
+                <AdminInput
+                  id="accessRequestWelcomeEmailSubject"
+                  label="Welcome Email Subject"
+                  name="accessRequestWelcomeEmailSubject"
+                  type="text"
+                  value={siteSettings.accessRequestWelcomeEmailSubject || 'Access Approved - Welcome to {accessLevel} content!'}
+                  onChange={handleInputChange}
+                  placeholder="Access Approved - Welcome to {accessLevel} content!"
+                  helpText="Email subject line. Use {userName}, {accessLevel} as placeholders."
+                />
+
+                <div>
+                  <label htmlFor="accessRequestWelcomeEmailMessage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Welcome Email Message (HTML)
+                  </label>
+                  <textarea
+                    id="accessRequestWelcomeEmailMessage"
+                    name="accessRequestWelcomeEmailMessage"
+                    rows={8}
+                    value={siteSettings.accessRequestWelcomeEmailMessage || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Custom HTML message. Use {userName}, {accessLevel}, {websiteUrl} as placeholders."
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Leave empty to use default template. Available placeholders: {"{"}userName{"}"}, {"{"}accessLevel{"}"}, {"{"}websiteUrl{"}"}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
           

@@ -1,41 +1,22 @@
-name: Deploy to Production
+name: Deploy to Prod — willworkforlunch.com
 
 on:
   push:
-    branches: [ production ]
+    branches: [production]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+    environment: production
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Run tests
-      run: npm run test:ci || echo "Tests skipped - script not found"
-    
-    - name: Build application
-      run: npm run build
-    
-    - name: Deploy to server
-      uses: appleboy/ssh-action@v0.1.8
-      with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.SSH_KEY }}
-        script: |
-          cd /home/deploy/personal-website
-          git pull origin production
-          docker compose -f docker-compose.prod.yml down
-          docker compose -f docker-compose.prod.yml up --build -d
-          docker compose -f docker-compose.prod.yml ps
+      - name: Deploy to prod-01-personal-website (10.20.0.201)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/app/site
+            git pull origin production
+            docker compose -f docker-compose.prod.yml up --build -d
+            docker compose -f docker-compose.prod.yml ps

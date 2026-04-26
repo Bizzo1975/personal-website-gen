@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface AccessibilityEnhancementsProps {
   children: React.ReactNode;
+  hideToolbar?: boolean; // If true, don't render the fixed toolbar (it's in Header instead)
 }
 
 // High contrast theme provider
@@ -67,7 +68,11 @@ export const useTextScaling = () => {
 };
 
 // Accessibility toolbar component
-export const AccessibilityToolbar: React.FC = () => {
+interface AccessibilityToolbarProps {
+  inline?: boolean; // If true, render inline instead of fixed
+}
+
+export const AccessibilityToolbar: React.FC<AccessibilityToolbarProps> = ({ inline = false }) => {
   const { isHighContrast, toggleHighContrast } = useHighContrast();
   const { textScale, setScale } = useTextScaling();
   const [isVisible, setIsVisible] = useState(false);
@@ -136,7 +141,8 @@ export const AccessibilityToolbar: React.FC = () => {
       <button
         onClick={() => setIsVisible(!isVisible)}
         className={cn(
-          "fixed top-3 right-3 z-50 p-2 rounded-full",
+          inline ? "relative" : "fixed top-3 right-3",
+          "z-50 p-2 rounded-full",
           "bg-primary-600 text-white hover:bg-primary-700",
           "focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2",
           "transition-all duration-200 shadow-lg",
@@ -160,7 +166,8 @@ export const AccessibilityToolbar: React.FC = () => {
       {isVisible && (
         <div 
           className={cn(
-            "fixed top-16 right-4 z-40 p-6 rounded-lg shadow-xl",
+            inline ? "absolute top-12 right-0" : "fixed top-16 right-4",
+            "z-40 p-6 rounded-lg shadow-xl",
             "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700",
             "min-w-[300px] max-w-[400px]"
           )}
@@ -495,14 +502,14 @@ export const SkipToMainContent: React.FC = () => (
 );
 
 // Main accessibility provider
-const AccessibilityEnhancements: React.FC<AccessibilityEnhancementsProps> = ({ children }) => {
+const AccessibilityEnhancements: React.FC<AccessibilityEnhancementsProps> = ({ children, hideToolbar = false }) => {
   useFocusManagement();
 
   return (
     <>
       <SkipToMainContent />
       {children}
-      <AccessibilityToolbar />
+      {!hideToolbar && <AccessibilityToolbar />}
     </>
   );
 };

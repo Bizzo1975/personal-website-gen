@@ -341,7 +341,7 @@ export default function ProjectPage() {
                 href={project.liveDemo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="inline-flex items-center px-6 py-3 bg-primary-600 dark:bg-primary-500 text-white rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 transition-all font-medium shadow-md hover:shadow-lg transform hover:scale-105"
               >
                 <GlobeAltIcon className="h-5 w-5 mr-2" />
                 View Live Demo
@@ -353,7 +353,7 @@ export default function ProjectPage() {
                 href={project.sourceCode}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                className="inline-flex items-center px-6 py-3 bg-primary-600 dark:bg-primary-500 text-white rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 transition-all font-medium shadow-md hover:shadow-lg transform hover:scale-105"
               >
                 <CodeBracketIcon className="h-5 w-5 mr-2" />
                 View Source Code

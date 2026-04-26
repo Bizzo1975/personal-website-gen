@@ -25,16 +25,17 @@ const MorphingBlogCard: React.FC<MorphingBlogCardProps> = ({ post, index }) => {
   const shortExcerpt = post.excerpt.length > 150 ? `${post.excerpt.substring(0, 150)}...` : post.excerpt;
 
   return (
-    <motion.article
-      className="animate-fade-in-up opacity-0 cursor-pointer relative"
-      style={{ 
-        animationDelay: `${index * 150}ms`,
-        animationFillMode: 'forwards'
-      }}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
-    >
-      <div className={`card-enhanced group transition-all duration-300 ${isExpanded ? 'transform scale-105 shadow-2xl z-50' : ''}`}>
+    <Link href={`/blog/${post.slug}`} className="block">
+      <motion.article
+        className="animate-fade-in-up opacity-0 cursor-pointer relative"
+        style={{ 
+          animationDelay: `${index * 150}ms`,
+          animationFillMode: 'forwards'
+        }}
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}
+      >
+        <div className={`card-enhanced group transition-all duration-300 ${isExpanded ? 'transform scale-105 shadow-2xl z-50' : ''}`}>
         {/* Featured Image */}
         {post.featuredImage && (
           <div className="relative overflow-hidden rounded-t-lg">
@@ -108,10 +109,7 @@ const MorphingBlogCard: React.FC<MorphingBlogCardProps> = ({ post, index }) => {
           </AnimatePresence>
 
           <div className="flex items-center justify-between mt-4">
-            <Link 
-              href={`/blog/${post.slug}`}
-              className="text-secondary-600 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-300 font-medium text-sm inline-flex items-center transition-colors"
-            >
+            <div className="text-secondary-600 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-300 font-medium text-sm inline-flex items-center transition-colors">
               {isExpanded ? 'Read Full Article' : 'Read More'}
               <motion.div
                 animate={{ rotate: isExpanded ? 360 : 0 }}
@@ -120,11 +118,12 @@ const MorphingBlogCard: React.FC<MorphingBlogCardProps> = ({ post, index }) => {
               >
                 <FiCode className="h-3 w-3 text-secondary-600 dark:text-secondary-400" />
               </motion.div>
-            </Link>
+            </div>
           </div>
         </div>
       </div>
-    </motion.article>
+      </motion.article>
+    </Link>
   );
 };
 

@@ -194,31 +194,65 @@ const MediaLibrary: React.FC = () => {
 
   const fetchMediaFiles = async () => {
     try {
+      setLoading(true);
       const params = new URLSearchParams();
       if (currentFolder) params.append('folder', currentFolder);
       params.append('sortBy', sortBy);
       params.append('sortOrder', sortOrder);
       
+      // Add cache-busting parameter to ensure fresh data
+      params.append('_t', Date.now().toString());
+      
       const response = await fetch(`/api/admin/media?${params}`);
       if (response.ok) {
         const data = await response.json();
         // Extract the media array from the API response and map fields
-        const mediaFiles = Array.isArray(data.media) ? data.media.map((file: any) => ({
-          id: file.id,
-          filename: file.filename,
-          originalName: file.original_name || file.filename,
-          mimeType: file.mime_type,
-          size: file.file_size,
-          url: file.file_path,
-          thumbnailUrl: file.thumbnail_url,
-          uploadedAt: file.created_at,
-          uploadedBy: file.uploaded_by,
-          folder: file.folder,
-          alt: file.alt_text,
-          description: file.description,
-          tags: file.tags || [],
-          starred: file.starred || false
-        })) : [];
+        const mediaFiles = Array.isArray(data.media) ? data.media.map((file: any) => {
+          // Ensure file_path is a proper URL path (starts with /)
+          let fileUrl = file.file_path || '';
+          if (fileUrl && !fileUrl.startsWith('/') && !fileUrl.startsWith('http')) {
+            fileUrl = '/' + fileUrl;
+          }
+          
+          // Convert uploads paths to API route for Next.js standalone mode
+          // /uploads/general/file.jpg -> /api/uploads/general/file.jpg
+          if (fileUrl.startsWith('/uploads/')) {
+            fileUrl = '/api' + fileUrl;
+          }
+          
+          // Use file_path as thumbnail if no thumbnail_url exists
+          let thumbnailUrl = file.thumbnail_url || file.file_path || '';
+          if (thumbnailUrl && !thumbnailUrl.startsWith('/') && !thumbnailUrl.startsWith('http')) {
+            thumbnailUrl = '/' + thumbnailUrl;
+          }
+          
+          // Convert uploads paths to API route for thumbnails too
+          if (thumbnailUrl.startsWith('/uploads/')) {
+            thumbnailUrl = '/api' + thumbnailUrl;
+          }
+          
+          // If thumbnail_url is not set, use file_path as thumbnail
+          if (!file.thumbnail_url && fileUrl) {
+            thumbnailUrl = fileUrl;
+          }
+          
+          return {
+            id: file.id,
+            filename: file.filename,
+            originalName: file.original_name || file.filename,
+            mimeType: file.mime_type,
+            size: file.file_size,
+            url: fileUrl,
+            thumbnailUrl: thumbnailUrl,
+            uploadedAt: file.created_at,
+            uploadedBy: file.uploaded_by,
+            folder: file.folder,
+            alt: file.alt_text,
+            description: file.description,
+            tags: file.tags || [],
+            starred: file.starred || false
+          };
+        }) : [];
         setFiles(mediaFiles);
       }
     } catch (error) {
@@ -274,7 +308,14 @@ const MediaLibrary: React.FC = () => {
           errors: result.errors || []
         } : null);
         
+        // Add a delay to ensure database is fully committed and files are accessible
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Force refresh the media files list with cache busting
+        setLoading(true);
         await fetchMediaFiles();
+        setLoading(false);
+        
         setShowUploadModal(false);
         
         // Clear progress after 3 seconds
@@ -691,12 +732,14 @@ const MediaLibrary: React.FC = () => {
           e.preventDefault();
           e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
         }}
-        onDrop={(e) => {
+        onDrop={async (e) => {
           e.preventDefault();
           e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
           const files = e.dataTransfer.files;
           if (files.length > 0) {
-            handleBulkFileUpload(files);
+            await handleBulkFileUpload(files);
+            // Ensure files are refreshed after upload
+            await fetchMediaFiles();
           }
         }}
       >
@@ -861,9 +904,26 @@ const MediaLibrary: React.FC = () => {
                 <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded mb-2 overflow-hidden">
                   {file.mimeType.startsWith('image/') ? (
                     <img
-                      src={file.thumbnailUrl || file.url}
+                      src={file.thumbnailUrl || file.url || '/images/placeholder-image.png'}
                       alt={file.alt || file.originalName}
                       className="w-full h-full object-cover cursor-pointer"
+                      loading="lazy"
+                      onError={(e) => {
+                        // Fallback if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        console.warn('Image failed to load:', {
+                          attemptedUrl: target.src,
+                          fileUrl: file.url,
+                          thumbnailUrl: file.thumbnailUrl
+                        });
+                        // Try the main URL if thumbnail failed
+                        if (target.src !== file.url && file.url && !target.src.includes('placeholder')) {
+                          target.src = file.url;
+                        } else if (!target.src.includes('placeholder')) {
+                          // If both fail, show placeholder
+                          target.src = '/images/placeholder-image.png';
+                        }
+                      }}
                       onClick={() => {
                         setPreviewFile(file);
                         setShowPreview(true);
@@ -972,9 +1032,24 @@ const MediaLibrary: React.FC = () => {
                 <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center mr-4">
                   {file.mimeType.startsWith('image/') ? (
                     <img
-                      src={file.thumbnailUrl || file.url}
+                      src={file.thumbnailUrl || file.url || '/images/placeholder-image.png'}
                       alt={file.alt || file.originalName}
                       className="w-full h-full object-cover rounded"
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        console.warn('List image failed to load:', {
+                          attemptedUrl: target.src,
+                          fileUrl: file.url,
+                          fileId: file.id
+                        });
+                        // Try main URL if thumbnail failed
+                        if (file.url && !target.src.includes('placeholder')) {
+                          target.src = file.url;
+                        } else if (!target.src.includes('placeholder')) {
+                          target.src = '/images/placeholder-image.png';
+                        }
+                      }}
                     />
                   ) : (
                     <FileIcon className="h-5 w-5 text-gray-400" />
@@ -1154,8 +1229,22 @@ const MediaLibrary: React.FC = () => {
             <div className="p-6">
               {previewFile.mimeType.startsWith('image/') && (
                 <img
-                  src={previewFile.url}
+                  src={previewFile.url || previewFile.thumbnailUrl || '/images/placeholder-image.png'}
                   alt={previewFile.alt || previewFile.originalName}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    console.error('Preview image failed to load:', {
+                      url: previewFile.url,
+                      thumbnailUrl: previewFile.thumbnailUrl,
+                      fileId: previewFile.id
+                    });
+                    // Try thumbnail if main URL failed
+                    if (previewFile.thumbnailUrl && !target.src.includes('placeholder')) {
+                      target.src = previewFile.thumbnailUrl;
+                    } else if (!target.src.includes('placeholder')) {
+                      target.src = '/images/placeholder-image.png';
+                    }
+                  }}
                   className="max-w-full h-auto rounded-lg mb-4"
                 />
               )}

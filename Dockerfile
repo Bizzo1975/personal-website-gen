@@ -11,14 +11,27 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Increase Node.js memory limit to prevent SIGSEGV during npm install
-# Reduced for low-memory VMs (3-4GB RAM)
-ENV NODE_OPTIONS="--max-old-space-size=1536"
+# Set to 2048MB to handle @sendgrid/mail and other packages
+# SIGILL (exit 132) is not a memory issue - it's corrupted cache/native bindings
+# Cache-bust: v3 - Fixed memory limit, clear cache, skip optional deps
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Install dependencies based on the preferred package manager
-# Use npm install instead of npm ci for deps stage to reduce memory usage
+# Clear npm cache first to avoid corrupted cache issues
+# Use npm ci for more reliable installs (requires package-lock.json)
+# Skip postinstall script to prevent memory issues during Docker build
+# Skip optional dependencies to avoid native binding issues
+# Cache-bust: v4 - Added verbose logging and better error handling
 COPY package.json package-lock.json* ./
 RUN \
-  if [ -f package-lock.json ]; then npm install --only=production --prefer-offline --no-audit; \
+  npm cache clean --force && \
+  if [ -f package-lock.json ]; then \
+    echo "Installing production dependencies..." && \
+    SKIP_POSTINSTALL=true npm ci --only=production --no-audit --ignore-scripts --loglevel=verbose || \
+    (echo "npm ci failed, checking npm log..." && \
+     cat /root/.npm/_logs/*-debug-*.log 2>/dev/null | tail -50 || true && \
+     echo "Trying with npm install as fallback..." && \
+     SKIP_POSTINSTALL=true npm install --only=production --no-audit --ignore-scripts --loglevel=verbose); \
   else echo "Lockfile not found." && exit 1; \
   fi
 
@@ -34,16 +47,21 @@ ARG SKIP_BUILD=false
 RUN apk add --no-cache libc6-compat
 
 # Increase Node.js memory limit to prevent SIGSEGV during build
-# Production builds need more memory - use 4096MB for production builds
-# This stage is only built for production (runner target), not development
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+# Set to 2048MB to work on servers with limited RAM (4GB total)
+# If build still fails:
+#   - Check available RAM: free -h
+#   - Add swap space: ./scripts/check-memory-and-swap.sh
+#   - Ensure at least 2GB free RAM before building
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Copy package files
 COPY package.json package-lock.json* ./
 
 # Install ALL dependencies (including dev) needed for build
 # Suppress npm warnings to reduce noise
-RUN npm ci --no-audit --loglevel=error
+# Skip postinstall scripts to prevent memory issues
+# Cache-bust: v2 - Added --ignore-scripts to prevent postinstall from running
+RUN SKIP_POSTINSTALL=true npm ci --no-audit --loglevel=error --ignore-scripts
 
 # Copy source code (includes tsconfig.json and next.config.js)
 COPY . .
@@ -53,14 +71,11 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Build the application - only if building for production
-# Skip build for development to avoid SIGSEGV and unnecessary work
-RUN if [ "$SKIP_BUILD" != "true" ] && [ "$BUILD_TARGET" = "production" ]; then \
-        npm run build; \
-    else \
-        echo "Skipping build for development target"; \
-        mkdir -p .next/static .next/standalone public; \
-    fi
+# Build the application for production
+# Always build when targeting runner stage (production)
+# The builder stage is only used for production builds
+# Explicitly set memory limit during build to ensure it's applied
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
 # Development image, copy all the files and run next dev
 FROM base AS development
@@ -73,9 +88,9 @@ ENV NEXT_TELEMETRY_DISABLED 1
 # Install dependencies
 RUN apk add --no-cache libc6-compat
 
-# Increase Node.js memory limit for development (set before npm commands)
-# Use more memory for npm ci to prevent SIGSEGV
-ENV NODE_OPTIONS="--max-old-space-size=2048"
+# Increase Node.js memory limit for builder stage (set before npm commands)
+# Use more memory for npm ci and build to prevent SIGSEGV
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Copy package files
 COPY package.json package-lock.json* ./
@@ -112,6 +127,9 @@ ENV NODE_ENV production
 ENV FRONTEND_PORT 3000
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
@@ -126,12 +144,15 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy entrypoint script
+COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
+ENV PORT=3000
 
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["node", "server.js"] 
+# Use entrypoint script to ensure HOSTNAME is set before server starts
+ENTRYPOINT ["./docker-entrypoint.sh"] 

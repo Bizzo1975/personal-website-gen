@@ -1,14 +1,30 @@
 import { Pool, PoolConfig, PoolClient } from 'pg';
 
-// PostgreSQL connection configuration
-const config: PoolConfig = {
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
-  statement_timeout: 30000, // Query timeout of 30 seconds
-};
+// Function to get PostgreSQL connection configuration
+// This reads DATABASE_URL dynamically, not at module load time
+function getPoolConfig(): PoolConfig {
+  const databaseUrl = process.env.DATABASE_URL || '';
+  
+  // Determine if SSL should be used
+  // Only use SSL for external databases (not localhost or Docker internal hostnames)
+  // Docker internal connections (db:5432, localhost, 127.0.0.1) don't need SSL
+  const isInternalConnection = 
+    databaseUrl.includes('@db:') || 
+    databaseUrl.includes('@localhost:') || 
+    databaseUrl.includes('@127.0.0.1:') ||
+    databaseUrl.includes('@postgres:');
+  
+  const useSSL = process.env.NODE_ENV === 'production' && !isInternalConnection;
+  
+  return {
+    connectionString: databaseUrl,
+    ssl: useSSL ? { rejectUnauthorized: false } : false,
+    max: 20, // Maximum number of clients in the pool
+    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+    connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
+    statement_timeout: 30000, // Query timeout of 30 seconds
+  };
+}
 
 // Define types for cached PostgreSQL connection
 interface PostgreSQLConnection {
@@ -45,7 +61,9 @@ async function dbConnect(): Promise<Pool> {
     
     cached.promise = new Promise(async (resolve, reject) => {
       try {
-        const pool = new Pool(config);
+        // Read DATABASE_URL fresh from environment (not from cached config)
+        const poolConfig = getPoolConfig();
+        const pool = new Pool(poolConfig);
         
         // Test the connection
         const client = await pool.connect();
@@ -106,6 +124,22 @@ export async function connectToDatabase() {
     console.error('Database connection failed:', error);
     throw new Error(`Failed to connect to PostgreSQL database: ${error}`);
   }
+}
+
+// Clear cached connection pool (useful for reconnecting with new DATABASE_URL)
+export function clearConnectionCache() {
+  if (cached.pool) {
+    cached.pool.end().catch(() => {
+      // Ignore errors when closing
+    });
+  }
+  cached.pool = null;
+  cached.promise = null;
+  if (global.postgresql) {
+    global.postgresql.pool = null;
+    global.postgresql.promise = null;
+  }
+  console.log('Database connection cache cleared');
 }
 
 // Graceful shutdown

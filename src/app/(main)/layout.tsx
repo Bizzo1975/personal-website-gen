@@ -73,7 +73,7 @@ export default function MainLayout({
   }, []);
 
   return (
-    <AccessibilityEnhancements>
+    <AccessibilityEnhancements hideToolbar>
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
         <div className="fixed inset-0 bg-grid opacity-10 dark:opacity-5 z-0 pointer-events-none"></div>
         

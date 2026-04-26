@@ -1,4 +1,3 @@
-import { EmailNotificationService } from './email-notification-service';
 import { query } from '@/lib/db';
 
 interface PendingRequest {
@@ -11,10 +10,18 @@ interface PendingRequest {
 }
 
 export class FollowUpEmailService {
-  private emailService: EmailNotificationService;
+  // Lazy load email service to avoid build-time evaluation
+  private _emailService: any = null;
+  private async getEmailService() {
+    if (!this._emailService) {
+      const { EmailNotificationService } = await import('./email-notification-service');
+      this._emailService = new EmailNotificationService();
+    }
+    return this._emailService;
+  }
 
   constructor() {
-    this.emailService = new EmailNotificationService();
+    // No initialization at build time
   }
 
   /**
@@ -73,7 +80,13 @@ export class FollowUpEmailService {
    * Send individual follow-up email
    */
   private async sendFollowUpEmail(request: PendingRequest): Promise<void> {
-    const transporter = this.emailService['transporter']; // Access private transporter
+    const emailService = await this.getEmailService();
+    const transporter = emailService['transporter']; // Access private transporter
+    
+    // Safe access to process.env to avoid build-time evaluation
+    const env = typeof process !== 'undefined' ? process.env : {};
+    const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
+    const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
     
     const daysSinceSubmission = Math.floor(
       (Date.now() - new Date(request.submitted_at).getTime()) / (1000 * 60 * 60 * 24)
@@ -125,7 +138,7 @@ export class FollowUpEmailService {
           </p>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.NEXTAUTH_URL}/request-status?email=${encodeURIComponent(request.email)}" 
+            <a href="${websiteUrl}/request-status?email=${encodeURIComponent(request.email)}" 
                style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; display: inline-block;">
               📊 Check Request Status
             </a>
@@ -134,7 +147,7 @@ export class FollowUpEmailService {
           <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 20px;">
             <p style="margin: 0; color: #1565c0; font-size: 14px;">
               💬 <strong>Need Help?</strong> If you have any questions about your request, 
-              feel free to <a href="${process.env.NEXTAUTH_URL}/contact" style="color: #1565c0;">contact us</a>.
+              feel free to <a href="${websiteUrl}/contact" style="color: #1565c0;">contact us</a>.
             </p>
           </div>
         </div>
@@ -142,7 +155,7 @@ export class FollowUpEmailService {
     `;
 
     await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: smtpUser,
       to: request.email,
       subject: `⏰ Access Request Update - Still Under Review`,
       html: htmlContent,
@@ -207,7 +220,13 @@ export class FollowUpEmailService {
    * Send welcome reminder email for approved users who haven't signed up
    */
   private async sendWelcomeReminderEmail(request: PendingRequest): Promise<void> {
-    const transporter = this.emailService['transporter'];
+    const emailService = await this.getEmailService();
+    const transporter = emailService['transporter'];
+    
+    // Safe access to process.env to avoid build-time evaluation
+    const env = typeof process !== 'undefined' ? process.env : {};
+    const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
+    const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
     
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -235,7 +254,7 @@ export class FollowUpEmailService {
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.NEXTAUTH_URL}/auth/signup" 
+            <a href="${websiteUrl}/auth/signup" 
                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; display: inline-block;">
               🎯 Create Your Account
             </a>
@@ -244,7 +263,7 @@ export class FollowUpEmailService {
           <div style="background: #e0f2fe; padding: 15px; border-radius: 8px; margin-top: 20px;">
             <p style="margin: 0; color: #0277bd; font-size: 14px;">
               💡 <strong>Already have an account?</strong> 
-              <a href="${process.env.NEXTAUTH_URL}/auth/signin" style="color: #0277bd;">Sign in here</a>
+              <a href="${websiteUrl}/auth/signin" style="color: #0277bd;">Sign in here</a>
             </p>
           </div>
         </div>
@@ -252,7 +271,7 @@ export class FollowUpEmailService {
     `;
 
     await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: smtpUser,
       to: request.email,
       subject: `🎉 Welcome Reminder - Your Access is Ready!`,
       html: htmlContent,

@@ -4,6 +4,10 @@ import { getProfileData } from '@/lib/services/profile-service';
 import { serializeMarkdown } from '@/lib/mdx';
 import ContactContent from './contact-content';
 
+// Force dynamic rendering to fetch fresh data from database at runtime
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata = {
   title: 'Contact Me - Personal Website',
   description: 'Get in touch with me for work inquiries, collaborations, or just to say hello.',

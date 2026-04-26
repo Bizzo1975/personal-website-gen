@@ -140,7 +140,7 @@ const AdminEditorPage = () => {
           Implementation Notes
         </h2>
         <ul className="list-disc list-inside space-y-2 text-blue-700 dark:text-blue-300">
-          <li>The editor uses React-Quill with custom styling and accessibility enhancements</li>
+          <li>The editor uses SimpleMDE (Markdown editor) with custom styling and accessibility enhancements</li>
           <li>Dark mode support is implemented with custom CSS</li>
           <li>Images can be uploaded via the toolbar (with server integration)</li>
           <li>Multiple toolbar configurations are available (full, basic, minimal)</li>

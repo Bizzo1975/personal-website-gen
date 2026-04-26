@@ -77,17 +77,18 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
         const data = await response.json();
         setProject(data.data || data);
         
-        // Set form values
-        setValue('title', data.title || data.data?.title);
-        setValue('slug', data.slug || data.data?.slug);
-        setValue('description', data.description || data.data?.description);
-        setValue('content', data.content || data.data?.content || '');
-        setValue('image', data.image || data.data?.image || '');
-        setValue('technologies', data.technologies || data.data?.technologies || []);
-        setValue('liveDemo', data.liveDemo || data.data?.liveDemo || '');
-        setValue('sourceCode', data.sourceCode || data.data?.sourceCode || '');
-        setValue('featured', data.featured || data.data?.featured || false);
-        setValue('status', data.status || data.data?.status || 'draft');
+        // Set form values - handle both camelCase and snake_case from API
+        const projectData = data.data || data;
+        setValue('title', projectData.title || '');
+        setValue('slug', projectData.slug || '');
+        setValue('description', projectData.description || '');
+        setValue('content', projectData.content || '');
+        setValue('image', projectData.image || '');
+        setValue('technologies', projectData.technologies || []);
+        setValue('liveDemo', projectData.liveDemo || projectData.live_demo || '');
+        setValue('sourceCode', projectData.sourceCode || projectData.source_code || '');
+        setValue('featured', projectData.featured || false);
+        setValue('status', projectData.status || 'draft');
         
         // Set permissions (use default if not present)
         const projectPermissions = data.permissions || data.data?.permissions || getDefaultPermissions();

@@ -105,6 +105,55 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session || session.user?.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const { requestedAccessLevel } = await request.json();
+    
+    if (!requestedAccessLevel || !['personal', 'professional'].includes(requestedAccessLevel)) {
+      return NextResponse.json({ error: 'Invalid access level. Must be "personal" or "professional"' }, { status: 400 });
+    }
+
+    const enhancedService = new EnhancedAccessRequestService();
+    
+    // Update the access level in the database
+    const { query } = await import('@/lib/db');
+    const result = await query(
+      `UPDATE access_requests 
+       SET requested_access_level = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2
+       RETURNING *`,
+      [requestedAccessLevel, resolvedParams.id]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Access level updated successfully',
+      request: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('Error updating access level:', error);
+    return NextResponse.json(
+      { error: 'Failed to update access level' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

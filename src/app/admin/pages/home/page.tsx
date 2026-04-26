@@ -59,7 +59,25 @@ export default function AdminHomePageEditor() {
         
         if (homePage) {
           console.log('Found home page:', homePage);
-          setPageData(homePage);
+          // Decode HTML entities in content to fix garbled text (server-safe method)
+          const decodeHtmlEntities = (text: string): string => {
+            if (!text) return '';
+            // Use server-safe string replacement instead of DOM API
+            return text
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&amp;/g, '&')
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/&#x27;/g, "'")
+              .replace(/&nbsp;/g, ' ')
+              .replace(/&#x2F;/g, '/');
+          };
+          const decodedContent = decodeHtmlEntities(homePage.content || '');
+          setPageData({
+            ...homePage,
+            content: decodedContent
+          });
         } else {
           console.log('No home page found, using defaults');
           // If no home page exists, create default data

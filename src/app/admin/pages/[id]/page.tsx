@@ -62,9 +62,29 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
           throw new Error(`Failed to fetch page data: ${response.status} ${response.statusText}`);
         }
         
-        const data = await response.json();
+        const responseData = await response.json();
+        const data = responseData.page || responseData; // Handle both { page: ... } and direct response
         console.log('Fetched page data:', data);
-        setPageData(data);
+        
+        // Decode HTML entities in content to fix garbled text (server-safe method)
+        const decodeHtmlEntities = (text: string): string => {
+          if (!text) return '';
+          // Use server-safe string replacement instead of DOM API
+          return text
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&#x27;/g, "'")
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&#x2F;/g, '/');
+        };
+        const decodedContent = decodeHtmlEntities(data.content || '');
+        setPageData({
+          ...data,
+          content: decodedContent
+        });
         setLoading(false);
       } catch (err) {
         console.error('Error fetching page:', err);
