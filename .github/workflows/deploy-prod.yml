@@ -1,0 +1,22 @@
+name: Deploy to Prod — willworkforlunch.com
+
+on:
+  push:
+    branches: [production]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, kecktech-lan-runner]
+    environment: production
+    steps:
+      - name: Deploy to prod-personal-website (VMID 302)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/docker/personal-website
+            git pull origin production
+            docker compose -f docker-compose.prod.yml up --build -d
+            docker compose -f docker-compose.prod.yml ps

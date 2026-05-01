@@ -1,0 +1,21 @@
+name: Deploy to Dev — willworkforlunch.com
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, kecktech-lan-runner]
+    steps:
+      - name: Deploy to dev-personal-website-v2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/docker/personal-website
+            git pull origin dev
+            docker compose up --build -d
+            docker compose ps
