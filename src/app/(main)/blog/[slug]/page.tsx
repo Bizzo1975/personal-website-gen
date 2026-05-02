@@ -18,7 +18,9 @@ import {
   StarIcon as StarSolidIcon 
 } from '@heroicons/react/24/solid';
 import BlogComments from '@/components/BlogComments';
+
 import SocialShare from '@/components/SocialShare';
+import DOMPurify from 'dompurify';
 
 interface Author {
   id: string;
@@ -316,14 +318,14 @@ export default function BlogPostPage() {
             let renderedContent: string;
             
             if (isAlreadyHTML) {
-              // Content is already HTML, use as-is
-              renderedContent = content;
+              // Content is already HTML — sanitize before render
+              renderedContent = DOMPurify.sanitize(content);
             } else {
               // Content is markdown, always parse it
               try {
                 // Use marked() directly like MarkdownEditor does - ensure result is string
                 const markedResult = marked(content) as string;
-                renderedContent = markedResult;
+                renderedContent = DOMPurify.sanitize(markedResult);
               } catch (error) {
                 console.error('Error parsing markdown:', error);
                 console.error('Content sample:', content.substring(0, 200));
@@ -333,9 +335,10 @@ export default function BlogPostPage() {
                   .filter(p => p.trim())
                   .map(p => p.trim().replace(/\n/g, ' '));
                 
-                renderedContent = paragraphs.length > 0
+                const rawFallback = paragraphs.length > 0
                   ? paragraphs.map(p => `<p>${p}</p>`).join('')
                   : `<p>${content.replace(/\n/g, ' ')}</p>`;
+                renderedContent = DOMPurify.sanitize(rawFallback);
               }
             }
             

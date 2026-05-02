@@ -27,6 +27,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Security: validate file type and extension
+    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+    const fileExt = path.extname(file.name).toLowerCase();
+
+    if (!ALLOWED_MIME_TYPES.includes(file.type) || !ALLOWED_EXTENSIONS.includes(fileExt)) {
+      return NextResponse.json(
+        { error: `File type not allowed. Permitted types: ${ALLOWED_EXTENSIONS.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Security: enforce file size limit (10MB)
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: 'File too large. Maximum size is 10MB.' },
+        { status: 413 }
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const filename = file.name.replace(/\s+/g, '-').toLowerCase();
     const ext = path.extname(filename);
