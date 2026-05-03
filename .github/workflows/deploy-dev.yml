@@ -6,16 +6,13 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, kecktech-lan-runner]
+    runs-on: self-hosted
     steps:
-      - name: Deploy to dev-personal-website-v2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEV_SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /opt/docker/personal-website
-            git pull origin dev
-            docker compose up --build -d
-            docker compose ps
+      - name: Deploy to dev-personal-website-v2 (VMID 702)
+        shell: pwsh
+        run: |
+          $sshExe = "C:\Program Files\Git\usr\bin\ssh.exe"
+          $keyPath = "C:\Users\jonkd\.ssh\id_ed25519"
+          $script = "cd /opt/docker/personal-website && git pull origin dev && docker compose up -d --build && docker compose ps"
+          & $sshExe -o StrictHostKeyChecking=no -o BatchMode=yes -i $keyPath -o ConnectTimeout=30 dev-personal-website $script
+          if ($LASTEXITCODE -ne 0) { throw "Deploy failed with exit code $LASTEXITCODE" }
