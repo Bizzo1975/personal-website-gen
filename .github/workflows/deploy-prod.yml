@@ -6,17 +6,14 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, kecktech-lan-runner]
+    runs-on: self-hosted
     environment: production
     steps:
-      - name: Deploy to prod-personal-website (VMID 302)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.PROD_SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /opt/docker/personal-website
-            git pull origin production
-            docker compose -f docker-compose.prod.yml up --build -d
-            docker compose -f docker-compose.prod.yml ps
+      - name: Deploy to prod-personal-website-v2 (VMID 302)
+        shell: powershell
+        run: |
+          $sshExe = "C:\Program Files\Git\usr\bin\ssh.exe"
+          $keyPath = "C:\Users\jonkd\.ssh\id_ed25519"
+          $script = "cd /opt/docker/personal-website && git pull origin production && docker compose up -d --build && docker compose ps"
+          & $sshExe -o StrictHostKeyChecking=no -o BatchMode=yes -i $keyPath -o ConnectTimeout=30 prod-personal-website-v2 $script
+          if ($LASTEXITCODE -ne 0) { throw "Deploy failed with exit code $LASTEXITCODE" }
