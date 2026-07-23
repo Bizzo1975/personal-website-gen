@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         excerpt,
         tags,
         body.author || "ME Manager",
-        body.read_time || "3 min",
+        typeof body.read_time === "number" ? body.read_time : 3,
         published,
         status,
         createdBy,
