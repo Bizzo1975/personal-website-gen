@@ -1,48 +1,13 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { notifyMeManagerTeaser } from "@/lib/me-manager-teaser";
 
 function authorize(request: Request): boolean {
   const key = process.env.ME_MANAGER_API_KEY;
   if (!key) return false;
   const header = request.headers.get("authorization") || "";
   return header === `Bearer ${key}`;
-}
-
-async function notifyMeManagerTeaser(post: {
-  title: string;
-  excerpt?: string;
-  slug?: string;
-}) {
-  const meUrl = process.env.ME_MANAGER_URL || "http://localhost:3010";
-  const ingestKey =
-    process.env.ME_MANAGER_INGEST_KEY || process.env.ME_MANAGER_API_KEY;
-  if (!ingestKey) return { skipped: true };
-
-  const siteUrl = `${(process.env.NEXTAUTH_URL || "https://willworkforlunch.com").replace(/\/$/, "")}/blog/${post.slug || ""}`;
-
-  try {
-    const res = await fetch(`${meUrl.replace(/\/$/, "")}/api/sites/teaser`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${ingestKey}`,
-      },
-      body: JSON.stringify({
-        title: post.title,
-        summary: post.excerpt || post.title,
-        url: siteUrl,
-        platforms: ["linkedin", "bluesky", "mastodon"],
-      }),
-    });
-    const body = await res.json().catch(() => null);
-    return { ok: res.ok, body };
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : String(e),
-    };
-  }
 }
 
 export async function POST(
