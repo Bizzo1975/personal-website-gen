@@ -65,7 +65,9 @@ export async function middleware(request: NextRequest) {
     pathname.includes('.') ||
     pathname === '/api/test' ||
     pathname === '/api/health' ||
-    pathname === '/api/rss'
+    pathname === '/api/rss' ||
+    pathname.startsWith('/api/me-manager') ||
+    pathname.startsWith('/api/cron')
   ) {
     return NextResponse.next();
   }
@@ -123,7 +125,9 @@ export async function middleware(request: NextRequest) {
       pathname === '/api/newsletter' ||
       pathname === '/api/comments' ||
       pathname === '/api/access-requests' ||
-      pathname.startsWith('/api/auth/')
+      pathname.startsWith('/api/auth/') ||
+      pathname.startsWith('/api/me-manager') ||
+      pathname.startsWith('/api/cron')
     ) {
       return response;
     }

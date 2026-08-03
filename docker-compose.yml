@@ -1,4 +1,4 @@
-services:
+﻿services:
   # Next.js Development Application
   app:
     build:
@@ -9,7 +9,7 @@ services:
         BUILD_TARGET: development
         SKIP_BUILD: "true"
     ports:
-      - "3006:3006"
+      - "8080:3006"
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:admin123@db:5432/personal_website
