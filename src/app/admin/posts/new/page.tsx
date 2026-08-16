@@ -9,6 +9,7 @@ import Input from '@/components/Input';
 import TextArea from '@/components/TextArea';
 import { TagInput } from '@/components/TagInput';
 import MarkdownEditor from '@/components/MarkdownEditor';
+import '@/styles/simplemde-custom.css';
 import { Checkbox } from '@/components/Checkbox';
 import Card, { CardHeader, CardBody, CardFooter } from '@/components/Card';
 import PermissionsEditor from '@/components/admin/PermissionsEditor';

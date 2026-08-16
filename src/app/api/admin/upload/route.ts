@@ -63,6 +63,8 @@ export async function POST(request: NextRequest) {
       uploadDir = path.join(process.cwd(), 'public', 'images', 'profiles');
     } else if (type === 'slideshow') {
       uploadDir = path.join(process.cwd(), 'public', 'images', 'slideshow');
+    } else if (type === 'post') {
+      uploadDir = path.join(process.cwd(), 'public', 'uploads', 'post');
     } else {
       uploadDir = path.join(process.cwd(), 'public', 'uploads', 'images');
     }
@@ -70,6 +72,10 @@ export async function POST(request: NextRequest) {
     // Create the file path
     const filePath = path.join(uploadDir, uniqueFilename);
     
+    // Ensure upload directory exists
+    const { mkdir } = await import('fs/promises');
+    await mkdir(uploadDir, { recursive: true });
+
     // Write the file to the filesystem
     await writeFile(filePath, buffer);
     
@@ -83,6 +89,8 @@ export async function POST(request: NextRequest) {
       urlPath = `/images/profiles/${uniqueFilename}`;
     } else if (type === 'slideshow') {
       urlPath = `/images/slideshow/${uniqueFilename}`;
+    } else if (type === 'post') {
+      urlPath = `/uploads/post/${uniqueFilename}`;
     } else {
       urlPath = `/uploads/images/${uniqueFilename}`;
     }

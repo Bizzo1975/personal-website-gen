@@ -296,7 +296,7 @@ export default function BlogPostPage() {
         </header>
 
         {/* Content */}
-        <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
+        <div className="prose max-w-none mb-8 text-gray-900 dark:text-gray-100 dark:bg-transparent">
           {(() => {
             // Ensure content is a string (not a Promise) - explicit type narrowing
             if (!post || !post.content) {
@@ -323,9 +323,17 @@ export default function BlogPostPage() {
             } else {
               // Content is markdown, always parse it
               try {
-                // Use marked() directly like MarkdownEditor does - ensure result is string
-                const markedResult = marked(content) as string;
-                renderedContent = DOMPurify.sanitize(markedResult);
+                // Pre-process: replace --- dividers with explicit HTML hr to prevent
+                // setext heading interpretation (text followed by --- = H2 in markdown)
+                const processedContent = content
+                  .replace(/^---$/gm, '<hr>')
+                  .replace(/^- - -$/gm, '<hr>');
+                // Configure marked to not use setext headings
+                const markedResult = marked(processedContent, {
+                  breaks: false,
+                  gfm: true,
+                }) as string;
+                renderedContent = DOMPurify.sanitize(markedResult, { ADD_TAGS: ['hr'] });
               } catch (error) {
                 console.error('Error parsing markdown:', error);
                 console.error('Content sample:', content.substring(0, 200));

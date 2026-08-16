@@ -103,7 +103,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    // 2026-08-16: live-sync fix — without this, ProjectService.getAllProjects()
+    // 2026-08-16: live-sync fix - without this, ProjectService.getAllProjects()
     // kept serving a stale cached list for up to 30 min after a status change
     // pushed from Me Manager, even though this write to the DB was correct.
     const cache = CacheService.getInstance();

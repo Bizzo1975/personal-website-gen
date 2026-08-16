@@ -106,33 +106,3 @@ export async function PATCH(
     );
   }
 }
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  if (!authorize(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { id } = await params;
-
-  try {
-    const result = await query(
-      `DELETE FROM posts WHERE id = $1 RETURNING id, title, slug`,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ ok: true, deleted: result.rows[0] });
-  } catch (error) {
-    console.error("me-manager delete failed:", error);
-    return NextResponse.json(
-      { error: "Failed to delete post" },
-      { status: 500 }
-    );
-  }
-}

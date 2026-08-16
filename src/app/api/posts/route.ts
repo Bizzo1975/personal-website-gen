@@ -53,8 +53,17 @@ export async function GET(request: Request) {
 // POST /api/posts - Create a new post (admin only)
 export async function POST(request: Request) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
+    const authHeader = request.headers.get('authorization') || '';
+    const serviceKey = process.env.CLAUDETTE_API_KEY || process.env.WEBSITE_API_KEY || '';
+    let serviceEmail: string | null = null;
+    if (serviceKey && authHeader === `Bearer ${serviceKey}`) {
+      serviceEmail = process.env.ADMIN_EMAIL || process.env.CLAUDETTE_SERVICE_EMAIL || 'jon@kecktech.net';
+    }
+
+    // Check authentication (NextAuth session or Claudette service bearer)
+    const session = serviceEmail
+      ? { user: { email: serviceEmail } }
+      : await getServerSession(authOptions);
     if (!session?.user?.email) {
       console.error('POST /api/posts - No session or email');
       return NextResponse.json(
@@ -63,31 +72,44 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if user is admin
-    const isAdmin = await PermissionService.isUserAdmin(session.user.email);
-    if (!isAdmin) {
-      console.error('POST /api/posts - User is not admin:', session.user.email);
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
+    const isServiceAuth = !!serviceEmail;
+
+    // Check if user is admin (Claudette service bearer is pre-authorized for draft posts)
+    if (!isServiceAuth) {
+      const isAdmin = await PermissionService.isUserAdmin(session.user.email);
+      if (!isAdmin) {
+        console.error('POST /api/posts - User is not admin:', session.user.email);
+        return NextResponse.json(
+          { error: 'Forbidden - Admin access required' },
+          { status: 403 }
+        );
+      }
     }
 
     // Get the user's ID from the database
-    const userQuery = await query(
-      'SELECT id FROM users WHERE email = $1',
-      [session.user.email]
-    );
-
-    if (userQuery.rows.length === 0) {
-      console.error('POST /api/posts - User not found in database:', session.user.email);
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
+    let userId: string;
+    if (isServiceAuth) {
+      const adminQuery = await query(
+        "SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1"
       );
+      if (adminQuery.rows.length === 0) {
+        return NextResponse.json({ error: 'No admin user in database' }, { status: 500 });
+      }
+      userId = adminQuery.rows[0].id;
+    } else {
+      const userQuery = await query(
+        'SELECT id FROM users WHERE email = $1',
+        [session.user.email]
+      );
+      if (userQuery.rows.length === 0) {
+        console.error('POST /api/posts - User not found in database:', session.user.email);
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      userId = userQuery.rows[0].id;
     }
-
-    const userId = userQuery.rows[0].id;
 
     // Parse request body
     const postData = await request.json();
