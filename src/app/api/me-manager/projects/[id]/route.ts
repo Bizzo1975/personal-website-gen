@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import CacheService from "@/lib/cache";
 
 function authorize(request: Request): boolean {
   const key = process.env.ME_MANAGER_API_KEY;
@@ -101,6 +102,15 @@ export async function PATCH(
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
+
+    // 2026-08-16: live-sync fix — without this, ProjectService.getAllProjects()
+    // kept serving a stale cached list for up to 30 min after a status change
+    // pushed from Me Manager, even though this write to the DB was correct.
+    const cache = CacheService.getInstance();
+    await Promise.all([
+      cache.invalidatePattern("projects:list:*"),
+      cache.del(CacheService.getProjectKey(id)),
+    ]).catch((e) => console.warn("cache invalidation failed (non-fatal):", e));
 
     return NextResponse.json({
       ok: true,
