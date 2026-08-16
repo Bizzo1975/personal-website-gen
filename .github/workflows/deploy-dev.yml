@@ -1,0 +1,18 @@
+name: Deploy to Dev — willworkforlunch.com
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Deploy to dev-personal-website-v2 (VMID 702)
+        shell: powershell
+        run: |
+          $sshExe = "C:\Program Files\Git\usr\bin\ssh.exe"
+          $keyPath = "C:\Users\jonkd\.ssh\id_ed25519"
+          $script = "cd /opt/docker/personal-website && git fetch origin && git reset --hard origin/dev && docker compose up -d --build && docker compose ps"
+          & $sshExe -o BatchMode=yes -i $keyPath -o ConnectTimeout=30 kecktech@100.73.48.9 $script
+          if ($LASTEXITCODE -ne 0) { throw "Deploy failed with exit code $LASTEXITCODE" }

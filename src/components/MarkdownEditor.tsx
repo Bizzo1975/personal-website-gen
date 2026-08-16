@@ -63,10 +63,10 @@ export default function MarkdownEditor({
             />
           </Tab.Panel>
           <Tab.Panel>
-            <div className="min-h-[250px] p-4 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-white overflow-y-auto">
+            <div className="min-h-[250px] p-4 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 overflow-y-auto">
               {value ? (
                 <div 
-                  className="prose prose-sm dark:prose-invert max-w-none"
+                  className="prose prose-sm max-w-none text-gray-900 dark:text-gray-100"
                   dangerouslySetInnerHTML={{ __html: (() => {
                     const result = marked(value);
                     // marked() returns string when used synchronously (without async options)

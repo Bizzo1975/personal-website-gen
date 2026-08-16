@@ -1,4 +1,6 @@
 import { query } from '@/lib/db';
+import { revalidatePath } from 'next/cache';
+import { notifyMeManagerTeaser } from '@/lib/me-manager-teaser';
 
 /**
  * Scheduler Service for Automated Content Publishing
@@ -55,7 +57,8 @@ export class SchedulerService {
   }
 
   /**
-   * Publish posts that are scheduled to be published
+   * Publish posts that are scheduled to be published,
+   * then fire ME Manager teasers and revalidate blog paths.
    */
   private static async publishScheduledPosts(now: Date): Promise<void> {
     const result = await query(
@@ -66,14 +69,32 @@ export class SchedulerService {
            updated_at = CURRENT_TIMESTAMP
        WHERE status = 'scheduled' 
          AND scheduled_publish_at <= $1
-       RETURNING id, title, slug`,
+       RETURNING id, title, slug, excerpt`,
       [now]
     );
 
-    // Log published posts
-    result.rows.forEach(post => {
+    for (const post of result.rows) {
       console.log(`✅ Published post: "${post.title}" (${post.slug})`);
-    });
+
+      try {
+        const teaser = await notifyMeManagerTeaser({
+          title: post.title,
+          slug: post.slug,
+          excerpt: post.excerpt,
+        });
+        console.log(`📣 Teaser for "${post.title}":`, teaser);
+      } catch (error) {
+        console.error(`❌ Teaser failed for "${post.title}":`, error);
+      }
+
+      try {
+        revalidatePath('/blog');
+        revalidatePath(`/blog/${post.slug}`);
+        revalidatePath('/');
+      } catch (error) {
+        console.error(`⚠️ Revalidate failed for "${post.slug}":`, error);
+      }
+    }
   }
 
   /**

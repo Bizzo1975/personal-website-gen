@@ -18,7 +18,9 @@ import {
   StarIcon as StarSolidIcon 
 } from '@heroicons/react/24/solid';
 import BlogComments from '@/components/BlogComments';
+
 import SocialShare from '@/components/SocialShare';
+import DOMPurify from 'dompurify';
 
 interface Author {
   id: string;
@@ -294,7 +296,7 @@ export default function BlogPostPage() {
         </header>
 
         {/* Content */}
-        <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
+        <div className="prose max-w-none mb-8 text-gray-900 dark:text-gray-100 dark:bg-transparent">
           {(() => {
             // Ensure content is a string (not a Promise) - explicit type narrowing
             if (!post || !post.content) {
@@ -316,14 +318,22 @@ export default function BlogPostPage() {
             let renderedContent: string;
             
             if (isAlreadyHTML) {
-              // Content is already HTML, use as-is
-              renderedContent = content;
+              // Content is already HTML — sanitize before render
+              renderedContent = DOMPurify.sanitize(content);
             } else {
               // Content is markdown, always parse it
               try {
-                // Use marked() directly like MarkdownEditor does - ensure result is string
-                const markedResult = marked(content) as string;
-                renderedContent = markedResult;
+                // Pre-process: replace --- dividers with explicit HTML hr to prevent
+                // setext heading interpretation (text followed by --- = H2 in markdown)
+                const processedContent = content
+                  .replace(/^---$/gm, '<hr>')
+                  .replace(/^- - -$/gm, '<hr>');
+                // Configure marked to not use setext headings
+                const markedResult = marked(processedContent, {
+                  breaks: false,
+                  gfm: true,
+                }) as string;
+                renderedContent = DOMPurify.sanitize(markedResult, { ADD_TAGS: ['hr'] });
               } catch (error) {
                 console.error('Error parsing markdown:', error);
                 console.error('Content sample:', content.substring(0, 200));
@@ -333,9 +343,10 @@ export default function BlogPostPage() {
                   .filter(p => p.trim())
                   .map(p => p.trim().replace(/\n/g, ' '));
                 
-                renderedContent = paragraphs.length > 0
+                const rawFallback = paragraphs.length > 0
                   ? paragraphs.map(p => `<p>${p}</p>`).join('')
                   : `<p>${content.replace(/\n/g, ' ')}</p>`;
+                renderedContent = DOMPurify.sanitize(rawFallback);
               }
             }
             

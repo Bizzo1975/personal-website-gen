@@ -75,7 +75,7 @@ export default function ContactContent({ content, profile, pageData }: ContactCo
                     </div>
                     <div>
                       <p className="font-medium">Email</p>
-                      <p className="text-gray-600 dark:text-gray-400">{profile?.email || 'contact@example.com'}</p>
+                      <p className="text-gray-600 dark:text-gray-400">{'hello@willworkforlunch.com'}</p>
                     </div>
                   </div>
                   

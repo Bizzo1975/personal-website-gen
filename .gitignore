@@ -49,3 +49,8 @@ src/components/TextArea.tsx
 logs/
 backups/
 uploads/
+
+# 2026-08-16: .env backup files contain live secrets, must never be tracked
+*.bak
+*.bak.*
+*.bak-*

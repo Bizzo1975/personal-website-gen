@@ -40,6 +40,7 @@ export default function AdminHomePageEditor() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(true);
   
   useEffect(() => {
@@ -74,9 +75,22 @@ export default function AdminHomePageEditor() {
               .replace(/&#x2F;/g, '/');
           };
           const decodedContent = decodeHtmlEntities(homePage.content || '');
+          // Strip HTML tags for SimpleMDE (Markdown editor) — it shows raw tags otherwise
+          const stripHtml = (html: string): string => {
+            return html
+              .replace(/<br\s*\/?>/gi, '\n')
+              .replace(/<\/p>/gi, '\n\n')
+              .replace(/<\/li>/gi, '\n')
+              .replace(/<\/h[1-6]>/gi, '\n\n')
+              .replace(/<[^>]+>/g, '')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/\n{3,}/g, '\n\n')
+              .trim();
+          };
+          const markdownContent = decodedContent.startsWith('<') ? stripHtml(decodedContent) : decodedContent;
           setPageData({
             ...homePage,
-            content: decodedContent
+            content: markdownContent
           });
         } else {
           console.log('No home page found, using defaults');
@@ -123,7 +137,7 @@ export default function AdminHomePageEditor() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError(null);
+    setSaveError(null);
     setSaveSuccess(false);
     
     try {
@@ -169,7 +183,7 @@ export default function AdminHomePageEditor() {
       }, 3000);
     } catch (err: any) {
       console.error('Error saving home page:', err);
-      setError(err.message || 'Failed to save page');
+      setSaveError(err.message || 'Failed to save page');
       setSaving(false);
     }
   };
@@ -200,7 +214,7 @@ export default function AdminHomePageEditor() {
   
   return (
     <AdminLayout title="Edit Home Page">
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-6" style={{ paddingBottom: "100px" }}>
         <div className="mb-6">
           {/* Collapsible Edit Home Page Header */}
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg mb-6">
@@ -272,9 +286,9 @@ export default function AdminHomePageEditor() {
               Home page saved successfully!
             </div>
           )}
-          {error && (
+          {saveError && (
             <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
-              {error}
+              {saveError}
             </div>
           )}
         </div>
@@ -324,7 +338,7 @@ export default function AdminHomePageEditor() {
               value={pageData.content || ''}
               onChange={handleContentChange}
               placeholder="Write your homepage content here..."
-              height="400px"
+              height="200px"
               toolbar="full"
               id="homepage-content-editor"
               ariaLabel="Homepage content rich text editor"

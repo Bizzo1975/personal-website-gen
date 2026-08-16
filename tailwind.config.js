@@ -148,7 +148,8 @@ module.exports = {
     // Add custom plugin to purge unused styles more aggressively in production
     function({ addVariant }) {
       addVariant('hocus', ['&:hover', '&:focus']); // Combine hover and focus for reduced CSS
-      addVariant('child-hover', '& > *:hover'); // Add child hover variant
+      addVariant('child-hover', '& > *:hover');
+      addVariant('high-contrast', '.high-contrast &');
     },
   ],
   // Safelist for dynamic classes that might not be detected

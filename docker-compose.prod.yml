@@ -21,6 +21,8 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
@@ -33,6 +35,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    volumes:
+      - ./public/uploads:/app/public/uploads
 
   # Nginx Reverse Proxy with SSL
   nginx:
@@ -44,6 +48,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       # Static files (optional - Next.js can serve these)
       - ./public:/var/www/html/public:ro
+      - ./public/uploads:/var/www/html/public/uploads:ro
     depends_on:
       app:
         condition: service_healthy

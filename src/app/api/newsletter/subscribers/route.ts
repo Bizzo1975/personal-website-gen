@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
+import { listmonkSubscribe } from '@/lib/services/listmonk-subscribe';
 
 // POST - Subscribe to newsletter
 export async function POST(request: NextRequest) {
@@ -76,6 +77,21 @@ export async function POST(request: NextRequest) {
     // Send welcome email (if enabled)
     try {
       await sendWelcomeEmail(subscriber);
+
+    // Also subscribe in Listmonk when configured (double opt-in per list settings)
+    try {
+      const lm = await listmonkSubscribe({
+        email: email.toLowerCase().trim(),
+        name: name || [firstName, lastName].filter(Boolean).join(' ') || undefined,
+        attribs: { source: source || 'website', ...(metadata || {}) },
+      });
+      if (!lm.ok) {
+        console.warn('Listmonk subscribe skipped/failed:', lm.error);
+      }
+    } catch (lmErr) {
+      console.warn('Listmonk subscribe error:', lmErr);
+    }
+
     } catch (emailError) {
       console.error('Failed to send welcome email:', emailError);
       // Continue even if email fails

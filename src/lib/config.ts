@@ -13,14 +13,7 @@ export const config = {
     api: process.env.API_URL || `http://localhost:${process.env.FRONTEND_PORT || 3006}/api`,
   },
   
-  // Database Configuration - MongoDB
-  database: {
-    type: 'mongodb',
-    mongodb: {
-      uri: process.env.MONGODB_URI,
-      dbName: process.env.DB_NAME || 'personal_website',
-    },
-  },
+  // Database: PostgreSQL — see src/lib/db.ts for connection logic
   
   // Environment Settings
   environment: {

@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import SocialShare from '@/components/SocialShare';
+import DOMPurify from 'dompurify';
 
 interface ProjectData {
   id: string;
@@ -303,9 +304,10 @@ export default function ProjectPage() {
               const markedResult = hasMarkdownSyntax && cleanedContent.trim()
                 ? marked(cleanedContent) 
                 : null;
-              const renderedContent: string = markedResult 
+              const rawRendered: string = markedResult 
                 ? (typeof markedResult === 'string' ? markedResult : String(markedResult))
                 : cleanedContent.trim();
+              const renderedContent: string = DOMPurify.sanitize(rawRendered);
               
               // Only render if there's actual content left after cleaning
               if (!renderedContent || renderedContent.trim().length === 0) {
