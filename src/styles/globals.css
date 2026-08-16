@@ -7,6 +7,7 @@
 @import './enhanced-typography.css';
 @import './enhanced-color-system.css';
 @import './calendar.css';
+@import './accessibility.css';
 
 :root {
   --background: 255 255 255;
