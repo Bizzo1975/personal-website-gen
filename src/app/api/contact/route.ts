@@ -9,47 +9,101 @@ import {
   graphSendContactConfirmation,
 } from '@/lib/services/graph-mail';
 
-// Rate limiting for contact form submissions
-const rateLimit = {
-  windowMs: 60 * 60 * 1000, // 1 hour
-  maxRequests: 10,
-  store: new Map<string, { count: number; resetTime: number }>()
-};
+// --- Anti-spam layer hardened 2026-08-22 (fail-closed honeypot/timing + IP/subnet rate limit) ---
+// This form posts FormData (supports file attachments), so honeypot/timing
+// travel as extra form fields ("website", "form_rendered_at"). Both are now
+// required (fail-closed) since the live frontend always sends them — a
+// request missing either is not a real submission from this page.
+
+function getClientIp(request: NextRequest): string {
+  const cf = request.headers.get('cf-connecting-ip');
+  if (cf) return cf.trim();
+  const xff = request.headers.get('x-forwarded-for');
+  if (xff) {
+    const parts = xff.split(',').map((p) => p.trim());
+    const last = parts[parts.length - 1];
+    if (last) return last;
+  }
+  const xri = request.headers.get('x-real-ip');
+  if (xri) return xri.trim();
+  return 'unknown';
+}
+
+function getClientSubnet(ip: string): string {
+  const parts = ip.split('.');
+  if (parts.length === 4) {
+    return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
+  }
+  return ip;
+}
+
+type Hit = number[];
+const rateBuckets = new Map<string, Hit>();
+
+function rateCheck(key: string, perHourMax: number, perDayMax: number): boolean {
+  const now = Date.now();
+  const hits = (rateBuckets.get(key) || []).filter((t) => now - t < 86_400_000);
+  const last = hits[hits.length - 1];
+  const tooSoon = last !== undefined && now - last < 20_000;
+  const inLastHour = hits.filter((t) => now - t < 3_600_000).length;
+  if (tooSoon || inLastHour >= perHourMax || hits.length >= perDayMax) {
+    return false;
+  }
+  hits.push(now);
+  rateBuckets.set(key, hits);
+  return true;
+}
+// --- end anti-spam helpers ---
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-
-    const now = Date.now();
-    const clientData = rateLimit.store.get(ip);
-
-    if (clientData) {
-      if (now > clientData.resetTime) {
-        rateLimit.store.set(ip, {
-          count: 1,
-          resetTime: now + rateLimit.windowMs
-        });
-      } else if (clientData.count >= rateLimit.maxRequests) {
-        const minutesUntilReset = Math.ceil((clientData.resetTime - now) / (60 * 1000));
-        console.warn('⚠️ Rate limit exceeded for IP:', ip);
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Too many requests. Please wait ${minutesUntilReset} minute${minutesUntilReset !== 1 ? 's' : ''} before submitting again. Maximum ${rateLimit.maxRequests} requests per hour.`
-          },
-          { status: 429 }
-        );
-      } else {
-        clientData.count += 1;
-      }
-    } else {
-      rateLimit.store.set(ip, {
-        count: 1,
-        resetTime: now + rateLimit.windowMs
-      });
-    }
+    const ip = getClientIp(request);
+    const subnet = getClientSubnet(ip);
 
     const formData = await request.formData();
+
+    // 1) Honeypot + timing — fail closed on missing fields.
+    const websiteRaw = formData.get('website');
+    const renderedAtRaw = formData.get('form_rendered_at') as string | null;
+
+    if (websiteRaw === null || renderedAtRaw === null) {
+      console.warn('[contact][blocked:missing-fields] ip=', ip);
+      return NextResponse.json({ success: true, message: 'Message sent successfully!' });
+    }
+
+    const honeypot = (websiteRaw as string)?.trim() || '';
+    if (honeypot) {
+      console.warn('🕸️ [contact][blocked:honeypot] ip=', ip);
+      return NextResponse.json({ success: true, message: 'Message sent successfully!' });
+    }
+
+    const renderedAt = Number(renderedAtRaw);
+    if (!Number.isFinite(renderedAt)) {
+      console.warn('[contact][blocked:timing-invalid] ip=', ip);
+      return NextResponse.json({ success: true, message: 'Message sent successfully!' });
+    }
+    const elapsedMs = Date.now() - renderedAt;
+    if (elapsedMs < 0 || elapsedMs < 3000) {
+      console.warn('⏱️ [contact][blocked:timing] ip=', ip, 'elapsedMs:', elapsedMs);
+      return NextResponse.json({ success: true, message: 'Message sent successfully!' });
+    }
+
+    // 2) Rate limiting — per-IP and per-/24-subnet sliding window.
+    if (!rateCheck(ip, 8, 20)) {
+      console.warn('[contact][blocked:ratelimit-ip] ip=', ip);
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please wait a moment before submitting again.' },
+        { status: 429 }
+      );
+    }
+    if (!rateCheck(subnet, 15, 40)) {
+      console.warn('[contact][blocked:ratelimit-subnet] ip=', ip, 'subnet=', subnet);
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please wait a moment before submitting again.' },
+        { status: 429 }
+      );
+    }
+    // --- end anti-spam layer ---
 
     const contactData = {
       name: (formData.get('name') as string)?.trim() || '',

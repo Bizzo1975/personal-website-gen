@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { 
   PaperClipIcon, 
@@ -53,6 +53,15 @@ export default function EnhancedContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Anti-spam: honeypot field real users never see/fill, and a render
+  // timestamp so the server can reject submissions that arrive too fast
+  // to be a human filling out the form. Added 2026-08-21.
+  const honeypotRef = useRef<HTMLInputElement>(null);
+  const renderedAtRef = useRef<number>(Date.now());
+  useEffect(() => {
+    renderedAtRef.current = Date.now();
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
@@ -177,6 +186,10 @@ export default function EnhancedContactForm() {
       formData.attachments.forEach((file, index) => {
         submitData.append(`attachment_${index}`, file);
       });
+
+      // Anti-spam fields (honeypot + render timestamp) — see refs above
+      submitData.append('website', honeypotRef.current?.value || '');
+      submitData.append('form_rendered_at', String(renderedAtRef.current));
 
       // Determine API endpoint based on category
       const apiEndpoint = formData.category === 'access-request' ? '/api/access-requests' : '/api/contact';
@@ -331,6 +344,16 @@ export default function EnhancedContactForm() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Honeypot — hidden from real users, bots that autofill every field trip it */}
+        <input
+          ref={honeypotRef}
+          type="text"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1px', height: '1px', opacity: 0 }}
+        />
         {/* Basic Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
