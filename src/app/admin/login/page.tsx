@@ -2,7 +2,7 @@
 import '@/styles/globals.css';
 
 import React, { useState, Suspense } from 'react';
-import { signIn } from 'next-auth/react';
+import { getProviders, signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import Button from '@/components/Button';
@@ -15,16 +15,36 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
+  const [ssoAvailable, setSsoAvailable] = useState(false);
+  const callbackUrl = (() => {
+    const c = searchParams.get('callbackUrl');
+    return c && c.startsWith('/') && !c.startsWith('//') ? c : '/admin/dashboard';
+  })();
+
   // Check for error or success message in URL
   React.useEffect(() => {
     const errorMsg = searchParams.get('error');
     const successMsg = searchParams.get('success');
     
     if (errorMsg) {
-      setError(decodeURIComponent(errorMsg));
+      setError(
+        errorMsg === 'AccessDenied' || errorMsg === 'OAuthCallback'
+          ? 'Kecktech SSO was refused for this account. Use your email and password.'
+          : decodeURIComponent(errorMsg)
+      );
     } else if (successMsg) {
       // Handle success message if needed
     }
+
+    // Kecktech SSO: go straight to Authelia (no prompt when the Dashboard session
+    // exists). ?local=1 or an error keeps the password form.
+    getProviders().then((providers) => {
+      if (!providers?.kecktech) return;
+      setSsoAvailable(true);
+      if (!errorMsg && !searchParams.get('local')) {
+        signIn('kecktech', { callbackUrl });
+      }
+    });
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,6 +87,15 @@ function LoginForm() {
           <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4">
             {error}
           </div>
+        )}
+        {ssoAvailable && (
+          <Button
+            type="button"
+            className="w-full mb-4"
+            onClick={() => signIn('kecktech', { callbackUrl })}
+          >
+            Sign in with Kecktech SSO
+          </Button>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -112,4 +141,4 @@ export default function AdminLoginPage() {
       </Suspense>
     </div>
   );
-} 
+} 

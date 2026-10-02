@@ -102,16 +102,20 @@ export async function middleware(request: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET 
     });
 
+    // Behind Traefik/nginx request.url carries the container's bind address
+    // (e.g. http://0.0.0.0:3000), so build redirects from the public base URL.
+    const publicBase = process.env.NEXTAUTH_URL || request.url;
+
     if (!token) {
       console.log('Auth check result: Not authenticated');
-      const loginUrl = new URL('/admin/login', request.url);
-      loginUrl.searchParams.set('callbackUrl', request.url);
+      const loginUrl = new URL('/admin/login', publicBase);
+      loginUrl.searchParams.set('callbackUrl', pathname + request.nextUrl.search);
       return NextResponse.redirect(loginUrl);
     }
 
     if (token.role !== 'admin') {
       console.log('Auth check result: Insufficient permissions');
-      return NextResponse.redirect(new URL('/admin/login', request.url));
+      return NextResponse.redirect(new URL('/admin/login', publicBase));
     }
 
     console.log('Auth check result: Authenticated');

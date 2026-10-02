@@ -2,6 +2,12 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions } from "next-auth";
 import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import {
+  KECKTECH_PROVIDER_ID,
+  kecktechSsoProviders,
+  resolveSsoAdmin,
+  ssoAccountAllowed,
+} from '@/lib/kecktech-sso';
 
 /**
  * Authenticate user with email and password
@@ -65,7 +71,8 @@ export const authOptions: NextAuthOptions = {
           role: user.role
         };
       }
-    })
+    }),
+    ...kecktechSsoProviders()
   ],
   pages: {
     signIn: '/admin/login',
@@ -81,7 +88,24 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ account }) {
+      // Kecktech SSO: only allowed LLDAP groups (default kecktech_admins) may use it.
+      if (account?.provider !== KECKTECH_PROVIDER_ID) return true;
+      return ssoAccountAllowed(account);
+    },
+    async jwt({ token, user, account }) {
+      if (account?.provider === KECKTECH_PROVIDER_ID) {
+        // Link the SSO admin to this site's existing admin account.
+        const admin = await resolveSsoAdmin(query as never);
+        if (!admin) {
+          token.role = undefined;
+          return token;
+        }
+        token.sub = String(admin.id);
+        token.email = admin.email;
+        token.role = admin.role;
+        return token;
+      }
       if (user) {
         token.role = user.role;
       }

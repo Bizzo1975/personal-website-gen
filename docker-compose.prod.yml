@@ -9,6 +9,8 @@ services:
       target: runner
     env_file:
       - .env.production
+    extra_hosts:
+      - "auth.kecktech.net:10.20.0.100"
     environment:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
