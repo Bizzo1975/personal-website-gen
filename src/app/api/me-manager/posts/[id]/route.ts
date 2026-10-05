@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { revalidatePath } from "next/cache";
 
 function authorize(request: Request): boolean {
   const key = process.env.ME_MANAGER_API_KEY;
@@ -102,6 +103,49 @@ export async function PATCH(
     console.error("me-manager patch failed:", error);
     return NextResponse.json(
       { error: "Failed to update post" },
+      { status: 500 }
+    );
+  }
+}
+
+
+/**
+ * DELETE /api/me-manager/posts/:id — ME Manager "delete everywhere".
+ * Removes the post row (draft, scheduled or published) and revalidates the
+ * blog pages. 404 when the post does not exist: ME Manager treats that as
+ * "already gone". Bearer ME_MANAGER_API_KEY, like the rest of this bridge.
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!authorize(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  try {
+    const result = await query(
+      `DELETE FROM posts WHERE id = $1
+       RETURNING id, title, slug, status, published`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    const post = result.rows[0];
+    revalidatePath("/blog");
+    revalidatePath("/");
+    if (post.slug) revalidatePath(`/blog/${post.slug}`);
+
+    return NextResponse.json({ ok: true, deleted: post, source: "willworkforlunch" });
+  } catch (error) {
+    console.error("me-manager delete post failed:", error);
+    return NextResponse.json(
+      { error: "Failed to delete post" },
       { status: 500 }
     );
   }
