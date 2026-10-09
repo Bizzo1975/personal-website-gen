@@ -1,4 +1,5 @@
 import React from 'react';
+import { Metadata } from 'next';
 import HomePage from './home-page';
 import { getPageBySlug } from '@/lib/services/page-service';
 import { ProjectService } from '@/lib/services/project-service';
@@ -9,6 +10,33 @@ import { serializeMarkdown } from '@/lib/mdx';
 // This prevents Next.js from using stale static HTML generated at build time
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const HOME_TITLE = 'Will Work For Lunch | Jon Keck';
+const HOME_DESCRIPTION =
+  'Jon Keck builds things, runs Kecktech IT in Park City, Kansas, and writes about what he builds.';
+const HOME_FALLBACK_CONTENT =
+  "I'm Jon Keck. I build things, I run Kecktech IT in Park City, Kansas, and I write here about what I build and what I learn along the way.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let page = null;
+  try {
+    page = await getPageBySlug('home');
+  } catch {
+    page = null;
+  }
+  // Ignore leftover template values ("Home - Personal Website" etc.) in the CMS row.
+  const isTemplate = (value?: string) =>
+    !value || /personal website|full.stack developer/i.test(value);
+  const dbTitle = page?.title?.trim();
+  const dbDescription = page?.metaDescription?.trim();
+  return {
+    title: isTemplate(dbTitle) ? HOME_TITLE : dbTitle,
+    description: isTemplate(dbDescription) ? HOME_DESCRIPTION : dbDescription,
+    alternates: {
+      types: { 'application/rss+xml': '/rss.xml' },
+    },
+  };
+}
 
 export default async function Page() {
   // Fetch the home page content from database
@@ -64,7 +92,7 @@ export default async function Page() {
   }));
   
   // Simple fallback if no content exists in database
-  const fallbackContent = "I am a **passionate Full Stack Developer** with extensive experience in building modern, scalable web applications that deliver exceptional user experiences. My expertise spans the complete development lifecycle, from conceptualization and design to deployment and optimization, using cutting-edge technologies including React, Next.js, TypeScript, Node.js, and cloud platforms. I am committed to writing clean, maintainable code while staying current with industry best practices and emerging technologies. Whether working on complex enterprise solutions or innovative startup projects, I bring a detail-oriented approach and genuine enthusiasm for creating digital solutions that make a meaningful impact. I welcome opportunities to collaborate on challenging projects and am always excited to discuss how technology can solve real-world problems.";
+  const fallbackContent = HOME_FALLBACK_CONTENT;
   
   // Get content from page or use simple fallback
   const content = page?.content || fallbackContent;
@@ -73,7 +101,7 @@ export default async function Page() {
   const mdxSource = await serializeMarkdown(content);
   
   // Get hero heading from page data - use the database value if available
-  const heroHeading = page?.heroHeading || "Building the Modern Web";
+  const heroHeading = page?.heroHeading || "I build things that work.";
   
   console.log('📄 Page data:', {
     heroHeading: heroHeading,

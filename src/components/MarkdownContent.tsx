@@ -87,18 +87,11 @@ export default function MarkdownContent({ content }: MarkdownContentProps) {
     };
   }, []);
 
-  // Render fallback content for SSR and when MDX fails
+  // Neutral placeholder for SSR, loading, empty content and MDX failures.
+  // It must never contain copy of its own: a template "welcome" block here
+  // used to show on the live home and about pages.
   const renderFallbackContent = () => (
-    <div className="prose prose-lg dark:prose-invert max-w-none !mt-0">
-      <div>
-        <h1>Welcome to My Portfolio</h1>
-        <p>I'm a full-stack developer specializing in modern web technologies. This site showcases my projects, skills, and experience.</p>
-        <h2>What I Do</h2>
-        <p>I build responsive, accessible, and performant web applications using React, Next.js, and other modern frameworks.</p>
-        <h2>Let's Connect</h2>
-        <p>Feel free to explore my projects and blog posts, or get in touch via the contact page.</p>
-      </div>
-    </div>
+    <div className="prose prose-lg dark:prose-invert max-w-none !mt-0" />
   );
 
   // Always render consistent structure to prevent hydration mismatches

@@ -3,14 +3,27 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
 
+// Settings that must never leave the server for anyone but an admin
+// (e.g. sendgridApiKey). This GET is public: the site header/footer use it.
+const SENSITIVE_SETTING = /(api[_-]?key|secret|password|token|smtp)/i;
+
 export async function GET() {
   try {
+    let isAdmin = false;
+    try {
+      const session = await getServerSession(authOptions);
+      isAdmin = session?.user?.role === 'admin';
+    } catch {
+      isAdmin = false;
+    }
+
     // Fetch all site settings from database
     const result = await query('SELECT setting_key, setting_value FROM site_settings');
     
     // Convert to object format
     const settings: any = {};
     result.rows.forEach(row => {
+      if (!isAdmin && SENSITIVE_SETTING.test(row.setting_key)) return;
       try {
         settings[row.setting_key] = JSON.parse(row.setting_value);
       } catch {
@@ -23,7 +36,7 @@ export async function GET() {
       logoUrl: '/images/jlk-logo.png',
       logoText: 'Jonathan L Keck',
       footerText: 'Built with Next.js and Tailwind CSS',
-      bioText: 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.',
+      bioText: 'I build things and run Kecktech IT in Park City, Kansas.',
       navbarStyle: 'default',
       navbarLinks: [
         { label: 'Home', url: '/', isExternal: false },
@@ -44,7 +57,7 @@ export async function GET() {
       logoUrl: '/images/jlk-logo.png',
       logoText: 'Jonathan L Keck',
       footerText: 'Built with Next.js and Tailwind CSS',
-      bioText: 'Full-stack developer specializing in modern web technologies, creating elegant solutions to complex problems.',
+      bioText: 'I build things and run Kecktech IT in Park City, Kansas.',
       navbarStyle: 'default',
       navbarLinks: [
         { label: 'Home', url: '/', isExternal: false },

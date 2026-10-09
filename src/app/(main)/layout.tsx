@@ -25,9 +25,9 @@ interface SiteSettings {
 // Default site settings as fallback
 const getDefaultSiteSettings = (): SiteSettings => ({
   logoUrl: '/images/jlk-logo.png',
-  logoText: 'Jonathan L Keck',
+  logoText: 'Jon Keck',
   footerText: 'Built with Next.js and Tailwind CSS',
-  bioText: 'Full-stack developer specializing in modern web technologies.',
+  bioText: 'IT professional. Builder. Recovering copier technician.',
   navbarStyle: 'default',
   navbarLinks: [
     { label: 'Home', url: '/', isExternal: false },

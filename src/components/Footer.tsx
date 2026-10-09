@@ -30,7 +30,7 @@ const Footer: React.FC<FooterProps> = ({ siteSettings }) => {
   const logoUrl = siteSettings?.logoUrl || '/uploads/general/branding-a0bbe598-5c50-4377-a2c5-a3a67d06959b.png';
   const logoText = siteSettings?.logoText || 'Jonathan L Keck';
   const footerText = siteSettings?.footerText || 'Built with Next.js and Tailwind CSS';
-  const bioText = siteSettings?.bioText || 'Full-stack developer specializing in modern web technologies.';
+  const bioText = siteSettings?.bioText || 'IT professional. Builder. Recovering copier technician.';
 
   return (
     <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4">

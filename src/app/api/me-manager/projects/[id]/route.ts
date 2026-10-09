@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import CacheService from "@/lib/cache";
+import { revalidatePath } from "next/cache";
 
 function authorize(request: Request): boolean {
   const key = process.env.ME_MANAGER_API_KEY;
@@ -121,6 +122,64 @@ export async function PATCH(
     console.error("me-manager patch project failed:", error);
     return NextResponse.json(
       { error: "Failed to update project" },
+      { status: 500 }
+    );
+  }
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * DELETE /api/me-manager/projects/:id — ME Manager "delete everywhere" for
+ * portfolio projects. Removes only that project row and refreshes the project
+ * caches/pages. 404 when the project does not exist (or the id is not a UUID):
+ * ME Manager treats that as "already gone". Bearer ME_MANAGER_API_KEY, like
+ * the rest of this bridge.
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!authorize(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  try {
+    const result = await query(
+      `DELETE FROM projects WHERE id = $1
+       RETURNING id, title, slug, status`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    const project = result.rows[0];
+    const cache = CacheService.getInstance();
+    await Promise.all([
+      cache.invalidatePattern("projects:list:*"),
+      cache.del(CacheService.getProjectKey(id)),
+    ]).catch((e) => console.warn("cache invalidation failed (non-fatal):", e));
+    try {
+      revalidatePath("/projects");
+      revalidatePath("/");
+      if (project.slug) revalidatePath(`/projects/${project.slug}`);
+    } catch (e) {
+      console.warn("revalidatePath failed (non-fatal):", e);
+    }
+
+    return NextResponse.json({ ok: true, deleted: project, source: "willworkforlunch" });
+  } catch (error) {
+    console.error("me-manager delete project failed:", error);
+    return NextResponse.json(
+      { error: "Failed to delete project" },
       { status: 500 }
     );
   }

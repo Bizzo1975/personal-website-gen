@@ -10,12 +10,27 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
+const ABOUT_TITLE = 'About Jon Keck | Will Work For Lunch';
+const ABOUT_DESCRIPTION =
+  'About Jon Keck: 20+ years in IT, from copier repair to Active Directory at scale. He runs Kecktech IT in Park City, Kansas, builds things, and writes about them here.';
+
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await getPageBySlug('about');
-  
+  let page = null;
+  try {
+    page = await getPageBySlug('about');
+  } catch {
+    page = null;
+  }
+  // Ignore leftover template values ("About - Personal Website" etc.) in the CMS row.
+  const isTemplate = (value?: string) =>
+    !value ||
+    /personal website|full.stack developer|technologies I work with|experience as a developer/i.test(value);
+  const dbTitle = page?.title?.trim();
+  const dbDescription = page?.metaDescription?.trim();
+
   return {
-    title: page?.title || 'About Me - Personal Website',
-    description: page?.metaDescription || 'Learn more about my background, skills, and experience as a developer.',
+    title: isTemplate(dbTitle) ? ABOUT_TITLE : dbTitle,
+    description: isTemplate(dbDescription) ? ABOUT_DESCRIPTION : dbDescription,
   };
 }
 
@@ -42,7 +57,9 @@ export default async function AboutPage() {
   // Serialize the markdown content
   const serializedContent = aboutPage 
     ? await serializeMarkdown(aboutPage.content)
-    : await serializeMarkdown('# About Me\nContent coming soon.');
+    : await serializeMarkdown(
+        "I'm Jon Keck. I build things, I run Kecktech IT in Park City, Kansas, and I write on this site about what I build."
+      );
   
   // If no profile data exists, something is wrong with the database
   if (!profileData) {
