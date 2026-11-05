@@ -37,7 +37,6 @@ next-env.d.ts
 
 # windsurf rules
 .windsurfrules
-src/components/TextArea.tsx
 
 # Production Environment Files (NEVER COMMIT)
 .env.production
