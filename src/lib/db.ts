@@ -29,7 +29,6 @@ function getPoolConfig(): PoolConfig {
 // Define types for cached PostgreSQL connection
 interface PostgreSQLConnection {
   pool: Pool | null;
-  promise: Promise<Pool> | null;
 }
 
 // Add PostgreSQL to the global type
@@ -37,7 +36,7 @@ declare global {
   var postgresql: PostgreSQLConnection | undefined;
 }
 
-let cached: PostgreSQLConnection = global.postgresql || { pool: null, promise: null };
+const cached: PostgreSQLConnection = global.postgresql || { pool: null };
 
 if (!global.postgresql) {
   global.postgresql = cached;
@@ -55,38 +54,12 @@ async function dbConnect(): Promise<Pool> {
     throw new Error('DATABASE_URL is required. Please define the DATABASE_URL environment variable inside .env.local');
   }
 
-  // Create connection pool if we don't have one
-  if (!cached.promise) {
-    console.log('Attempting to connect to PostgreSQL with connection pooling...');
-    
-    cached.promise = new Promise(async (resolve, reject) => {
-      try {
-        // Read DATABASE_URL fresh from environment (not from cached config)
-        const poolConfig = getPoolConfig();
-        const pool = new Pool(poolConfig);
-        
-        // Test the connection
-        const client = await pool.connect();
-        await client.query('SELECT NOW()');
-        client.release();
-        
-        console.log('PostgreSQL connection successful');
-        
-        // Handle pool errors
-        pool.on('error', (err) => {
-          console.error('Unexpected error on idle client', err);
-        });
-        
-        resolve(pool);
-      } catch (error) {
-        console.error('PostgreSQL connection failed:', error);
-        reject(error);
-      }
-    });
-  }
-  
-  cached.pool = await cached.promise;
-  return cached.pool;
+  // pg opens connections when callers query. A failed connection must never
+  // become a cached rejection that outlives PostgreSQL startup or recovery.
+  const pool = new Pool(getPoolConfig());
+  pool.on('error', (error) => console.error('Unexpected error on idle client', error));
+  cached.pool = pool;
+  return pool;
 }
 
 // Database query function
@@ -119,6 +92,7 @@ export async function getClient(): Promise<PoolClient> {
 export async function connectToDatabase() {
   try {
     const pool = await dbConnect();
+    await pool.query('SELECT 1');
     return { pool, query };
   } catch (error) {
     console.error('Database connection failed:', error);
@@ -128,27 +102,23 @@ export async function connectToDatabase() {
 
 // Clear cached connection pool (useful for reconnecting with new DATABASE_URL)
 export function clearConnectionCache() {
-  if (cached.pool) {
-    cached.pool.end().catch(() => {
+  const pool = cached.pool;
+  cached.pool = null;
+  if (pool) {
+    pool.end().catch(() => {
       // Ignore errors when closing
     });
-  }
-  cached.pool = null;
-  cached.promise = null;
-  if (global.postgresql) {
-    global.postgresql.pool = null;
-    global.postgresql.promise = null;
   }
   console.log('Database connection cache cleared');
 }
 
 // Graceful shutdown
 export async function closeDatabase() {
+  const pool = cached.pool;
+  cached.pool = null;
   try {
-    if (cached.pool) {
-      await cached.pool.end();
-      cached.pool = null;
-      cached.promise = null;
+    if (pool) {
+      await pool.end();
       console.log('Database connection pool closed');
     }
   } catch (error) {
