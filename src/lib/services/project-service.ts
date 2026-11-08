@@ -7,7 +7,12 @@ export class ProjectService {
   static async getAllProjects(userEmail?: string): Promise<Project[]> {
     try {
       const cache = CacheService.getInstance();
-      const cacheKey = CacheService.getProjectsListKey({ userEmail });
+      // Bind cached visibility to real database state, including after Redis or
+      // application recovery. A missed invalidation cannot restore an old list.
+      const version = await query(`SELECT md5(COALESCE(string_agg(
+        id::text || ':' || COALESCE(status, '') || ':' || COALESCE(permission_level, '') || ':' || COALESCE(updated_at::text, created_at::text, ''),
+        ',' ORDER BY id), '')) AS revision FROM projects`);
+      const cacheKey = CacheService.getProjectsListKey({ userEmail, revision: version.rows[0].revision });
       
       // Try to get from cache first
       const cachedProjects = await cache.get<Project[]>(cacheKey);

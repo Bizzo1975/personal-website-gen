@@ -13,3 +13,7 @@ coverage
 prisma/*.db*
 public/uploads
 wwfl-recovery-release*/
+
+scripts/acceptance
+__tests__
+testing
