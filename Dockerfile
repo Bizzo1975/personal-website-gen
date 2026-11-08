@@ -135,6 +135,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Copy entrypoint script
+COPY --chown=nextjs:nodejs scripts/apply-marketing-migrations.mjs ./scripts/apply-marketing-migrations.mjs
+COPY --chown=nextjs:nodejs scripts/migrations ./scripts/migrations
 COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
@@ -145,4 +147,4 @@ EXPOSE 3000
 ENV PORT=3000
 
 # Use entrypoint script to ensure HOSTNAME is set before server starts
-ENTRYPOINT ["./docker-entrypoint.sh"] 
+ENTRYPOINT ["./docker-entrypoint.sh"]

@@ -19,7 +19,7 @@
     "setup:images": "echo 'Using existing media files from database'",
     "download:images": "node scripts/setup/download-real-images.js",
     "setup:all": "npm run download:images && npm run setup:images",
-    "build": "next build",
+    "build": "node scripts/marketing-contract-verify.mjs && next build",
     "postinstall": "npx update-browserslist-db@latest || true",
     "start": "next start -p 3006",
     "lint": "next lint",

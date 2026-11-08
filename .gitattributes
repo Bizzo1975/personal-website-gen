@@ -1,0 +1,2 @@
+/scripts/docker-entrypoint.sh text eol=lf
+/src/lib/marketing/** text eol=lf

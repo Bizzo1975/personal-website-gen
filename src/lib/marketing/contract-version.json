@@ -1,0 +1,9 @@
+{
+  "fingerprint": "8a425bfd9dbe608cfa97f5c933e9b3a3b24ba5e3906e07ad0ea55431b342d776",
+  "files": {
+    "contract.ts": "259b32e91ed575293c5eebe609fa9e42d44c0aa2adfb5cb76640c478da5236a8",
+    "protocol.ts": "e398a2745e899add52e1d3bf66a8f328fa8e47eee0b9116810e1c7eb09a158b2",
+    "html.ts": "b17b711b32847c23d17053a4ae6247993c143ba0d855614ee9641e45d7b2fbc7",
+    "receiver.ts": "a6187e0e937f1064d0c7656dc9ccba6341c7cbd04406d02735dddad4e5c7fcf4"
+  }
+}

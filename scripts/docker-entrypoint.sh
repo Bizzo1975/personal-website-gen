@@ -9,5 +9,6 @@ export HOSTNAME=0.0.0.0
 export HOST=0.0.0.0
 
 # Start the Next.js server
+node scripts/apply-marketing-migrations.mjs
 exec node server.js
 
