@@ -1,6 +1,8 @@
 import { readProjectVideoResources } from "@/lib/project-video-resources";
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import CacheService from "@/lib/cache";
+import { revalidatePath } from "next/cache";
 
 /**
  * Thin ME Manager bridge — list / upsert projects (portfolio).
@@ -133,8 +135,8 @@ export async function POST(request: Request) {
           title, slug, description, content, image, technologies,
           live_demo, source_code, featured, status, published_at, created_at, updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-          CASE WHEN $10 = 'draft' THEN NULL ELSE CURRENT_TIMESTAMP END,
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::varchar,
+          CASE WHEN $10::varchar = 'draft' THEN NULL ELSE CURRENT_TIMESTAMP END,
           CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
         RETURNING *`,
@@ -152,6 +154,14 @@ export async function POST(request: Request) {
         ]
       );
     }
+
+    const cache = CacheService.getInstance();
+    await Promise.all([
+      cache.invalidatePattern("projects:list:*"),
+      cache.del(CacheService.getProjectKey(String(result.rows[0].id))),
+    ]).catch(error => console.warn("Project cache invalidation failed", error instanceof Error ? error.name : "unknown"));
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${slug}`);
 
     return NextResponse.json({
       ok: true,
