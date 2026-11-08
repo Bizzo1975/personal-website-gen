@@ -32,6 +32,17 @@ const nextConfig = {
   // Image optimization
   images: {
     formats: ['image/webp', 'image/avif'],
+    // Only the owned public media routes may supply remote CMS images.
+    remotePatterns: ['me.willworkforlunch.com', 'me.kecktech.net'].flatMap(hostname => [
+      ...[
+        '/api/library/files/*',
+        '/api/portfolio/*/screenshot',
+        '/api/portfolio/*/screenshot/*',
+        '/api/stories/*/assets/*',
+        '/api/packages/*/media/*',
+      ].map(pathname => ({ protocol: 'https', hostname, port: '', pathname })),
+      { protocol: 'https', hostname, port: '', pathname: '/api/published-media/*/*', search: '?kind=poster' },
+    ]),
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
