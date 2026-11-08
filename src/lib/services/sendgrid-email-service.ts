@@ -9,7 +9,7 @@ const getSendGridMail = async () => {
 };
 
 export interface EmailData {
-  to: string;
+  to: string | string[];
   from?: string;
   subject: string;
   html: string;
@@ -31,7 +31,7 @@ export class SendGridEmailService {
 
   constructor(apiKey?: string, fromEmail?: string) {
     // Use safe runtime check to avoid build-time evaluation
-    const env = typeof process !== 'undefined' ? process.env : {};
+    const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
     this.apiKey = apiKey || env.SENDGRID_API_KEY || null;
     this.fromEmail = fromEmail || env.FROM_EMAIL || env.ADMIN_EMAIL || 'admin@willworkforlunch.com';
     // API key will be set when first used (lazy initialization)
@@ -99,7 +99,7 @@ export class SendGridEmailService {
    */
   async sendAccessRequestNotification(requestData: AccessRequestEmailData): Promise<void> {
     // Safe access to process.env to avoid build-time evaluation
-    const env = typeof process !== 'undefined' ? process.env : {};
+    const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
     const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -148,7 +148,7 @@ export class SendGridEmailService {
    */
   async sendApprovalNotification(userEmail: string, userName: string, accessLevel: string, customTemplate?: { subject?: string; message?: string }): Promise<void> {
     // Safe access to process.env to avoid build-time evaluation
-    const env = typeof process !== 'undefined' ? process.env : {};
+    const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
     const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
     
     // Default template
@@ -305,7 +305,7 @@ export class SendGridEmailService {
       </div>
     `;
 
-    const env = typeof process !== 'undefined' ? process.env : {};
+    const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
     await this.sendEmail({
       to: adminEmail || env.ADMIN_EMAIL || 'admin@willworkforlunch.com',
       subject: `New Contact Form Submission - ${formData.category.toUpperCase()}`,
@@ -318,7 +318,7 @@ export class SendGridEmailService {
    */
   async sendContactAutoResponse(name: string, email: string, category: string): Promise<void> {
     // Safe access to process.env to avoid build-time evaluation
-    const env = typeof process !== 'undefined' ? process.env : {};
+    const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
     const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
     
     const responseTemplates = {
@@ -409,7 +409,7 @@ export class SendGridEmailService {
    */
   async testConfiguration(): Promise<boolean> {
     try {
-      const env = typeof process !== 'undefined' ? process.env : {};
+      const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
       await this.sendEmail({
         to: env.ADMIN_EMAIL || 'admin@willworkforlunch.com',
         subject: 'SendGrid Test - Configuration Working',

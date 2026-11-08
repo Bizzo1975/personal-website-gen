@@ -84,7 +84,7 @@ export class FollowUpEmailService {
     const transporter = emailService['transporter']; // Access private transporter
     
     // Safe access to process.env to avoid build-time evaluation
-    const env = typeof process !== 'undefined' ? process.env : {};
+    const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
     const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
     const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
     
@@ -224,7 +224,7 @@ export class FollowUpEmailService {
     const transporter = emailService['transporter'];
     
     // Safe access to process.env to avoid build-time evaluation
-    const env = typeof process !== 'undefined' ? process.env : {};
+    const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
     const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
     const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
     

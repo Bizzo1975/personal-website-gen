@@ -64,112 +64,8 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
   const [selectedProject, setSelectedProject] = useState<EnhancedProject | null>(null);
   const [showTechnologies, setShowTechnologies] = useState<boolean>(false);
 
-  // Enhanced project data with mock additional fields
-  const enhancedProjects: EnhancedProject[] = useMemo(() => {
-    const mockEnhancements = [
-      {
-        category: 'E-commerce',
-        projectStatus: 'completed' as const,
-        startDate: '2023-08-01',
-        endDate: '2023-12-15',
-        duration: '4.5 months',
-        client: 'TechCorp Solutions',
-        teamSize: 4,
-        role: 'Full-Stack Developer & Team Lead',
-        challenges: ['Complex payment integration', 'Real-time inventory management', 'Mobile responsiveness'],
-        results: ['40% increase in conversion rate', '60% faster page load times', '99.9% uptime achieved'],
-        testimonial: {
-          text: "The team delivered an exceptional e-commerce platform that exceeded our expectations. The attention to detail and technical expertise was outstanding.",
-          author: "Sarah Johnson",
-          position: "CTO",
-          company: "TechCorp Solutions",
-          avatar: "/images/testimonials/sarah-johnson.jpg"
-        },
-        metrics: {
-          users: 15000,
-          performance: "95% faster",
-          uptime: "99.9%",
-          satisfaction: 4.8
-        },
-        featured: true
-      },
-      {
-        category: 'SaaS Platform',
-        projectStatus: 'completed' as const,
-        startDate: '2023-03-01',
-        endDate: '2023-07-30',
-        duration: '5 months',
-        client: 'StartupXYZ',
-        teamSize: 3,
-        role: 'Frontend Architect',
-        challenges: ['Scalable architecture design', 'Real-time collaboration features', 'Cross-browser compatibility'],
-        results: ['Reduced development time by 50%', 'Improved user engagement by 35%', 'Zero critical bugs in production'],
-        testimonial: {
-          text: "Working with this developer was a game-changer for our startup. The platform they built became the foundation of our success.",
-          author: "Mike Chen",
-          position: "Founder & CEO",
-          company: "StartupXYZ",
-          avatar: "/images/testimonials/mike-chen.jpg"
-        },
-        metrics: {
-          users: 8500,
-          performance: "80% faster",
-          uptime: "99.8%",
-          satisfaction: 4.9
-        },
-        featured: true
-      },
-      {
-        category: 'Portfolio Website',
-        projectStatus: 'completed' as const,
-        startDate: '2023-01-15',
-        endDate: '2023-02-28',
-        duration: '1.5 months',
-        client: 'Personal Project',
-        teamSize: 1,
-        role: 'Full-Stack Developer',
-        challenges: ['Modern design implementation', 'Performance optimization', 'SEO optimization'],
-        results: ['100% Lighthouse score', 'Featured on design showcases', 'Increased client inquiries by 200%'],
-        featured: false
-      },
-      {
-        category: 'Mobile App',
-        projectStatus: 'in-progress' as const,
-        startDate: '2024-01-01',
-        duration: '3 months (ongoing)',
-        client: 'HealthTech Inc.',
-        teamSize: 5,
-        role: 'React Native Developer',
-        challenges: ['Cross-platform compatibility', 'Offline functionality', 'Healthcare compliance'],
-        featured: false
-      },
-      {
-        category: 'Analytics Dashboard',
-        projectStatus: 'completed' as const,
-        startDate: '2022-10-01',
-        endDate: '2023-01-15',
-        duration: '3.5 months',
-        client: 'DataCorp',
-        teamSize: 2,
-        role: 'Frontend Developer',
-        challenges: ['Real-time data visualization', 'Performance with large datasets', 'Custom chart components'],
-        results: ['50% faster data processing', 'Improved decision-making speed', 'User satisfaction score: 4.7/5'],
-        metrics: {
-          users: 2500,
-          performance: "50% faster",
-          uptime: "99.5%",
-          satisfaction: 4.7
-        },
-        featured: false
-      }
-    ];
+  const enhancedProjects: EnhancedProject[] = useMemo(() => projects, [projects]);
 
-    return projects.map((project, index) => ({
-      ...project,
-      ...mockEnhancements[index % mockEnhancements.length]
-    }));
-  }, [projects]);
-  
   // Extract all unique technologies and categories
   const allTechnologies = Array.from(
     new Set(
@@ -196,8 +92,8 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
 
   // Sort projects for timeline view
   const timelineSortedProjects = [...filteredProjects].sort((a, b) => {
-    const dateA = new Date(a.startDate || '2023-01-01');
-    const dateB = new Date(b.startDate || '2023-01-01');
+    const dateA = new Date(a.startDate || a.createdAt || 0);
+    const dateB = new Date(b.startDate || b.createdAt || 0);
     return dateB.getTime() - dateA.getTime();
   });
 

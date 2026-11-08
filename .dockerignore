@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.env*
+**/.env*
+.tmp*
+tmp
+logs
+backups
+coverage
+*.log
+*.tsbuildinfo
+prisma/*.db*
+public/uploads
+wwfl-recovery-release*/

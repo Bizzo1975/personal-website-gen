@@ -53,7 +53,7 @@ export class EmailServiceAdapter {
   constructor() {
     // Determine which email provider to use based on environment
     // Use safe runtime check to avoid build-time evaluation
-    const env = typeof process !== 'undefined' ? process.env : {};
+    const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
     this.provider = (env.EMAIL_PROVIDER as EmailProvider) || 
                    (env.SENDGRID_API_KEY ? 'sendgrid' : 'smtp');
     
@@ -74,7 +74,7 @@ export class EmailServiceAdapter {
     try {
       if (this.provider === 'sendgrid') {
         const sendGridService = await this.getSendGridService();
-        await sendGridService.sendAccessRequestNotification(requestData);
+        await sendGridService.sendAccessRequestNotification({ ...requestData, requestType: requestData.requestType ?? 'personal', requestDate: requestData.requestDate ?? new Date().toISOString() });
       } else {
         // Convert to SMTP format - AccessRequestEmailData from sendgrid has different structure
         const smtpRequestData = {
@@ -139,7 +139,7 @@ export class EmailServiceAdapter {
       } else {
         // Use existing SMTP contact form logic
         // This would integrate with your existing contact API logic
-        const env = typeof process !== 'undefined' ? process.env : {};
+        const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
         await this.sendGenericEmail({
           to: env.ADMIN_EMAIL || 'admin@willworkforlunch.com',
           subject: `Contact Form: ${formData.subject}`,
@@ -230,7 +230,7 @@ export class EmailServiceAdapter {
         return await sendGridService.testConfiguration();
       } else {
         // Test SMTP configuration
-        const env = typeof process !== 'undefined' ? process.env : {};
+        const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
         await this.sendGenericEmail({
           to: env.ADMIN_EMAIL || 'admin@willworkforlunch.com',
           subject: 'SMTP Test - Configuration Working',
@@ -293,7 +293,7 @@ export class EmailServiceAdapter {
    * Check if a provider is properly configured
    */
   private isProviderConfigured(provider: EmailProvider): boolean {
-    const env = typeof process !== 'undefined' ? process.env : {};
+    const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
     if (provider === 'sendgrid') {
       return !!env.SENDGRID_API_KEY;
     } else {

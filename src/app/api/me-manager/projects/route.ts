@@ -1,3 +1,4 @@
+import { readProjectVideoResources } from "@/lib/project-video-resources";
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
@@ -69,6 +70,12 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    try {
+      if (body.content != null && (typeof body.content !== "string" || body.content.length > 2000000)) throw new Error("Invalid project content");
+      readProjectVideoResources(body.content);
+    } catch {
+      return NextResponse.json({ error: "Invalid project video information" }, { status: 400 });
+    }
     const slug =
       body.slug ||
       String(body.title || "project")

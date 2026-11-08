@@ -2,12 +2,6 @@ const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["@prisma/client", "bcryptjs", "pg", "@sendgrid/mail", "nodemailer"],
   
-  // Temporarily disable type checking during build to prevent SIGSEGV
-  // Types are still checked in development via IDE and tsc
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  
   // Temporarily disable ESLint during build to bypass "Invalid or unexpected token" error
   // Linting is still checked in development via IDE and npm run lint
   eslint: {

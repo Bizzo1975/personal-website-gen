@@ -340,7 +340,7 @@ export class EnhancedAccessRequestService {
         // Only send if enabled (defaults to true if not set)
         if (settings.enabled !== false) {
           // Get SendGrid API key (from settings or environment) - use dynamic env access
-          const env = typeof process !== 'undefined' ? process.env : {};
+          const env: Partial<NodeJS.ProcessEnv> = typeof process !== 'undefined' ? process.env : {};
           const apiKey = settings.apiKey || env.SENDGRID_API_KEY;
           const fromEmail = settings.fromEmail || env.FROM_EMAIL || env.ADMIN_EMAIL || 'admin@willworkforlunch.com';
           

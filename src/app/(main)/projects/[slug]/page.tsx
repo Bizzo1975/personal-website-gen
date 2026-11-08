@@ -1,5 +1,6 @@
 'use client';
 
+import ProjectResources from '@/components/ProjectResources';
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -208,7 +209,7 @@ export default function ProjectPage() {
             </span>
           </div>
 
-          <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">
+          <h1 data-project-slug={project.slug} className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">
             {project.title}
           </h1>
           
@@ -240,6 +241,8 @@ export default function ProjectPage() {
             </div>
           )}
         </header>
+
+        <ProjectResources content={project.content} />
 
         {/* Project Content */}
         <div className="prose prose-lg dark:prose-invert max-w-none mb-8">

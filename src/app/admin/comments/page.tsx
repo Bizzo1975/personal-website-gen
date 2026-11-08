@@ -82,7 +82,7 @@ export default function AdminCommentsPage() {
   };
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Comment Moderation">
       <AdminPageLayout
         title="Comment Moderation"
         description="Review and approve pending blog comments."

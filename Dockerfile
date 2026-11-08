@@ -2,7 +2,7 @@
 # Optimized for Linux/Ubuntu development and production deployment
 
 # Base image with Node.js
-FROM node:20-alpine AS base
+FROM node:22-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202 AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -23,17 +23,7 @@ ENV NODE_OPTIONS="--max-old-space-size=2048"
 # Skip optional dependencies to avoid native binding issues
 # Cache-bust: v4 - Added verbose logging and better error handling
 COPY package.json package-lock.json* ./
-RUN \
-  npm cache clean --force && \
-  if [ -f package-lock.json ]; then \
-    echo "Installing production dependencies..." && \
-    SKIP_POSTINSTALL=true npm ci --only=production --no-audit --ignore-scripts --loglevel=verbose || \
-    (echo "npm ci failed, checking npm log..." && \
-     cat /root/.npm/_logs/*-debug-*.log 2>/dev/null | tail -50 || true && \
-     echo "Trying with npm install as fallback..." && \
-     SKIP_POSTINSTALL=true npm install --only=production --no-audit --ignore-scripts --loglevel=verbose); \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+RUN SKIP_POSTINSTALL=true npm ci --omit=dev --no-audit --ignore-scripts
 
 # Rebuild the source code only when needed
 FROM base AS builder
