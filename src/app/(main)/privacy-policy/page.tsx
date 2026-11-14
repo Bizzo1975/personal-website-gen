@@ -173,7 +173,7 @@ export default function PrivacyPolicyPage() {
               <div className="space-y-4 text-gray-700 dark:text-gray-300">
                 <p>If you have any questions about this privacy policy or how we handle your personal information, please contact us:</p>
                 <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg mt-4">
-                  <p><strong>Email:</strong> privacy@personalwebsite.com</p>
+                  <p><strong>Email:</strong> <a href="mailto:privacy@willworkforlunch.com" className="text-blue-600 dark:text-blue-400 hover:underline">privacy@willworkforlunch.com</a></p>
                   <p><strong>Contact Form:</strong> <a href="/contact" className="text-blue-600 dark:text-blue-400 hover:underline">Visit our contact page</a></p>
                 </div>
                 <p>We will respond to your inquiry within 30 days.</p>
