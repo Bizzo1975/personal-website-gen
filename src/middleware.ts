@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { isSameOriginReferer } from '@/lib/security/referer';
 
 // Simple in-memory rate limiting store
 // In a production environment, use Redis or a similar service
@@ -166,12 +167,8 @@ export async function middleware(request: NextRequest) {
     const host = request.headers.get('host');
 
     // Enhanced referer check - allow same-origin requests and localhost
-    const isLocalhost = host?.includes('localhost') || host?.includes('127.0.0.1');
-    const isValidReferer = referer && host && (
-      referer.includes(host) || 
-      (isLocalhost && referer.includes('localhost')) ||
-      (isLocalhost && referer.includes('127.0.0.1'))
-    );
+    // Exact host comparison (see isSameOriginReferer).
+    const isValidReferer = isSameOriginReferer(referer, host);
 
     if (!referer || !host || !isValidReferer) {
       return new NextResponse(
