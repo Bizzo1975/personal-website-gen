@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         mf.created_at,
         COALESCE(COUNT(files.id), 0) as file_count
       FROM media_folders mf
-      LEFT JOIN media_files files ON files.folder = mf.id
+      LEFT JOIN media_files files ON files.folder = mf.id::text
       GROUP BY mf.id, mf.name, mf.parent_id, mf.created_at
       ORDER BY mf.created_at DESC
     `;
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     // Check if folder with same name already exists in same parent
     const existingCheck = await query(
-      'SELECT id FROM media_folders WHERE name = $1 AND parent_id = $2',
+      'SELECT id FROM media_folders WHERE name = $1 AND parent_id IS NOT DISTINCT FROM $2',
       [name.trim(), parentId || null]
     );
 
