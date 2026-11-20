@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { PostService } from '@/lib/services/post-service';
 import { ProjectService } from '@/lib/services/project-service';
+import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,6 +23,18 @@ export async function GET(request: NextRequest) {
     const draftPosts = allPosts.filter(post => post.status === 'draft');
     const draftProjects = allProjects.filter(project => project.status === 'draft');
 
+    // W27: projects have no author column; use the user who created them (was hard-coded "Admin").
+    const creators = new Map<string, string>();
+    if (draftProjects.length > 0) {
+      const r = await query(
+        `SELECT p.id, COALESCE(NULLIF(u.name, ''), u.email) AS author
+           FROM projects p LEFT JOIN users u ON u.id = p.created_by
+          WHERE p.id = ANY($1::uuid[])`,
+        [draftProjects.map((p) => p.id)]
+      );
+      for (const row of r.rows) if (row.author) creators.set(row.id, row.author);
+    }
+
     // Format for scheduler component
     const availableContent = [
       ...draftPosts.map(post => ({
@@ -37,7 +50,7 @@ export async function GET(request: NextRequest) {
         id: project.id,
         type: 'project' as const,
         title: project.title,
-        author: 'Admin', // TODO: Get from database
+        author: creators.get(project.id) || 'Unknown',
         excerpt: project.description || `${project.title} project`,
         createdAt: project.created_at,
         updatedAt: project.updated_at

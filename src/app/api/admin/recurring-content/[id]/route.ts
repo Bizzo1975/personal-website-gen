@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
+import { validateRule } from '@/lib/recurring/rules';
 
 export async function GET(
   request: NextRequest,
@@ -64,21 +65,12 @@ export async function PUT(
     }
 
     const { id } = resolvedParams;
-    const {
-      name,
-      contentType,
-      templateContentId,
-      recurrencePattern,
-      recurrenceDay,
-      recurrenceTime,
-      targetAccessLevels,
-      permissions,
-      isActive
-    } = await request.json();
+    const body = await request.json().catch(() => ({}));
 
-    // Check if rule exists
     const existingRule = await query(
-      'SELECT * FROM recurring_content_rules WHERE id = $1',
+      `SELECT name, content_type, template_content_id, recurrence_pattern, recurrence_day,
+              to_char(recurrence_time, 'HH24:MI') AS recurrence_time, time_zone, is_active
+         FROM recurring_content_rules WHERE id = $1`,
       [id]
     );
 
@@ -89,43 +81,22 @@ export async function PUT(
       );
     }
 
-    // Calculate next scheduled date if pattern changed
-    let nextScheduledAt = existingRule.rows[0].next_scheduled_at;
-    if (recurrencePattern || recurrenceDay || recurrenceTime) {
-      nextScheduledAt = calculateNextScheduledDate(
-        recurrencePattern || existingRule.rows[0].recurrence_pattern,
-        recurrenceDay || existingRule.rows[0].recurrence_day,
-        recurrenceTime || existingRule.rows[0].recurrence_time
-      );
+    // W26: fields not sent keep their values (Sunday = 0 is a real value, not "missing");
+    // the next run is recomputed from the saved settings in the rule's time zone.
+    const checked = await validateRule(body, existingRule.rows[0]);
+    if (!checked.ok) {
+      return NextResponse.json({ error: checked.error }, { status: 400 });
     }
+    const v = checked.values;
 
     const result = await query(
       `UPDATE recurring_content_rules 
-       SET name = COALESCE($1, name),
-           content_type = COALESCE($2, content_type),
-           template_content_id = COALESCE($3, template_content_id),
-           recurrence_pattern = COALESCE($4, recurrence_pattern),
-           recurrence_day = COALESCE($5, recurrence_day),
-           recurrence_time = COALESCE($6, recurrence_time),
-           target_access_levels = COALESCE($7, target_access_levels),
-           permissions = COALESCE($8, permissions),
-           is_active = COALESCE($9, is_active),
-           next_scheduled_at = $10,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $11 RETURNING *`,
-      [
-        name,
-        contentType,
-        templateContentId,
-        recurrencePattern,
-        recurrenceDay,
-        recurrenceTime,
-        targetAccessLevels,
-        permissions,
-        isActive,
-        nextScheduledAt,
-        id
-      ]
+       SET name = $1, content_type = $2, template_content_id = $3, recurrence_pattern = $4,
+           recurrence_day = $5, recurrence_time = $6, time_zone = $7, is_active = $8,
+           next_scheduled_at = $9, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $10 RETURNING *`,
+      [v.name, v.contentType, v.templateContentId, v.pattern, v.day, v.time, v.timeZone, v.isActive,
+       v.nextScheduledAt, id]
     );
 
     return NextResponse.json(result.rows[0]);
@@ -166,8 +137,15 @@ export async function DELETE(
       );
     }
 
-    // Delete the rule
-    await query('DELETE FROM recurring_content_rules WHERE id = $1', [id]);
+    // Content the rule created keeps existing; it just stops pointing at the rule
+    // (otherwise the foreign keys make this delete fail once the rule has run).
+    await query(
+      `WITH p AS (UPDATE posts SET recurring_rule_id = NULL WHERE recurring_rule_id = $1),
+            j AS (UPDATE projects SET recurring_rule_id = NULL WHERE recurring_rule_id = $1),
+            n AS (UPDATE newsletter_campaigns SET recurring_rule_id = NULL WHERE recurring_rule_id = $1)
+       DELETE FROM recurring_content_rules WHERE id = $1`,
+      [id]
+    );
 
     return NextResponse.json({ message: 'Recurring content rule deleted successfully' });
 
@@ -180,35 +158,4 @@ export async function DELETE(
   }
 }
 
-function calculateNextScheduledDate(
-  pattern: string,
-  day: number,
-  time: string
-): Date {
-  const now = new Date();
-  let nextDate = new Date();
-
-  if (pattern === 'weekly') {
-    // day is 0-6 (Sunday-Saturday)
-    const currentDay = now.getDay();
-    const daysUntilNext = (day - currentDay + 7) % 7;
-    nextDate.setDate(now.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
-  } else if (pattern === 'monthly') {
-    // day is 1-31 (day of month)
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    
-    nextDate = new Date(currentYear, currentMonth, day);
-    
-    // If the day has already passed this month, move to next month
-    if (nextDate <= now) {
-      nextDate = new Date(currentYear, currentMonth + 1, day);
-    }
-  }
-
-  // Set the time
-  const [hours, minutes] = time.split(':');
-  nextDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-  return nextDate;
-} 
+// (W26: next-run dates are computed by lib/recurring/schedule.ts in the rule's time zone.)

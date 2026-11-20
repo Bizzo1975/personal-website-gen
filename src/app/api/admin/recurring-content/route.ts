@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
+import { validateRule } from '@/lib/recurring/rules';
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,66 +57,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const {
-      name,
-      contentType,
-      templateContentId,
-      recurrencePattern,
-      recurrenceDay,
-      recurrenceTime,
-      targetAccessLevels,
-      permissions
-    } = await request.json();
-
-    // Validate required fields
-    if (!name || !contentType || !recurrencePattern || !recurrenceTime) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+    const body = await request.json().catch(() => ({}));
+    // W26: validated in one place; times are in the rule's time zone (sent by the browser).
+    const checked = await validateRule(body);
+    if (!checked.ok) {
+      return NextResponse.json({ error: checked.error }, { status: 400 });
     }
-
-    // Validate content type
-    if (!['post', 'project', 'newsletter'].includes(contentType)) {
-      return NextResponse.json(
-        { error: 'Invalid content type' },
-        { status: 400 }
-      );
-    }
-
-    // Validate recurrence pattern
-    if (!['weekly', 'monthly'].includes(recurrencePattern)) {
-      return NextResponse.json(
-        { error: 'Invalid recurrence pattern' },
-        { status: 400 }
-      );
-    }
-
-    // Calculate next scheduled date
-    const nextScheduledAt = calculateNextScheduledDate(
-      recurrencePattern,
-      recurrenceDay,
-      recurrenceTime
-    );
+    const v = checked.values;
 
     const result = await query(
       `INSERT INTO recurring_content_rules (
-        name, content_type, template_content_id, recurrence_pattern, 
-        recurrence_day, recurrence_time, target_access_levels, permissions,
+        name, content_type, template_content_id, recurrence_pattern,
+        recurrence_day, recurrence_time, time_zone, is_active,
         next_scheduled_at, created_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [
-        name,
-        contentType,
-        templateContentId,
-        recurrencePattern,
-        recurrenceDay,
-        recurrenceTime,
-        targetAccessLevels || ['all'],
-        permissions || { level: 'all' },
-        nextScheduledAt,
-        session.user.id
-      ]
+      [v.name, v.contentType, v.templateContentId, v.pattern, v.day, v.time, v.timeZone, v.isActive,
+       v.nextScheduledAt, session.user.id || null]
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
@@ -128,36 +85,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-function calculateNextScheduledDate(
-  pattern: string,
-  day: number,
-  time: string
-): Date {
-  const now = new Date();
-  let nextDate = new Date();
-
-  if (pattern === 'weekly') {
-    // day is 0-6 (Sunday-Saturday)
-    const currentDay = now.getDay();
-    const daysUntilNext = (day - currentDay + 7) % 7;
-    nextDate.setDate(now.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
-  } else if (pattern === 'monthly') {
-    // day is 1-31 (day of month)
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    
-    nextDate = new Date(currentYear, currentMonth, day);
-    
-    // If the day has already passed this month, move to next month
-    if (nextDate <= now) {
-      nextDate = new Date(currentYear, currentMonth + 1, day);
-    }
-  }
-
-  // Set the time
-  const [hours, minutes] = time.split(':');
-  nextDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-  return nextDate;
-} 

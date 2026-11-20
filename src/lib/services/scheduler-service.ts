@@ -2,6 +2,7 @@ import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { notifyMeManagerTeaser } from '@/lib/me-manager-teaser';
 import { sendCampaign } from '@/lib/newsletter/delivery';
+import { processDueRecurringRules } from '@/lib/recurring/processor';
 
 /**
  * Scheduler Service for Automated Content Publishing
@@ -12,6 +13,10 @@ export interface ScheduledContentStats {
   postsToPublish: number;
   projectsToPublish: number;
   newslettersToSend: number;
+  /** W26: drafts created from recurring rules this run, and rule runs that failed */
+  recurringDraftsCreated?: number;
+  recurringFailures?: number;
+  recurringError?: string;
   lastRunAt: Date;
 }
 
@@ -21,7 +26,7 @@ export class SchedulerService {
    */
   static async publishScheduledContent(): Promise<ScheduledContentStats> {
     const now = new Date();
-    const stats = {
+    const stats: ScheduledContentStats = {
       postsToPublish: 0,
       projectsToPublish: 0,
       newslettersToSend: 0,
@@ -49,6 +54,22 @@ export class SchedulerService {
       // Send scheduled newsletters
       await this.sendScheduledNewsletters(now);
       console.log(`📧 Processed ${newsletterCount} due newsletters (per-campaign results logged above)`);
+
+      // W26: recurring rules create DRAFTS for review (never published or sent here).
+      // Isolated so a rule problem cannot stop scheduled publishing.
+      try {
+        const runs = await processDueRecurringRules(now);
+        stats.recurringDraftsCreated = runs.filter((r) => r.ok).length;
+        stats.recurringFailures = runs.filter((r) => !r.ok).length;
+        for (const r of runs) {
+          console.log(r.ok
+            ? `🔁 Recurring rule ${r.ruleId}: draft ${r.contentId} created; next run ${r.nextRunAt}`
+            : `🔁 Recurring rule ${r.ruleId} failed: ${r.error}`);
+        }
+      } catch (error) {
+        stats.recurringError = error instanceof Error ? error.message : String(error);
+        console.error('Recurring content processing failed:', error);
+      }
 
       return stats;
     } catch (error) {

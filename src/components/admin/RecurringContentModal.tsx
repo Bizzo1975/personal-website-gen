@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import Button from '@/components/Button';
 
-interface RecurringContentRule {
+export interface RecurringContentRule {
   id?: string;
   name: string;
   contentType: 'post' | 'project' | 'newsletter';
@@ -12,102 +12,74 @@ interface RecurringContentRule {
   recurrencePattern: 'weekly' | 'monthly';
   recurrenceDay: number;
   recurrenceTime: string;
-  targetAccessLevels: string[];
+  timeZone: string;
   isActive: boolean;
 }
 
 interface RecurringContentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (rule: RecurringContentRule) => void;
+  /** Resolves to null on success, or the server's error message (the modal stays open). */
+  onSave: (rule: RecurringContentRule) => Promise<string | null>;
   editingRule?: RecurringContentRule | null;
 }
 
-const RecurringContentModal: React.FC<RecurringContentModalProps> = ({
-  isOpen,
-  onClose,
-  onSave,
-  editingRule
-}) => {
-  const [rule, setRule] = useState<RecurringContentRule>({
-    name: '',
-    contentType: 'post',
-    recurrencePattern: 'weekly',
-    recurrenceDay: 1,
-    recurrenceTime: '09:00',
-    targetAccessLevels: ['all'],
-    isActive: true
-  });
+const browserTimeZone = () => {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { return 'UTC'; }
+};
 
-  const [availableContent, setAvailableContent] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+const blank = (): RecurringContentRule => ({
+  name: '', contentType: 'post', recurrencePattern: 'weekly', recurrenceDay: 1,
+  recurrenceTime: '09:00', timeZone: browserTimeZone(), isActive: true,
+});
 
-  useEffect(() => {
-    if (editingRule) {
-      setRule(editingRule);
-    } else {
-      setRule({
-        name: '',
-        contentType: 'post',
-        recurrencePattern: 'weekly',
-        recurrenceDay: 1,
-        recurrenceTime: '09:00',
-        targetAccessLevels: ['all'],
-        isActive: true
-      });
-    }
-  }, [editingRule]);
+const input = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white';
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
+
+// W26: creates rules that the scheduler turns into DRAFTS for review.
+const RecurringContentModal: React.FC<RecurringContentModalProps> = ({ isOpen, onClose, onSave, editingRule }) => {
+  const [rule, setRule] = useState<RecurringContentRule>(blank());
+  const [options, setOptions] = useState<{ id: string; title: string; status: string }[]>([]);
+  const [optionsError, setOptionsError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isOpen) {
-      fetchAvailableContent();
-    }
-  }, [isOpen]);
+    if (isOpen) { setRule(editingRule ? { ...editingRule } : blank()); setError(''); }
+  }, [isOpen, editingRule]);
 
-  const fetchAvailableContent = async () => {
-    try {
-      const response = await fetch('/api/admin/unscheduled-content');
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableContent(data);
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/recurring-content/template-options?type=${rule.contentType}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        if (!cancelled) { setOptions(data.options || []); setOptionsError(''); }
+      } catch (e) {
+        if (!cancelled) setOptionsError(`Could not load templates: ${e instanceof Error ? e.message : String(e)}`);
       }
-    } catch (error) {
-      console.error('Failed to fetch available content:', error);
-    }
-  };
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, rule.contentType]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const set = <K extends keyof RecurringContentRule>(k: K, v: RecurringContentRule[K]) => setRule((p) => ({ ...p, [k]: v }));
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    
+    setSaving(true); setError('');
     try {
-      await onSave(rule);
-      onClose();
-    } catch (error) {
-      console.error('Failed to save recurring content rule:', error);
+      const problem = await onSave(rule);
+      if (problem) setError(problem); else onClose();
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  };
-
-  const handleInputChange = (field: keyof RecurringContentRule, value: any) => {
-    setRule(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const getWeekdayName = (day: number) => {
-    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return weekdays[day];
-  };
-
-  const getMonthDayName = (day: number) => {
-    const suffix = day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th';
-    return `${day}${suffix}`;
   };
 
   if (!isOpen) return null;
+  const typeLabel = rule.contentType === 'newsletter' ? 'campaign' : rule.contentType;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -117,162 +89,75 @@ const RecurringContentModal: React.FC<RecurringContentModalProps> = ({
             <ArrowPathIcon className="h-5 w-5" />
             {editingRule ? 'Edit Recurring Content' : 'Create Recurring Content'}
           </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-          >
+          <button type="button" onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Rule Name
-            </label>
-            <input
-              type="text"
-              value={rule.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="e.g., Weekly Newsletter"
-              required
-            />
-          </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          On each run a new <strong>draft</strong> {typeLabel} is created for you to review. Nothing is published or sent automatically.
+        </p>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Content Type
-            </label>
-            <select
-              value={rule.contentType}
-              onChange={(e) => handleInputChange('contentType', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
+        <form onSubmit={submit} className="space-y-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Rule name
+            <input type="text" className={`${input} mt-1`} value={rule.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g., Weekly roundup" required />
+          </label>
+
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Content type
+            <select className={`${input} mt-1`} value={rule.contentType}
+              onChange={(e) => setRule((p) => ({ ...p, contentType: e.target.value as RecurringContentRule['contentType'], templateContentId: undefined }))}>
               <option value="post">Post</option>
               <option value="project">Project</option>
-              <option value="newsletter">Newsletter</option>
+              <option value="newsletter">Newsletter campaign</option>
             </select>
-          </div>
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Template Content (Optional)
-            </label>
-            <select
-              value={rule.templateContentId || ''}
-              onChange={(e) => handleInputChange('templateContentId', e.target.value || undefined)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="">No template</option>
-              {availableContent
-                .filter(content => content.type === rule.contentType)
-                .map((content) => (
-                  <option key={content.id} value={content.id}>
-                    {content.title}
-                  </option>
-                ))}
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Copy from (optional)
+            <select className={`${input} mt-1`} value={rule.templateContentId || ''} onChange={(e) => set('templateContentId', e.target.value || undefined)}>
+              <option value="">Nothing: start a blank draft titled with the rule name</option>
+              {options.map((o) => <option key={o.id} value={o.id}>{o.title} ({o.status})</option>)}
             </select>
-          </div>
+            {optionsError && <span className="block mt-1 text-xs text-red-700 dark:text-red-300">{optionsError}</span>}
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Recurrence Pattern
-            </label>
-            <select
-              value={rule.recurrencePattern}
-              onChange={(e) => handleInputChange('recurrencePattern', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Repeats
+            <select className={`${input} mt-1`} value={rule.recurrencePattern}
+              onChange={(e) => {
+                const pattern = e.target.value as RecurringContentRule['recurrencePattern'];
+                setRule((p) => ({ ...p, recurrencePattern: pattern, recurrenceDay: pattern === 'weekly' ? 1 : 1 }));
+              }}>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
             </select>
-          </div>
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {rule.recurrencePattern === 'weekly' ? 'Day of Week' : 'Day of Month'}
-            </label>
-            <select
-              value={rule.recurrenceDay}
-              onChange={(e) => handleInputChange('recurrenceDay', parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              {rule.recurrencePattern === 'weekly' ? (
-                [...Array(7)].map((_, i) => (
-                  <option key={i} value={i}>
-                    {getWeekdayName(i)}
-                  </option>
-                ))
-              ) : (
-                [...Array(31)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {getMonthDayName(i + 1)}
-                  </option>
-                ))
-              )}
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {rule.recurrencePattern === 'weekly' ? 'Day of week' : 'Day of month'}
+            <select className={`${input} mt-1`} value={rule.recurrenceDay} onChange={(e) => set('recurrenceDay', parseInt(e.target.value, 10))}>
+              {rule.recurrencePattern === 'weekly'
+                ? WEEKDAYS.map((d, i) => <option key={i} value={i}>{d}</option>)
+                : [...Array(31)].map((_, i) => <option key={i + 1} value={i + 1}>{ordinal(i + 1)}</option>)}
             </select>
-          </div>
+            {rule.recurrencePattern === 'monthly' && rule.recurrenceDay > 28 && (
+              <span className="block mt-1 text-xs text-gray-500 dark:text-gray-400">In shorter months this runs on the last day of the month.</span>
+            )}
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Time
-            </label>
-            <input
-              type="time"
-              value={rule.recurrenceTime}
-              onChange={(e) => handleInputChange('recurrenceTime', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              required
-            />
-          </div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Time
+            <input type="time" className={`${input} mt-1`} value={rule.recurrenceTime} onChange={(e) => set('recurrenceTime', e.target.value)} required />
+            <span className="block mt-1 text-xs text-gray-500 dark:text-gray-400">Time zone: {rule.timeZone}</span>
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Target Access Levels
-            </label>
-            <div className="space-y-2">
-              {['all', 'professional', 'personal'].map((level) => (
-                <label key={level} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={rule.targetAccessLevels.includes(level)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        handleInputChange('targetAccessLevels', [...rule.targetAccessLevels, level]);
-                      } else {
-                        handleInputChange('targetAccessLevels', rule.targetAccessLevels.filter(l => l !== level));
-                      }
-                    }}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-900 dark:text-gray-100 capitalize">
-                    {level}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
+            <input type="checkbox" checked={rule.isActive} onChange={(e) => set('isActive', e.target.checked)} className="h-4 w-4" />
+            Active
+          </label>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              checked={rule.isActive}
-              onChange={(e) => handleInputChange('isActive', e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <span className="ml-2 text-sm text-gray-900 dark:text-gray-100">
-              Active
-            </span>
-          </div>
+          {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : editingRule ? 'Update Rule' : 'Create Rule'}
-            </Button>
+          <div className="flex justify-end space-x-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : editingRule ? 'Update rule' : 'Create rule'}</Button>
           </div>
         </form>
       </div>
@@ -280,4 +165,4 @@ const RecurringContentModal: React.FC<RecurringContentModalProps> = ({
   );
 };
 
-export default RecurringContentModal; 
+export default RecurringContentModal;

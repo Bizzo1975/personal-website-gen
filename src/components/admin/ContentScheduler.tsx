@@ -16,18 +16,13 @@ import {
 import Button from '@/components/Button';
 import { toDateTimeLocalValue, fromDateTimeLocalValue } from '@/lib/datetime-local';
 import CalendarView, { ScheduledContentItem } from './CalendarView';
-import RecurringContentModal from './RecurringContentModal';
+import RecurringContentModal, { type RecurringContentRule } from './RecurringContentModal';
+import RecurringRulesPanel from './RecurringRulesPanel';
 
-interface RecurringContentRule {
-  id?: string;
-  name: string;
-  contentType: 'post' | 'project' | 'newsletter';
-  templateContentId?: string;
-  recurrencePattern: 'weekly' | 'monthly';
-  recurrenceDay: number;
-  recurrenceTime: string;
-  targetAccessLevels: string[];
-  isActive: boolean;
+/** Server error text for a failed request (W11-style: show it, don't swallow it). */
+async function failureText(res: Response, what: string): Promise<string> {
+  const data = await res.json().catch(() => ({} as { error?: string }));
+  return `${what}: ${data?.error || `HTTP ${res.status}`}`;
 }
 
 interface ScheduledPost {
@@ -53,6 +48,9 @@ const ContentScheduler: React.FC = () => {
   const [selectedContent, setSelectedContent] = useState<ScheduledPost | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [preselectedDate, setPreselectedDate] = useState<Date | null>(null);
+  const [editingRule, setEditingRule] = useState<RecurringContentRule | null>(null);
+  const [rulesRefresh, setRulesRefresh] = useState(0);
+  const [actionError, setActionError] = useState('');
 
   // Load view preference from localStorage
   useEffect(() => {
@@ -74,77 +72,56 @@ const ContentScheduler: React.FC = () => {
   const fetchScheduledContent = async () => {
     try {
       const response = await fetch('/api/admin/scheduled-content');
-      if (response.ok) {
-        const data = await response.json();
-        setScheduledContent(data);
-      }
+      if (!response.ok) { setActionError(await failureText(response, 'Could not load scheduled content')); return; }
+      const data = await response.json();
+      setScheduledContent(data);
     } catch (error) {
-      console.error('Failed to fetch scheduled content:', error);
+      setActionError(`Could not load scheduled content: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSchedule = async (contentId: string, scheduledDate: string) => {
+  // Each action reports the server's real answer instead of failing silently.
+  const run = async (what: string, request: () => Promise<Response>): Promise<boolean> => {
+    setActionError('');
     try {
-      const response = await fetch('/api/admin/schedule-content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentId, scheduledDate })
-      });
-
-      if (response.ok) {
-        fetchScheduledContent();
-        setShowScheduleModal(false);
-        setPreselectedDate(null);
-      }
+      const response = await request();
+      if (!response.ok) { setActionError(await failureText(response, what)); return false; }
+      await fetchScheduledContent();
+      return true;
     } catch (error) {
-      console.error('Failed to schedule content:', error);
+      setActionError(`${what}: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  };
+
+  const handleSchedule = async (contentId: string, scheduledDate: string) => {
+    const ok = await run('Not scheduled', () => fetch('/api/admin/schedule-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contentId, scheduledDate })
+    }));
+    if (ok) {
+      setShowScheduleModal(false);
+      setPreselectedDate(null);
     }
   };
 
   const handleUnschedule = async (scheduleId: string) => {
-    try {
-      const response = await fetch(`/api/admin/scheduled-content/${scheduleId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        fetchScheduledContent();
-      }
-    } catch (error) {
-      console.error('Failed to unschedule content:', error);
-    }
+    await run('Not unscheduled', () => fetch(`/api/admin/scheduled-content/${scheduleId}`, { method: 'DELETE' }));
   };
 
   const handlePublishNow = async (scheduleId: string) => {
-    try {
-      const response = await fetch(`/api/admin/publish-now/${scheduleId}`, {
-        method: 'POST'
-      });
-
-      if (response.ok) {
-        fetchScheduledContent();
-      }
-    } catch (error) {
-      console.error('Failed to publish content:', error);
-    }
+    await run('Not published', () => fetch(`/api/admin/publish-now/${scheduleId}`, { method: 'POST' }));
   };
 
   const handleReschedule = async (contentId: string, newDate: string) => {
-    try {
-      const response = await fetch(`/api/admin/scheduled-content/${contentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduledDate: newDate })
-      });
-
-      if (response.ok) {
-        fetchScheduledContent();
-      }
-    } catch (error) {
-      console.error('Failed to reschedule content:', error);
-    }
+    await run('Not rescheduled', () => fetch(`/api/admin/scheduled-content/${contentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduledDate: newDate })
+    }));
   };
 
   const handleScheduleContent = (selectedDate?: Date) => {
@@ -158,24 +135,24 @@ const ContentScheduler: React.FC = () => {
     setSelectedContent(content);
   };
 
-  const handleSaveRecurringRule = async (rule: RecurringContentRule) => {
+  // W26: returns null on success or the server's error, which the modal shows.
+  const handleSaveRecurringRule = async (rule: RecurringContentRule): Promise<string | null> => {
     try {
       const url = rule.id ? `/api/admin/recurring-content/${rule.id}` : '/api/admin/recurring-content';
-      const method = rule.id ? 'PUT' : 'POST';
-      
       const response = await fetch(url, {
-        method,
+        method: rule.id ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(rule)
       });
-
-      if (response.ok) {
-        // Refresh the scheduled content to show any newly created recurring items
-        fetchScheduledContent();
-        setShowRecurringModal(false);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({} as { error?: string }));
+        return data?.error || `Not saved (HTTP ${response.status})`;
       }
+      setRulesRefresh((n) => n + 1);
+      setEditingRule(null);
+      return null;
     } catch (error) {
-      console.error('Failed to save recurring content rule:', error);
+      return error instanceof Error ? error.message : 'Not saved';
     }
   };
 
@@ -245,7 +222,7 @@ const ContentScheduler: React.FC = () => {
             </button>
           </div>
           
-          <Button variant="outline" onClick={() => setShowRecurringModal(true)}>
+          <Button variant="outline" onClick={() => { setEditingRule(null); setShowRecurringModal(true); }}>
             <ArrowPathIcon className="h-5 w-5 mr-2" />
             Recurring Content
           </Button>
@@ -275,6 +252,13 @@ const ContentScheduler: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {actionError && (
+        <div role="alert" className="flex items-start justify-between gap-4 rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-700 dark:text-red-300">
+          <span>{actionError}</span>
+          <button type="button" onClick={() => setActionError('')} className="underline">Dismiss</button>
+        </div>
+      )}
 
       {/* Render List or Calendar View */}
       {viewMode === 'list' ? (
@@ -395,6 +379,7 @@ const ContentScheduler: React.FC = () => {
           }}
           onSchedule={handleSchedule}
           preselectedDate={preselectedDate}
+          error={actionError}
         />
       )}
 
@@ -407,11 +392,18 @@ const ContentScheduler: React.FC = () => {
         />
       )}
 
+      {/* W26: recurring rules, visible and manageable */}
+      <RecurringRulesPanel
+        refreshKey={rulesRefresh}
+        onEdit={(rule) => { setEditingRule(rule); setShowRecurringModal(true); }}
+      />
+
       {/* Recurring Content Modal */}
       <RecurringContentModal
         isOpen={showRecurringModal}
-        onClose={() => setShowRecurringModal(false)}
+        onClose={() => { setShowRecurringModal(false); setEditingRule(null); }}
         onSave={handleSaveRecurringRule}
+        editingRule={editingRule}
       />
     </div>
   );
@@ -422,7 +414,8 @@ const ScheduleModal: React.FC<{
   onClose: () => void;
   onSchedule: (contentId: string, scheduledDate: string) => void;
   preselectedDate?: Date | null;
-}> = ({ onClose, onSchedule, preselectedDate }) => {
+  error?: string;
+}> = ({ onClose, onSchedule, preselectedDate, error }) => {
   const [availableContent, setAvailableContent] = useState<any[]>([]);
   const [selectedContentId, setSelectedContentId] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
@@ -515,6 +508,8 @@ const ScheduleModal: React.FC<{
             />
           </div>
 
+          {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
+
           <div className="flex justify-end space-x-3 pt-4">
             <Button variant="outline" onClick={onClose}>
               Cancel
@@ -537,6 +532,7 @@ const EditScheduleModal: React.FC<{
 }> = ({ content, onClose, onUpdate }) => {
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const local = toDateTimeLocalValue(content.scheduledDate);
@@ -546,21 +542,21 @@ const EditScheduleModal: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
       const utc = fromDateTimeLocalValue(`${scheduledDate}T${scheduledTime}`);
-      if (!utc) return;
+      if (!utc) { setError('Enter a valid date and time'); return; }
       const response = await fetch(`/api/admin/scheduled-content/${content.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scheduledDate: utc })
       });
 
-      if (response.ok) {
-        onUpdate();
-        onClose();
-      }
-    } catch (error) {
-      console.error('Failed to update schedule:', error);
+      if (!response.ok) { setError(await failureText(response, 'Not rescheduled')); return; }
+      onUpdate();
+      onClose();
+    } catch (err) {
+      setError(`Not rescheduled: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -598,6 +594,8 @@ const EditScheduleModal: React.FC<{
               required
             />
           </div>
+
+          {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button variant="outline" onClick={onClose}>
