@@ -442,9 +442,9 @@ const EditCampaignPage: React.FC = () => {
                 {[
                   { key: 'details', label: 'Campaign Details', icon: DocumentTextIcon },
                   { key: 'content', label: 'Content & Template', icon: CogIcon },
-                  { key: 'schedule', label: 'Schedule & Send', icon: CalendarIcon },
-                  { key: 'targeting', label: 'Targeting', icon: UserGroupIcon },
-                  { key: 'settings', label: 'Settings', icon: CogIcon }
+                  { key: 'schedule', label: 'Schedule & Send', icon: CalendarIcon }
+    // Targeting and Settings tabs removed (W19): subscribers have no roles to target, and
+    // open/click tracking, throttling and time-zone settings were never implemented.
                 ].map((tab) => (
                   <button
                     key={tab.key}
@@ -680,7 +680,7 @@ const EditCampaignPage: React.FC = () => {
                           Important Notes
                         </h4>
                         <ul className="mt-2 text-sm text-yellow-700 dark:text-yellow-300 list-disc list-inside space-y-1">
-                          <li>Campaigns will be sent to all subscribers based on your targeting settings</li>
+                          <li>Campaigns are sent to every confirmed subscriber. Unconfirmed and unsubscribed people are never emailed.</li>
                           <li>Once sent, campaigns cannot be edited or recalled</li>
                           <li>Test your campaign thoroughly before sending</li>
                         </ul>
@@ -691,180 +691,7 @@ const EditCampaignPage: React.FC = () => {
               </Card>
             )}
 
-            {/* Targeting Tab */}
-            {activeTab === 'targeting' && (
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Targeting & Audience
-                  </h3>
-                </CardHeader>
-                <CardBody className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Target Audience
-                    </label>
-                    <div className="space-y-2">
-                      {['all', 'admin', 'editor', 'author', 'subscriber', 'guest'].map((level) => (
-                        <div key={level} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            id={`target-${level}`}
-                            checked={formData.targetAccessLevels.includes(level)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                handleInputChange('targetAccessLevels', [...formData.targetAccessLevels, level]);
-                              } else {
-                                handleInputChange('targetAccessLevels', formData.targetAccessLevels.filter(l => l !== level));
-                              }
-                            }}
-                            disabled={isReadOnly}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
-                          />
-                          <label htmlFor={`target-${level}`} className="ml-2 text-sm text-gray-700 dark:text-gray-300 capitalize">
-                            {level} users
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Allowed Roles
-                    </label>
-                    <div className="space-y-2">
-                      {['admin', 'editor', 'author', 'subscriber', 'guest'].map((role) => (
-                        <div key={role} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            id={`role-${role}`}
-                            checked={formData.permissions.allowedRoles.includes(role)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                handleNestedInputChange('permissions', 'allowedRoles', [...formData.permissions.allowedRoles, role]);
-                              } else {
-                                handleNestedInputChange('permissions', 'allowedRoles', formData.permissions.allowedRoles.filter(r => r !== role));
-                              }
-                            }}
-                            disabled={isReadOnly}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
-                          />
-                          <label htmlFor={`role-${role}`} className="ml-2 text-sm text-gray-700 dark:text-gray-300 capitalize">
-                            {role}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="requires-auth"
-                      checked={formData.permissions.requiresAuth}
-                      onChange={(e) => handleNestedInputChange('permissions', 'requiresAuth', e.target.checked)}
-                      disabled={isReadOnly}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
-                    />
-                    <label htmlFor="requires-auth" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                      Require authentication to receive this campaign
-                    </label>
-                  </div>
-                </CardBody>
-              </Card>
-            )}
-
-            {/* Settings Tab */}
-            {activeTab === 'settings' && (
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Campaign Settings
-                  </h3>
-                </CardHeader>
-                <CardBody className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Track Opens
-                        </label>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Track when recipients open your emails
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={formData.settings.trackOpens}
-                          onChange={(e) => handleNestedInputChange('settings', 'trackOpens', e.target.checked)}
-                          disabled={isReadOnly}
-                          className="sr-only peer disabled:opacity-50" 
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Track Clicks
-                        </label>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Track when recipients click links in your emails
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={formData.settings.trackClicks}
-                          onChange={(e) => handleNestedInputChange('settings', 'trackClicks', e.target.checked)}
-                          disabled={isReadOnly}
-                          className="sr-only peer disabled:opacity-50" 
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Sending Rate (emails per minute)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="1000"
-                      value={formData.settings.throttleRate}
-                      onChange={(e) => handleNestedInputChange('settings', 'throttleRate', parseInt(e.target.value))}
-                      disabled={isReadOnly}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500"
-                    />
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      Controls how fast emails are sent to prevent spam filtering
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Timezone
-                    </label>
-                    <select
-                      value={formData.settings.timezone}
-                      onChange={(e) => handleNestedInputChange('settings', 'timezone', e.target.value)}
-                      disabled={isReadOnly}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500"
-                    >
-                      <option value="UTC">UTC</option>
-                      <option value="EST">Eastern Time</option>
-                      <option value="PST">Pacific Time</option>
-                      <option value="GMT">Greenwich Mean Time</option>
-                    </select>
-                  </div>
-                </CardBody>
-              </Card>
-            )}
 
             {/* Form Actions */}
             <div className="flex items-center justify-between">

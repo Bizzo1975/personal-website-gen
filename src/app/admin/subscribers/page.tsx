@@ -409,13 +409,9 @@ export default function SubscriberManagementPage() {
   };
 
   // Get engagement level
-  const getEngagementLevel = (subscriber: Subscriber) => {
-    const openRate = subscriber.analytics.open_rate;
-    if (openRate >= 50) return { level: 'High', color: 'text-green-600' };
-    if (openRate >= 20) return { level: 'Medium', color: 'text-yellow-600' };
-    if (openRate > 0) return { level: 'Low', color: 'text-orange-600' };
-    return { level: 'Inactive', color: 'text-gray-600' };
-  };
+  // W6: engagement was derived from opens, which are never recorded, so every subscriber
+  // read "Inactive". Show what is actually known instead.
+  const getEngagementLevel = (_subscriber: Subscriber) => ({ level: 'Opens not tracked', color: 'text-gray-600' });
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -456,14 +452,8 @@ export default function SubscriberManagementPage() {
     if (filters.gdpr_consent !== 'all') {
       if (filters.gdpr_consent === 'consented' && !subscriber.gdpr_consent) return false;
       if (filters.gdpr_consent === 'pending' && subscriber.gdpr_consent) return false;
-      // Add expired consent logic here if needed
     }
-
-    // Engagement filter
-    if (filters.engagement !== 'all') {
-      const engagement = getEngagementLevel(subscriber).level.toLowerCase();
-      if (engagement !== filters.engagement) return false;
-    }
+    // (W6: the engagement filter was removed; opens are not tracked.)
 
     // Location filter
     if (filters.location && subscriber.metadata.location?.country !== filters.location) {
@@ -819,6 +809,9 @@ const OverviewTab = ({ analytics, loading, onNavigate }: {
     );
   }
 
+  // W6: a share of zero subscribers is undefined, not NaN%.
+  const pct = (part: number, whole: number) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '—');
+
   const stats = [
     {
       title: 'Total Subscribers',
@@ -832,7 +825,7 @@ const OverviewTab = ({ analytics, loading, onNavigate }: {
     {
       title: 'Active Subscribers',
       value: analytics.active_subscribers.toLocaleString(),
-      change: `${((analytics.active_subscribers / analytics.total_subscribers) * 100).toFixed(1)}%`,
+      change: pct(analytics.active_subscribers, analytics.total_subscribers),
       trend: 'up',
       icon: CheckCircleIcon,
       color: 'text-green-600',
@@ -840,18 +833,20 @@ const OverviewTab = ({ analytics, loading, onNavigate }: {
     },
     {
       title: 'Average Open Rate',
-      value: `${analytics.average_open_rate.toFixed(1)}%`,
-      change: 'Industry avg: 21.3%',
-      trend: analytics.average_open_rate > 21.3 ? 'up' : 'down',
+      // Opens are not recorded (no tracking pixel), so there is no rate to show or compare.
+      value: 'Not tracked',
+      change: 'Opens are not measured',
+      trend: 'none',
       icon: EnvelopeIcon,
       color: 'text-purple-600',
       onClick: () => onNavigate('analytics')
     },
     {
       title: 'Average Click Rate',
-      value: `${analytics.average_click_rate.toFixed(1)}%`,
-      change: 'Industry avg: 2.6%',
-      trend: analytics.average_click_rate > 2.6 ? 'up' : 'down',
+      // Clicks are not recorded (links are not tracked).
+      value: 'Not tracked',
+      change: 'Clicks are not measured',
+      trend: 'none',
       icon: ChartBarIcon,
       color: 'text-orange-600',
       onClick: () => onNavigate('analytics')
@@ -859,7 +854,7 @@ const OverviewTab = ({ analytics, loading, onNavigate }: {
     {
       title: 'GDPR Consented',
       value: analytics.gdpr_compliance.consented.toLocaleString(),
-      change: `${((analytics.gdpr_compliance.consented / analytics.total_subscribers) * 100).toFixed(1)}%`,
+      change: pct(analytics.gdpr_compliance.consented, analytics.total_subscribers),
       trend: 'up',
       icon: ShieldCheckIcon,
       color: 'text-green-600',
@@ -877,7 +872,7 @@ const OverviewTab = ({ analytics, loading, onNavigate }: {
     {
       title: 'Unsubscribed',
       value: analytics.unsubscribed_subscribers.toLocaleString(),
-      change: `${((analytics.unsubscribed_subscribers / analytics.total_subscribers) * 100).toFixed(1)}%`,
+      change: pct(analytics.unsubscribed_subscribers, analytics.total_subscribers),
       trend: 'down',
       icon: XCircleIcon,
       color: 'text-gray-600',
@@ -1146,24 +1141,11 @@ const SubscribersTab = ({
                 options={[
                   { value: 'all', label: 'All' },
                   { value: 'consented', label: 'Consented' },
-                  { value: 'pending', label: 'Pending' },
-                  { value: 'expired', label: 'Expired' }
+                  { value: 'pending', label: 'Pending' }
                 ]}
               />
 
-              <AdminSelect
-                id="filter-engagement"
-                label="Engagement"
-                value={filters.engagement}
-                onChange={(e) => onFilterChange('engagement', e.target.value)}
-                options={[
-                  { value: 'all', label: 'All Levels' },
-                  { value: 'high', label: 'High' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'low', label: 'Low' },
-                  { value: 'inactive', label: 'Inactive' }
-                ]}
-              />
+              {/* W6: the engagement filter was removed; it was based on opens, which are not tracked. */}
 
               <AdminSelect
                 id="filter-location"
@@ -1274,7 +1256,7 @@ const SubscribersTab = ({
                           {getEngagementLevel(subscriber).level}
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {subscriber.analytics.open_rate.toFixed(1)}% open rate
+                          {(subscriber.analytics.total_emails_sent || 0).toLocaleString()} email(s) sent
                         </div>
                       </div>
                     </td>
@@ -1653,8 +1635,8 @@ const AnalyticsTab = ({ analytics, loading, subscribers }: {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Open Rate</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.average_open_rate.toFixed(1)}%</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Industry: 21.3%</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">Not tracked</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Opens are not measured</p>
               </div>
               <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
                 <EnvelopeIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -1668,8 +1650,8 @@ const AnalyticsTab = ({ analytics, loading, subscribers }: {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Click Rate</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.average_click_rate.toFixed(1)}%</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Industry: 2.6%</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">Not tracked</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Clicks are not measured</p>
               </div>
               <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
                 <ChartBarIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
@@ -1856,7 +1838,7 @@ const CampaignsTab = ({ subscribers }: {
   useEffect(() => { loadCounts(); }, [subscribers.length]);
   const segments = [
     { value: 'active', label: 'All confirmed subscribers' },
-    { value: 'high_engagement', label: 'High engagement (opened over 50%)' },
+    // (no engagement segment: opens are not tracked, so it would always be empty)
     { value: 'new', label: 'Joined in the last 30 days' }
   ].map(s => ({ ...s, count: counts ? counts[s.value] ?? 0 : null as number | null }));
   const target = segments.find(s => s.value === selectedSegment);
