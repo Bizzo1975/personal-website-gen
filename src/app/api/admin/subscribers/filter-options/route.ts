@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
 
     // Get all unique locations (countries)
     const locationsResult = await query(`
-      SELECT DISTINCT metadata->>'location'->>'country' as country
+      SELECT DISTINCT metadata->'location'->>'country' as country
       FROM newsletter_subscribers
-      WHERE metadata->>'location'->>'country' IS NOT NULL
+      WHERE metadata->'location'->>'country' IS NOT NULL
       ORDER BY country
     `);
 

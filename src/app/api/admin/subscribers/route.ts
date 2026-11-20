@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
 
     // Location filter
     if (location) {
-      whereConditions.push(`metadata->>'location'->>'country' = $${paramIndex}`);
+      whereConditions.push(`metadata->'location'->>'country' = $${paramIndex}`);
       queryParams.push(location);
       paramIndex++;
     }

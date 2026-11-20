@@ -130,11 +130,11 @@ export async function GET(request: NextRequest) {
     // Get geographic distribution
     const geoResult = await query(`
       SELECT 
-        metadata->>'location'->>'country' as country,
+        metadata->'location'->>'country' as country,
         COUNT(*) as count
       FROM newsletter_subscribers
-      WHERE metadata->>'location'->>'country' IS NOT NULL
-      GROUP BY metadata->>'location'->>'country'
+      WHERE metadata->'location'->>'country' IS NOT NULL
+      GROUP BY metadata->'location'->>'country'
       ORDER BY count DESC
       LIMIT 10
     `);
