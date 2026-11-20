@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
+import { checkCampaignStatusChange } from '@/lib/newsletter/campaign-status';
 
 // GET - Fetch individual newsletter campaign
 export async function GET(
@@ -134,14 +135,13 @@ export async function PUT(
     }
     
     const currentStatus = campaignResult.rows[0].status;
-    
-    if (currentStatus === 'sent' && !status) {
-      return NextResponse.json(
-        { error: 'Cannot modify sent campaign' },
-        { status: 409 }
-      );
+
+    const statusCheck = checkCampaignStatusChange(currentStatus, status, scheduledSendAt);
+    if (!statusCheck.ok) {
+      return NextResponse.json({ error: statusCheck.error }, { status: statusCheck.httpStatus });
     }
-    
+
+    // Generate slug from title
     // Generate slug from title
     const slug = title.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -189,7 +189,7 @@ export async function PUT(
         }),
         JSON.stringify(targetAccessLevels || ['all']),
         scheduledSendAt || null,
-        status || currentStatus,
+        statusCheck.status,
         id
       ]
     );

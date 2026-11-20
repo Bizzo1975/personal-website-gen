@@ -115,6 +115,10 @@ export const authOptions: NextAuthOptions = {
       if (session?.user && token?.role) {
         session.user.role = token.role as string;
       }
+      // Expose the database user id; routes record it as created_by (W28).
+      if (session?.user && token?.sub) {
+        (session.user as { id?: string }).id = token.sub;
+      }
       return session;
     }
   }

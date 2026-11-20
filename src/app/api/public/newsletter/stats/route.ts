@@ -2,31 +2,21 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
 /**
- * Public API endpoint to get newsletter subscriber count
- * No authentication required - safe for public use
+ * Public subscriber count. Counts only confirmed, active subscribers (double opt-in).
+ * On a database error it returns 503 instead of a fake 0.
  */
 export async function GET() {
   try {
-    // Query the database for active subscriber count only
     const result = await query(
-      'SELECT COUNT(*) as count FROM newsletter_subscribers WHERE is_active = true'
+      `SELECT COUNT(*) as count FROM newsletter_subscribers
+        WHERE is_active = true AND is_confirmed = true AND unsubscribed_at IS NULL`
     );
-
-    const activeSubscribers = parseInt(result.rows[0].count || '0');
-
-    // Return only the public-safe information
     return NextResponse.json({
-      totalSubscribers: activeSubscribers,
+      totalSubscribers: parseInt(result.rows[0].count || '0'),
       success: true
     });
   } catch (error) {
     console.error('Public newsletter stats API error:', error);
-    
-    // Return 0 on error so the UI doesn't break
-    return NextResponse.json({
-      totalSubscribers: 0,
-      success: false
-    });
+    return NextResponse.json({ success: false, error: 'Subscriber count unavailable' }, { status: 503 });
   }
 }
-

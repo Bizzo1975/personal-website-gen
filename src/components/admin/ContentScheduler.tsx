@@ -14,6 +14,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import Button from '@/components/Button';
+import { toDateTimeLocalValue, fromDateTimeLocalValue } from '@/lib/datetime-local';
 import CalendarView, { ScheduledContentItem } from './CalendarView';
 import RecurringContentModal from './RecurringContentModal';
 
@@ -432,9 +433,11 @@ const ScheduleModal: React.FC<{
     
     // Pre-fill date if provided from calendar
     if (preselectedDate) {
-      const date = new Date(preselectedDate);
-      setScheduledDate(date.toISOString().split('T')[0]);
-      setScheduledTime(date.toTimeString().slice(0, 5));
+      const local = toDateTimeLocalValue(preselectedDate);
+      if (local) {
+        setScheduledDate(local.slice(0, 10));
+        setScheduledTime(local.slice(11, 16));
+      }
     }
   }, [preselectedDate]);
 
@@ -453,8 +456,8 @@ const ScheduleModal: React.FC<{
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedContentId && scheduledDate && scheduledTime) {
-      const fullDateTime = `${scheduledDate}T${scheduledTime}`;
-      onSchedule(selectedContentId, fullDateTime);
+      const utc = fromDateTimeLocalValue(`${scheduledDate}T${scheduledTime}`);
+      if (utc) onSchedule(selectedContentId, utc);
     }
   };
 
@@ -536,19 +539,20 @@ const EditScheduleModal: React.FC<{
   const [scheduledTime, setScheduledTime] = useState('');
 
   useEffect(() => {
-    const date = new Date(content.scheduledDate);
-    setScheduledDate(date.toISOString().split('T')[0]);
-    setScheduledTime(date.toTimeString().slice(0, 5));
+    const local = toDateTimeLocalValue(content.scheduledDate);
+    setScheduledDate(local.slice(0, 10));
+    setScheduledTime(local.slice(11, 16));
   }, [content]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const fullDateTime = `${scheduledDate}T${scheduledTime}`;
+      const utc = fromDateTimeLocalValue(`${scheduledDate}T${scheduledTime}`);
+      if (!utc) return;
       const response = await fetch(`/api/admin/scheduled-content/${content.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduledDate: fullDateTime })
+        body: JSON.stringify({ scheduledDate: utc })
       });
 
       if (response.ok) {

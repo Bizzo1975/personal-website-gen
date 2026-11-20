@@ -254,8 +254,8 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
       setIsSubscribed(true);
       onSuccess?.(email);
       
-      // Update subscriber count after successful subscription
-      setDbSubscriberCount(prev => prev + 1);
+      // The subscriber count is not incremented here: a signup only counts once it
+      // has been confirmed by email (double opt-in).
       
       // Track successful subscription
       if (typeof window !== 'undefined' && (window as any).gtag) {
@@ -360,12 +360,14 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({
         {/* Social Proof */}
         {showSocialProof && (
           <div className="flex items-center justify-center gap-4 text-sm text-slate-600 dark:text-slate-400">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{currentSubscriberCount.toLocaleString()}+ subscribers</span>
-            </div>
+            {currentSubscriberCount > 0 && (
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{currentSubscriberCount.toLocaleString()} confirmed {currentSubscriberCount === 1 ? 'subscriber' : 'subscribers'}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />

@@ -16,6 +16,8 @@ import {
 import AdminLayout from '@/app/admin/components/AdminLayout';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import Button from '@/components/Button';
+import { fromDateTimeLocalValue } from '@/lib/datetime-local';
+import { sendCampaignNow } from '@/lib/newsletter/send-now-client';
 
 interface CampaignFormData {
   title: string;
@@ -232,13 +234,23 @@ const CreateCampaignPage: React.FC = () => {
           plainTextContent: formData.plainTextContent,
           templateId: formData.templateId || null,
           type: formData.type,
-          scheduledSendAt: formData.sendImmediately ? null : formData.scheduledSendAt,
+          scheduledSendAt: formData.sendImmediately ? null : fromDateTimeLocalValue(formData.scheduledSendAt),
+          status: formData.sendImmediately ? 'draft' : 'scheduled',
           permissions: formData.permissions,
           targetAccessLevels: formData.targetAccessLevels
         })
       });
 
       if (response.ok) {
+        if (formData.sendImmediately) {
+          const created = await response.json();
+          const result = await sendCampaignNow(created.campaign.id);
+          if (!result.ok) {
+            // Saved as a draft but not sent: open it so the error is visible and can be retried.
+            router.push(`/admin/newsletter/campaigns/${created.campaign.id}/edit?sendError=${encodeURIComponent(result.message)}`);
+            return;
+          }
+        }
         router.push('/admin/content-management?tab=newsletter-campaigns');
       } else {
         const error = await response.json();

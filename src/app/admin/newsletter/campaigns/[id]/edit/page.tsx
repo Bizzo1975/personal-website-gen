@@ -17,6 +17,8 @@ import {
 import AdminLayout from '@/app/admin/components/AdminLayout';
 import Card, { CardBody, CardHeader } from '@/components/Card';
 import Button from '@/components/Button';
+import { toDateTimeLocalValue, fromDateTimeLocalValue } from '@/lib/datetime-local';
+import { sendCampaignNow } from '@/lib/newsletter/send-now-client';
 
 interface CampaignFormData {
   id: string;
@@ -104,6 +106,7 @@ const EditCampaignPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState('details');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [sendMessage, setSendMessage] = useState('');
 
   useEffect(() => {
     if (campaignId) {
@@ -111,6 +114,12 @@ const EditCampaignPage: React.FC = () => {
       fetchTemplates();
     }
   }, [campaignId]);
+
+  // "Create and send immediately" lands here when the send did not go through.
+  useEffect(() => {
+    const sendError = new URLSearchParams(window.location.search).get('sendError');
+    if (sendError) setErrors((prev) => ({ ...prev, submit: `Saved as a draft, but not sent: ${sendError}` }));
+  }, []);
 
   const fetchCampaign = async () => {
     try {
@@ -129,7 +138,7 @@ const EditCampaignPage: React.FC = () => {
           plainTextContent: campaign.plain_text_content || '',
           templateId: campaign.template_id || '',
           type: campaign.type,
-          scheduledSendAt: campaign.scheduled_send_at ? new Date(campaign.scheduled_send_at).toISOString().slice(0, 16) : '',
+          scheduledSendAt: toDateTimeLocalValue(campaign.scheduled_send_at),
           sendImmediately: !campaign.scheduled_send_at,
           status: campaign.status,
           targetAccessLevels: campaign.target_access_levels || ['all'],
@@ -273,13 +282,28 @@ const EditCampaignPage: React.FC = () => {
           plainTextContent: formData.plainTextContent,
           templateId: formData.templateId || null,
           type: formData.type,
-          scheduledSendAt: formData.sendImmediately ? null : formData.scheduledSendAt,
+          scheduledSendAt: formData.sendImmediately ? null : fromDateTimeLocalValue(formData.scheduledSendAt),
+          // Scheduling sets 'scheduled'; choosing "send immediately" takes a scheduled
+          // campaign back to draft first, then sends it below.
+          status: formData.sendImmediately
+            ? (formData.status === 'scheduled' ? 'draft' : formData.status)
+            : 'scheduled',
           permissions: formData.permissions,
           targetAccessLevels: formData.targetAccessLevels
         })
       });
 
       if (response.ok) {
+        if (formData.sendImmediately) {
+          const result = await sendCampaignNow(formData.id);
+          if (!result.ok) {
+            setErrors({ submit: `Saved, but not sent: ${result.message}` });
+            await fetchCampaign();
+            return;
+          }
+          setSendMessage(result.message);
+          await fetchCampaign();
+        }
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
@@ -403,7 +427,7 @@ const EditCampaignPage: React.FC = () => {
                     Campaign Updated Successfully
                   </h4>
                   <p className="text-sm text-green-700 dark:text-green-300">
-                    Your campaign has been saved.
+                    Your campaign has been saved.{sendMessage ? ` ${sendMessage}` : ''}
                   </p>
                 </div>
               </div>

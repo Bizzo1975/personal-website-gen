@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
-import { listmonkSubscribe } from '@/lib/services/listmonk-subscribe';
+import { sendConfirmation } from '@/lib/newsletter/delivery';
 
 // POST - Subscribe to newsletter
 export async function POST(request: NextRequest) {
@@ -18,94 +18,66 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check if subscriber already exists
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Existing subscriber?
     const existingResult = await query(
-      'SELECT id, is_active, unsubscribed_at FROM newsletter_subscribers WHERE email = $1',
-      [email.toLowerCase().trim()]
+      'SELECT id, is_active, is_confirmed, unsubscribed_at FROM newsletter_subscribers WHERE email = $1',
+      [normalizedEmail]
     );
-    
+
+    let subscriberId: string;
     if (existingResult.rows.length > 0) {
       const existing = existingResult.rows[0];
-      
-      if (existing.is_active) {
-        return NextResponse.json(
-          { error: 'This email is already subscribed' },
-          { status: 409 }
-        );
-      } else {
-        // Reactivate previously unsubscribed user
-        await query(
-          `UPDATE newsletter_subscribers 
-           SET is_active = true, 
-               unsubscribed_at = NULL, 
-               unsubscribe_reason = NULL,
-               updated_at = CURRENT_TIMESTAMP
-           WHERE id = $1`,
-          [existing.id]
-        );
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Welcome back! Your subscription has been reactivated.',
-          subscriber: { email, reactivated: true }
-        });
+      if (existing.is_active && existing.is_confirmed) {
+        return NextResponse.json({ error: 'This email is already subscribed' }, { status: 409 });
       }
-    }
-    
-    // Create new subscriber
-    const result = await query(
-      `INSERT INTO newsletter_subscribers 
-       (email, name, first_name, last_name, phone, company, interests, 
-        subscription_source, metadata, is_active, created_at, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-       RETURNING id, email, name, created_at`,
-      [
-        email.toLowerCase().trim(),
-        name || null,
-        firstName || null,
-        lastName || null,
-        phone || null,
-        company || null,
-        interests || null,
-        source || 'website',
-        metadata || {}
-      ]
-    );
-    
-    const subscriber = result.rows[0];
-    
-    // Send welcome email (if enabled)
-    try {
-      await sendWelcomeEmail(subscriber);
-
-    // Also subscribe in Listmonk when configured (double opt-in per list settings)
-    try {
-      const lm = await listmonkSubscribe({
-        email: email.toLowerCase().trim(),
-        name: name || [firstName, lastName].filter(Boolean).join(' ') || undefined,
-        attribs: { source: source || 'website', ...(metadata || {}) },
-      });
-      if (!lm.ok) {
-        console.warn('Listmonk subscribe skipped/failed:', lm.error);
-      }
-    } catch (lmErr) {
-      console.warn('Listmonk subscribe error:', lmErr);
+      // Unconfirmed or previously unsubscribed: (re)start double opt-in.
+      await query(
+        `UPDATE newsletter_subscribers
+            SET is_active = true, is_confirmed = false, unsubscribed_at = NULL, unsubscribe_reason = NULL,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1`,
+        [existing.id]
+      );
+      subscriberId = existing.id;
+    } else {
+      const result = await query(
+        `INSERT INTO newsletter_subscribers
+         (email, name, first_name, last_name, phone, company, interests,
+          subscription_source, metadata, is_active, is_confirmed, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         RETURNING id`,
+        [
+          normalizedEmail,
+          name || null,
+          firstName || null,
+          lastName || null,
+          phone || null,
+          company || null,
+          interests || null,
+          source || 'website',
+          metadata || {}
+        ]
+      );
+      subscriberId = result.rows[0].id;
     }
 
-    } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
-      // Continue even if email fails
+    // Double opt-in: the subscription only becomes active for campaigns after the
+    // subscriber clicks the emailed link. If the email cannot be sent, say so.
+    const sent = await sendConfirmation(subscriberId);
+    if (!sent.ok) {
+      console.error('Newsletter confirmation email failed:', sent.error);
+      return NextResponse.json(
+        { error: 'We could not send the confirmation email right now. Please try again later.' },
+        { status: 502 }
+      );
     }
-    
+
     return NextResponse.json({
       success: true,
-      message: 'Successfully subscribed to newsletter!',
-      subscriber: {
-        id: subscriber.id,
-        email: subscriber.email,
-        name: subscriber.name,
-        subscribedAt: subscriber.created_at
-      }
+      pendingConfirmation: true,
+      message: 'Check your inbox and click the link to confirm your subscription.'
     });
   } catch (error) {
     console.error('Error subscribing to newsletter:', error);
@@ -240,28 +212,3 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// Helper function to send welcome email
-async function sendWelcomeEmail(subscriber: any) {
-  // Get welcome template
-  const templateResult = await query(
-    'SELECT * FROM newsletter_templates WHERE type = $1 AND is_active = true LIMIT 1',
-    ['welcome']
-  );
-  
-  if (templateResult.rows.length === 0) {
-    console.log('No welcome template found');
-    return;
-  }
-  
-  const template = templateResult.rows[0];
-  
-  // TODO: Implement actual email sending with SendGrid
-  // For now, we'll just log it
-  console.log('Welcome email would be sent to:', subscriber.email);
-  console.log('Template:', template.name);
-  
-  // In a real implementation, you would:
-  // 1. Process template variables
-  // 2. Send via SendGrid API
-  // 3. Log the email in newsletter_analytics
-} 

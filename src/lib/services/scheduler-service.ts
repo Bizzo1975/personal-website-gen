@@ -1,6 +1,7 @@
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { notifyMeManagerTeaser } from '@/lib/me-manager-teaser';
+import { sendCampaign } from '@/lib/newsletter/delivery';
 
 /**
  * Scheduler Service for Automated Content Publishing
@@ -47,7 +48,7 @@ export class SchedulerService {
 
       // Send scheduled newsletters
       await this.sendScheduledNewsletters(now);
-      console.log(`📧 Sent ${newsletterCount} scheduled newsletters`);
+      console.log(`📧 Processed ${newsletterCount} due newsletters (per-campaign results logged above)`);
 
       return stats;
     } catch (error) {
@@ -119,114 +120,44 @@ export class SchedulerService {
   }
 
   /**
-   * Send newsletters that are scheduled to be sent
+   * Send newsletters whose scheduled time has passed, through real delivery
+   * (lib/newsletter/delivery). A campaign stuck in 'sending' for over an hour
+   * (process stopped mid-send) is marked 'failed' — it is not re-sent
+   * automatically, because some recipients may already have it.
    */
   private static async sendScheduledNewsletters(now: Date): Promise<void> {
-    const result = await query(
-      `SELECT * FROM newsletter_campaigns 
-       WHERE status = 'scheduled' 
-         AND scheduled_send_at <= $1`,
+    await query(
+      `UPDATE newsletter_campaigns
+          SET status = 'failed',
+              last_error = 'Sending was interrupted; check the send log before re-sending',
+              updated_at = CURRENT_TIMESTAMP
+        WHERE status = 'sending' AND send_started_at < $1::timestamp - interval '1 hour'`,
       [now]
     );
 
-    for (const campaign of result.rows) {
-      try {
-        // Update status to 'sending'
+    const due = await query(
+      `SELECT id, title FROM newsletter_campaigns
+        WHERE status = 'scheduled' AND scheduled_send_at <= $1
+        ORDER BY scheduled_send_at`,
+      [now]
+    );
+
+    for (const campaign of due.rows) {
+      const outcome = await sendCampaign(campaign.id, ['scheduled']);
+      if (outcome.status === 'not_sent') {
+        // Not claimed or nobody to send to: record why and leave it scheduled for the operator.
         await query(
-          'UPDATE newsletter_campaigns SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          ['sending', campaign.id]
+          `UPDATE newsletter_campaigns SET last_error = $2, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1 AND status = 'scheduled'`,
+          [campaign.id, outcome.error || 'Not sent']
         );
-
-        // Send the newsletter
-        const recipientCount = await this.sendNewsletter(campaign);
-
-        // Update status to 'sent' with recipient count
-        await query(
-          `UPDATE newsletter_campaigns 
-           SET status = $1, 
-               sent_at = CURRENT_TIMESTAMP, 
-               recipient_count = $2,
-               updated_at = CURRENT_TIMESTAMP 
-           WHERE id = $3`,
-          ['sent', recipientCount, campaign.id]
-        );
-
-        console.log(`✅ Sent newsletter: "${campaign.title}" to ${recipientCount} recipients`);
-      } catch (error) {
-        console.error(`❌ Failed to send newsletter "${campaign.title}":`, error);
-        
-        // Update status to 'draft' to allow retry
-        await query(
-          'UPDATE newsletter_campaigns SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          ['draft', campaign.id]
+        console.error(`❌ Newsletter "${campaign.title}" not sent: ${outcome.error}`);
+      } else {
+        console.log(
+          `${outcome.ok ? '✅' : '❌'} Newsletter "${campaign.title}": ${outcome.sent}/${outcome.recipients} sent, ${outcome.failed} failed`
         );
       }
     }
-  }
-
-  /**
-   * Send a newsletter campaign to targeted users
-   */
-  private static async sendNewsletter(campaign: any): Promise<number> {
-    try {
-      // Get recipients based on target access levels
-      const recipients = await this.getNewsletterRecipients(campaign.target_access_levels);
-      
-      // In a real implementation, you would integrate with an email service
-      // For now, we'll just log the sending action
-      console.log(`📨 Sending newsletter "${campaign.title}" to ${recipients.length} recipients`);
-      
-      // TODO: Integrate with email service provider (SendGrid, Mailgun, etc.)
-      // Example:
-      // await this.sendEmail({
-      //   to: recipients,
-      //   subject: campaign.subject,
-      //   html: campaign.content,
-      //   from: process.env.NEWSLETTER_FROM_EMAIL
-      // });
-
-      return recipients.length;
-    } catch (error) {
-      console.error('Error sending newsletter:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get newsletter recipients based on access levels
-   */
-  private static async getNewsletterRecipients(targetAccessLevels: string[]): Promise<string[]> {
-    const recipients = new Set<string>();
-
-    // If targeting 'all' users, get all users
-    if (targetAccessLevels.includes('all')) {
-      const allUsers = await query('SELECT email FROM users WHERE email IS NOT NULL');
-      allUsers.rows.forEach(user => recipients.add(user.email));
-    }
-
-    // Get users with specific access levels
-    const conditions = [];
-    if (targetAccessLevels.includes('professional')) {
-      conditions.push('has_professional_access = true');
-    }
-    if (targetAccessLevels.includes('personal')) {
-      conditions.push('has_personal_access = true');
-    }
-
-    if (conditions.length > 0) {
-      const whereClause = conditions.join(' OR ');
-      const accessUsers = await query(
-        `SELECT email FROM user_access_levels 
-         WHERE (${whereClause}) AND is_active = true`
-      );
-      accessUsers.rows.forEach(user => recipients.add(user.email));
-    }
-
-    // Also get newsletter subscribers if they exist
-    const subscribers = await query('SELECT email FROM newsletter_subscribers WHERE is_active = true');
-    subscribers.rows.forEach(subscriber => recipients.add(subscriber.email));
-
-    return Array.from(recipients);
   }
 
   /**

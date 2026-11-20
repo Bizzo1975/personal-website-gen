@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
+import { checkCampaignStatusChange } from '@/lib/newsletter/campaign-status';
 
 // GET - Fetch newsletter campaigns
 export async function GET(request: NextRequest) {
@@ -112,7 +113,8 @@ export async function POST(request: NextRequest) {
       type,
       permissions,
       targetAccessLevels,
-      scheduledSendAt
+      scheduledSendAt,
+      status: requestedStatus
     } = body;
     
     // Basic validation
@@ -121,6 +123,13 @@ export async function POST(request: NextRequest) {
         { error: 'Title, subject, and content are required' },
         { status: 400 }
       );
+    }
+
+    // A new campaign starts as a draft; it may be created as scheduled (with a valid
+    // date) but never as sending/sent/failed.
+    const statusCheck = checkCampaignStatusChange('draft', requestedStatus, scheduledSendAt);
+    if (!statusCheck.ok) {
+      return NextResponse.json({ error: statusCheck.error }, { status: statusCheck.httpStatus });
     }
     
     // Generate slug from title
@@ -146,8 +155,8 @@ export async function POST(request: NextRequest) {
       `INSERT INTO newsletter_campaigns 
        (title, slug, subject, preview_text, content, html_content, plain_text_content, 
         template_id, type, permissions, target_access_levels, scheduled_send_at, 
-        author, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        author, created_by, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING id, title, slug, subject, preview_text, status, type, 
                  scheduled_send_at, sent_at, recipient_count, author, created_at, updated_at`,
       [
@@ -171,7 +180,8 @@ export async function POST(request: NextRequest) {
         targetAccessLevels || ['all'],
         scheduledSendAt || null,
         session.user.name || 'admin',
-        session.user.id
+        session.user.id,
+        statusCheck.status
       ]
     );
     
@@ -239,14 +249,13 @@ export async function PUT(request: NextRequest) {
     }
     
     const currentStatus = campaignResult.rows[0].status;
-    
-    if (currentStatus === 'sent' && !status) {
-      return NextResponse.json(
-        { error: 'Cannot modify sent campaign' },
-        { status: 409 }
-      );
+
+    const statusCheck = checkCampaignStatusChange(currentStatus, status, scheduledSendAt);
+    if (!statusCheck.ok) {
+      return NextResponse.json({ error: statusCheck.error }, { status: statusCheck.httpStatus });
     }
-    
+
+    // Generate slug from title
     // Generate slug from title
     const slug = title.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -295,7 +304,7 @@ export async function PUT(request: NextRequest) {
         },
         targetAccessLevels || ['all'],
         scheduledSendAt || null,
-        status || currentStatus,
+        statusCheck.status,
         id
       ]
     );

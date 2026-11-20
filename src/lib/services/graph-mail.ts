@@ -59,6 +59,56 @@ export function graphConfigured(): boolean {
   )
 }
 
+export type GraphMessage = {
+  to: string
+  subject: string
+  html: string
+  from?: string
+  replyTo?: string
+  saveToSentItems?: boolean
+}
+
+export type GraphSendResult = { ok: true } | { ok: false; status?: number; error: string }
+
+/**
+ * Send one HTML message and report the real outcome (never assumes success).
+ * Graph returns 202 Accepted when the message is queued for delivery.
+ */
+export async function graphSendMessage(msg: GraphMessage): Promise<GraphSendResult> {
+  if (!graphConfigured()) {
+    return { ok: false, error: 'Microsoft Graph mail is not configured (GRAPH_TENANT_ID/CLIENT_ID/CLIENT_SECRET)' }
+  }
+  let token: string
+  try {
+    token = await graphToken()
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+  const message: Record<string, unknown> = {
+    subject: msg.subject,
+    body: { contentType: 'HTML', content: msg.html },
+    from: { emailAddress: { address: msg.from || graphBrandFrom() } },
+    toRecipients: [{ emailAddress: { address: msg.to } }],
+  }
+  if (msg.replyTo) message.replyTo = [{ emailAddress: { address: msg.replyTo } }]
+  let res: Response
+  try {
+    res = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(graphSendAsMailbox())}/sendMail`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, saveToSentItems: msg.saveToSentItems ?? false }),
+      }
+    )
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+  if (res.ok) return { ok: true }
+  const text = await res.text().catch(() => '')
+  return { ok: false, status: res.status, error: text.slice(0, 500) || `HTTP ${res.status}` }
+}
+
 export async function graphSendMail(opts: GraphSendOpts): Promise<boolean> {
   const token = await graphToken()
   const sendAs = graphSendAsMailbox()
