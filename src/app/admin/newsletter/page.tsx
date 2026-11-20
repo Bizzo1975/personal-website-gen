@@ -79,17 +79,7 @@ interface NewsletterContent {
 }
 
 const NewsletterAdminPage: React.FC = () => {
-  const [stats, setStats] = useState<NewsletterDashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [newsletterStats, setNewsletterStats] = useState<NewsletterStats>({
-    totalNewsletters: 0,
-    totalSubscribers: 0,
-    totalCampaigns: 0,
-    pendingCampaigns: 0,
-    averageOpenRate: 0,
-    averageClickRate: 0,
-  });
   const [content, setContent] = useState<NewsletterContent>({
     title: 'Stay in the Loop',
     description: 'Get notified about new projects, blog posts, and insights on modern web development.',
@@ -134,156 +124,22 @@ const NewsletterAdminPage: React.FC = () => {
   ];
 
   useEffect(() => {
-    fetchDashboardStats();
-    fetchStats();
     fetchNewsletterContent();
   }, []);
 
-  const fetchDashboardStats = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Mock data for development - replace with actual API calls
-      const mockStats: NewsletterDashboardStats = {
-        totalNewsletters: 24,
-        totalSubscribers: 0,
-        activeSubscribers: 2683,
-        recentNewsletters: [
-          {
-            id: '1',
-            title: 'Weekly Web Dev Digest #47',
-            slug: 'weekly-digest-47',
-            subject: 'Advanced React Patterns & Next.js 14 Updates',
-            previewText: 'This week: React patterns, Next.js updates, and performance tips',
-            content: '',
-            htmlContent: '',
-            plainTextContent: '',
-            status: 'sent',
-            type: 'blog_digest',
-            permissions: {
-              level: 'all',
-              allowedRoles: ['admin', 'editor', 'author', 'subscriber', 'guest'],
-              allowedUsers: [],
-              restrictedUsers: [],
-              requiresAuth: false,
-              customRules: []
-            },
-            template: 'digest',
-            author: 'admin',
-            createdAt: new Date('2024-01-15'),
-            updatedAt: new Date('2024-01-15'),
-            sentAt: new Date('2024-01-15'),
-            stats: {
-              totalSent: 2683,
-              delivered: 2671,
-              opened: 1605,
-              clicked: 483,
-              unsubscribed: 12,
-              bounced: 12,
-              openRate: 60.1,
-              clickRate: 18.0,
-              unsubscribeRate: 0.4,
-              bounceRate: 0.4,
-              topLinks: []
-            }
-          },
-          {
-            id: '2',
-            title: 'New Project Launch Announcement',
-            slug: 'project-launch-announcement',
-            subject: 'Introducing Our Latest Open Source Project',
-            previewText: 'We are excited to announce the launch of our new project',
-            content: '',
-            htmlContent: '',
-            plainTextContent: '',
-            status: 'scheduled',
-            type: 'announcement',
-            permissions: {
-              level: 'professional',
-              allowedRoles: ['admin', 'editor', 'author'],
-              allowedUsers: [],
-              restrictedUsers: [],
-              requiresAuth: true,
-              customRules: []
-            },
-            template: 'announcement',
-            author: 'admin',
-            createdAt: new Date('2024-01-14'),
-            updatedAt: new Date('2024-01-14'),
-            scheduledAt: new Date('2024-01-18')
-          }
-        ],
-        recentSubscribers: [
-          {
-            id: '1',
-            email: 'john.developer@email.com',
-            firstName: 'John',
-            interests: ['React', 'Next.js', 'TypeScript'],
-            source: 'blog',
-            status: 'active',
-            accessLevel: 'all',
-            userRole: 'subscriber',
-            frequency: 'weekly',
-            contentTypes: ['blog_posts', 'projects'],
-            subscribedAt: new Date('2024-01-14'),
-            confirmedAt: new Date('2024-01-14'),
-            openRate: 75.0,
-            clickRate: 25.0,
-            totalEmailsReceived: 8,
-            totalEmailsOpened: 6,
-            totalLinksClicked: 2,
-            tags: ['developer', 'frontend'],
-            customFields: {
-              company: 'Tech Corp',
-              jobTitle: 'Frontend Developer'
-            }
-          }
-        ],
-        analytics: {
-          averageOpenRate: 58.2,
-          averageClickRate: 16.7,
-          newSubscribers: 47,
-          netGrowth: 35
-        }
-      };
-      
-      setStats(mockStats);
-    } catch (error) {
-      console.error('Error fetching newsletter stats:', error);
-      setError('Failed to load newsletter data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch('/api/newsletter/admin/stats');
-      if (response.ok) {
-        const data = await response.json();
-        setNewsletterStats({
-          totalNewsletters: data.totalNewsletters || 0,
-          totalSubscribers: data.totalSubscribers || 0,
-          totalCampaigns: data.totalCampaigns || 0,
-          pendingCampaigns: data.pendingCampaigns || 0,
-          averageOpenRate: data.averageOpenRate || 0,
-          averageClickRate: data.averageClickRate || 0,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch newsletter stats:', error);
-    }
-  };
+  // (W19) The mock dashboard stats that used to be built here were never displayed; removed.
 
   const fetchNewsletterContent = async () => {
     try {
       const response = await fetch('/api/admin/newsletter-content');
-      if (response.ok) {
-        const data = await response.json();
-        setContent(data);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      setContent(data);
     } catch (error) {
+      // Do not show the built-in defaults as if they were the saved content:
+      // saving them would overwrite what is live.
       console.error('Error fetching newsletter content:', error);
+      setError(`Could not load the current newsletter content (${error instanceof Error ? error.message : String(error)}). Reload to try again.`);
     } finally {
       setLoading(false);
     }
@@ -358,7 +214,7 @@ const NewsletterAdminPage: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="p-6">
         <div className="animate-pulse">

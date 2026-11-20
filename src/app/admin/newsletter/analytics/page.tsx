@@ -1,324 +1,194 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  EyeIcon, 
-  UserMinusIcon, 
-  CursorArrowRaysIcon,
+import React, { useState, useEffect, useCallback } from 'react';
+import {
   EnvelopeIcon,
   UserPlusIcon,
-  ChartBarIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
-  ExclamationTriangleIcon
+  UserMinusIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import AdminLayout from '@/app/admin/components/AdminLayout';
-import Card, { CardBody, CardHeader } from '@/components/Card';
 
-interface AnalyticsData {
-  overview: {
-    totalSubscribers: number;
-    activeSubscribers: number;
-    totalNewsletters: number;
-    totalCampaigns: number;
-  };
-  engagement: {
-    averageOpenRate: number;
-    averageClickRate: number;
-    unsubscribeRate: number;
-    bounceRate: number;
-  };
-  growth: {
-    newSubscribers: number;
-    unsubscribes: number;
-    netGrowth: number;
-  };
+// Mirrors /api/newsletter/admin/stats (database figures only).
+interface Stats {
+  period: string;
+  subscribers: { total: number; confirmed: number; pending: number; inactive: number };
+  campaigns: { sent: number; failed: number; scheduled: number; draft: number };
+  delivery: { emailsSent: number; emailsFailed: number; failureRate: number | null };
+  growth: { newSubscribers: number; unsubscribes: number; netGrowth: number };
+  bySource: { source: string; count: number }[];
 }
 
+const PERIODS = [
+  { value: 'last_7_days', label: 'Last 7 days' },
+  { value: 'last_30_days', label: 'Last 30 days' },
+  { value: 'last_90_days', label: 'Last 90 days' },
+  { value: 'all_time', label: 'All time' },
+];
+
+const fmt = (v: number) => v.toLocaleString();
+// A share of zero is undefined, not 0% or NaN% (W6).
+const share = (part: number, whole: number) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '—');
+
+const Tile = ({ label, value, note, icon }: { label: string; value: string; note?: string; icon: React.ReactNode }) => (
+  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</p>
+        <p className="text-2xl font-semibold text-gray-900 dark:text-white">{value}</p>
+      </div>
+      <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">{icon}</div>
+    </div>
+    {note && <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{note}</p>}
+  </div>
+);
+
+const Row = ({ label, value, sub }: { label: string; value: string; sub?: string }) => (
+  <div className="flex justify-between items-center">
+    <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+    <span className="text-sm font-medium text-gray-900 dark:text-white">
+      {value}{sub && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{sub}</span>}
+    </span>
+  </div>
+);
+
 const AnalyticsPage = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('last_30_days');
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
-    overview: {
-      totalSubscribers: 0,
-      activeSubscribers: 0,
-      totalNewsletters: 0,
-      totalCampaigns: 0,
-    },
-    engagement: {
-      averageOpenRate: 0,
-      averageClickRate: 0,
-      unsubscribeRate: 0,
-      bounceRate: 0,
-    },
-    growth: {
-      newSubscribers: 0,
-      unsubscribes: 0,
-      netGrowth: 0,
-    }
-  });
+  const [period, setPeriod] = useState('last_30_days');
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, []);
-
-  const fetchAnalyticsData = async () => {
+  const load = useCallback(async (p: string) => {
+    setLoading(true);
+    setError('');
     try {
-      const response = await fetch('/api/newsletter/admin/stats');
-      if (response.ok) {
-        const data = await response.json();
-        setAnalyticsData({
-          overview: {
-            totalSubscribers: data.totalSubscribers || 0,
-            activeSubscribers: data.activeSubscribers || 0,
-            totalNewsletters: data.totalNewsletters || 0,
-            totalCampaigns: data.totalCampaigns || 0,
-          },
-          engagement: {
-            averageOpenRate: data.averageOpenRate || 0,
-            averageClickRate: data.averageClickRate || 0,
-            unsubscribeRate: 0,
-            bounceRate: 0,
-          },
-          growth: {
-            newSubscribers: data.subscriberGrowth?.newSubscribers || 0,
-            unsubscribes: data.subscriberGrowth?.unsubscribes || 0,
-            netGrowth: data.subscriberGrowth?.netGrowth || 0,
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch analytics data:', error);
+      const res = await fetch(`/api/newsletter/admin/stats?period=${encodeURIComponent(p)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setStats(data);
+    } catch (e) {
+      setStats(null);
+      setError(`Could not load newsletter statistics: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const formatPercent = (value: number) => `${value.toFixed(1)}%`;
-  const formatNumber = (value: number) => value.toLocaleString();
+  useEffect(() => { load(period); }, [period, load]);
 
-  const getTrendIcon = (isPositive: boolean) => {
-    return isPositive ? (
-      <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />
-    ) : (
-      <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />
-    );
-  };
+  const periodLabel = PERIODS.find((p) => p.value === period)?.label.toLowerCase() || '';
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Newsletter Analytics
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Track performance and engagement metrics for your newsletter campaigns
-          </p>
-        </div>
-        <select
-          value={selectedPeriod}
-          onChange={(e) => setSelectedPeriod(e.target.value)}
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="last_7_days">Last 7 days</option>
-          <option value="last_30_days">Last 30 days</option>
-          <option value="last_90_days">Last 90 days</option>
-          <option value="all_time">All time</option>
-        </select>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Average Open Rate</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {formatPercent(analyticsData.engagement.averageOpenRate)}
-              </p>
-            </div>
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <EyeIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
+    <AdminLayout title="Newsletter Analytics">
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Newsletter Analytics</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Figures from the newsletter database.</p>
           </div>
-          <div className="flex items-center mt-2">
-            {getTrendIcon(true)}
-            <span className="text-sm text-green-600 ml-1">+2.1% from last period</span>
-          </div>
+          <select
+            aria-label="Period"
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          >
+            {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Average Click Rate</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {formatPercent(analyticsData.engagement.averageClickRate)}
-              </p>
-            </div>
-            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-              <CursorArrowRaysIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
+        {error && (
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-300" role="alert">
+            {error}
           </div>
-          <div className="flex items-center mt-2">
-            {getTrendIcon(true)}
-            <span className="text-sm text-green-600 ml-1">+0.8% from last period</span>
-          </div>
-        </div>
+        )}
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Unsubscribe Rate</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {formatPercent(analyticsData.engagement.unsubscribeRate)}
-              </p>
-            </div>
-            <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-              <UserMinusIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
-            </div>
-          </div>
-          <div className="flex items-center mt-2">
-            {getTrendIcon(false)}
-            <span className="text-sm text-red-600 ml-1">+0.1% from last period</span>
-          </div>
-        </div>
+        {loading && !stats && <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>}
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Bounce Rate</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {formatPercent(analyticsData.engagement.bounceRate)}
-              </p>
+        {stats && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Tile
+                label="Confirmed subscribers"
+                value={fmt(stats.subscribers.confirmed)}
+                note="The only people who receive newsletters"
+                icon={<UserPlusIcon className="h-6 w-6 text-green-600 dark:text-green-400" />}
+              />
+              <Tile
+                label={`Emails sent (${periodLabel})`}
+                value={fmt(stats.delivery.emailsSent)}
+                icon={<EnvelopeIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />}
+              />
+              <Tile
+                label={`Failed sends (${periodLabel})`}
+                value={fmt(stats.delivery.emailsFailed)}
+                note={stats.delivery.failureRate === null ? 'No sends attempted' : `${stats.delivery.failureRate.toFixed(1)}% of attempts`}
+                icon={<ExclamationTriangleIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />}
+              />
+              <Tile
+                label={`Unsubscribes (${periodLabel})`}
+                value={fmt(stats.growth.unsubscribes)}
+                icon={<UserMinusIcon className="h-6 w-6 text-red-600 dark:text-red-400" />}
+              />
             </div>
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-              <ExclamationTriangleIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-            </div>
-          </div>
-          <div className="flex items-center mt-2">
-            {getTrendIcon(true)}
-            <span className="text-sm text-green-600 ml-1">-0.2% from last period</span>
-          </div>
-        </div>
-      </div>
 
-      {/* Growth Metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Subscriber Growth */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Subscriber Growth</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-400">New Subscribers</span>
-              <span className="text-sm font-medium text-green-600">{analyticsData.growth.newSubscribers}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Unsubscribes</span>
-              <span className="text-sm font-medium text-red-600">{analyticsData.growth.unsubscribes}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-weight text-gray-900 dark:text-white">Net Growth</span>
-              <span className="text-sm font-medium text-blue-600">{analyticsData.growth.netGrowth}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Audience Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* By Permission Level */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">By Permission Level</h3>
-          <div className="space-y-3">
-            {Object.entries(analyticsData.overview).map(([level, count]) => {
-              const percentage = (count / analyticsData.overview.totalSubscribers) * 100;
-              return (
-                <div key={level} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`w-3 h-3 rounded-full mr-3 ${
-                      level === 'totalSubscribers' ? 'bg-green-500' :
-                      level === 'activeSubscribers' ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}></div>
-                    <span className="text-sm text-gray-900 dark:text-white capitalize">{level}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {formatNumber(count)}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatPercent(percentage)}
-                    </div>
-                  </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Subscribers</h3>
+                <div className="space-y-3">
+                  <Row label="Confirmed" value={fmt(stats.subscribers.confirmed)} sub={share(stats.subscribers.confirmed, stats.subscribers.total)} />
+                  <Row label="Awaiting confirmation" value={fmt(stats.subscribers.pending)} sub={share(stats.subscribers.pending, stats.subscribers.total)} />
+                  <Row label="Unsubscribed or inactive" value={fmt(stats.subscribers.inactive)} sub={share(stats.subscribers.inactive, stats.subscribers.total)} />
+                  <Row label="Total" value={fmt(stats.subscribers.total)} />
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
 
-        {/* By User Role */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">By User Role</h3>
-          <div className="space-y-3">
-            {Object.entries(analyticsData.overview).map(([role, count]) => {
-              const percentage = (count / analyticsData.overview.totalSubscribers) * 100;
-              return (
-                <div key={role} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`w-3 h-3 rounded-full mr-3 ${
-                      role === 'totalSubscribers' ? 'bg-blue-500' :
-                      role === 'activeSubscribers' ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    <span className="text-sm text-gray-900 dark:text-white capitalize">{role}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {formatNumber(count)}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatPercent(percentage)}
-                    </div>
-                  </div>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Growth ({periodLabel})</h3>
+                <div className="space-y-3">
+                  <Row label="New signups" value={fmt(stats.growth.newSubscribers)} />
+                  <Row label="Unsubscribes" value={fmt(stats.growth.unsubscribes)} />
+                  <Row label="Net growth" value={fmt(stats.growth.netGrowth)} />
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
 
-        {/* By Source */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">By Source</h3>
-          <div className="space-y-3">
-            {Object.entries(analyticsData.overview).map(([source, count]) => {
-              const percentage = (count / analyticsData.overview.totalSubscribers) * 100;
-              return (
-                <div key={source} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`w-3 h-3 rounded-full mr-3 ${
-                      source === 'totalSubscribers' ? 'bg-blue-500' :
-                      source === 'activeSubscribers' ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    <span className="text-sm text-gray-900 dark:text-white capitalize">
-                      {source.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {formatNumber(count)}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatPercent(percentage)}
-                    </div>
-                  </div>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Campaigns (all time)</h3>
+                <div className="space-y-3">
+                  <Row label="Sent" value={fmt(stats.campaigns.sent)} />
+                  <Row label="Failed" value={fmt(stats.campaigns.failed)} />
+                  <Row label="Scheduled" value={fmt(stats.campaigns.scheduled)} />
+                  <Row label="Drafts" value={fmt(stats.campaigns.draft)} />
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirmed subscribers by signup source</h3>
+                {stats.bySource.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No confirmed subscribers yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {stats.bySource.map((s) => (
+                      <Row key={s.source} label={s.source} value={fmt(s.count)} sub={share(s.count, stats.subscribers.confirmed)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Not tracked</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Open rate, click rate and bounces are not measured: emails carry no tracking pixel or
+                  tracked links, and bounce notifications are not collected. They are left blank rather than estimated.
+                </p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 
-export default AnalyticsPage; 
+export default AnalyticsPage;

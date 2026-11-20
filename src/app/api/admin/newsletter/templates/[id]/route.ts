@@ -124,7 +124,7 @@ export async function PUT(
     // Update template
     const result = await query(
       `UPDATE newsletter_templates 
-       SET name = $1, description = $2, type = $3, html_content = $4, 
+       SET name = $1, description = $2, type = $3, html_content = $4, template_html = $4,
            plain_text_content = $5, subject_template = $6, preview_text_template = $7, 
            variables = $8, is_active = $9, updated_at = CURRENT_TIMESTAMP
        WHERE id = $10

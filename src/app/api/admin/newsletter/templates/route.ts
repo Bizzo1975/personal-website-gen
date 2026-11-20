@@ -105,8 +105,9 @@ export async function POST(request: NextRequest) {
     const result = await query(
       `INSERT INTO newsletter_templates 
        (name, description, type, html_content, plain_text_content, 
-        subject_template, preview_text_template, variables, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        subject_template, preview_text_template, variables, created_by, template_html)
+       -- template_html is a legacy NOT NULL copy of html_content; without it every insert failed
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $4)
        RETURNING id, name, description, type, subject_template, preview_text_template, 
                  variables, is_active, is_system, usage_count, created_at, updated_at`,
       [
@@ -205,7 +206,7 @@ export async function PUT(request: NextRequest) {
     // Update template
     const result = await query(
       `UPDATE newsletter_templates 
-       SET name = $1, description = $2, type = $3, html_content = $4, 
+       SET name = $1, description = $2, type = $3, html_content = $4, template_html = $4,
            plain_text_content = $5, subject_template = $6, preview_text_template = $7, 
            variables = $8, is_active = $9, updated_at = CURRENT_TIMESTAMP
        WHERE id = $10

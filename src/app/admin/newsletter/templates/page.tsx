@@ -1,293 +1,135 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { 
-  PlusIcon, 
-  EyeIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  DocumentDuplicateIcon,
-  PhotoIcon,
-  CodeBracketIcon,
-  SwatchIcon
-} from '@heroicons/react/24/outline';
-import { NewsletterTemplate } from '@/types/newsletter';
+import { PlusIcon, PencilIcon, EyeIcon, TrashIcon } from '@heroicons/react/24/outline';
+import AdminLayout from '@/app/admin/components/AdminLayout';
+import { TEMPLATE_TYPES } from '@/components/admin/newsletter/TemplateForm';
 
-interface TemplateStats {
-  totalTemplates: number;
-  activeTemplates: number;
-  popularTemplates: NewsletterTemplate[];
-  recentTemplates: NewsletterTemplate[];
+interface TemplateRow {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  is_active: boolean;
+  is_system: boolean;
+  usage_count: number | null;
+  updated_at: string;
 }
 
-const NewsletterTemplatesPage: React.FC = () => {
-  const [templates, setTemplates] = useState<NewsletterTemplate[]>([]);
-  const [stats, setStats] = useState<TemplateStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
+// W19: this list used to be hard-coded mock templates; it now reads the database.
+export default function TemplatesPage() {
+  const [templates, setTemplates] = useState<TemplateRow[] | null>(null);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [type, setType] = useState('all');
+  const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchTemplates();
-  }, []);
-
-  const fetchTemplates = async () => {
+  const load = useCallback(async () => {
     try {
-      setIsLoading(true);
-      
-      // Mock data - replace with actual API call
-      const mockTemplates: NewsletterTemplate[] = [
-        {
-          id: 'basic-clean',
-          name: 'Clean & Simple',
-          description: 'A minimalist template perfect for regular newsletters',
-          previewImage: '/images/templates/clean-simple.jpg',
-          htmlTemplate: '<div>Basic Template</div>',
-          cssStyles: '.basic { color: blue; }',
-          variables: [
-            { name: 'primaryColor', type: 'color', defaultValue: '#3b82f6', description: 'Primary brand color' }
-          ],
-          category: 'basic',
-          createdAt: new Date('2024-01-10'),
-          updatedAt: new Date('2024-01-10')
-        },
-        {
-          id: 'blog-digest',
-          name: 'Weekly Blog Digest',
-          description: 'Perfect for showcasing multiple blog posts in a clean format',
-          previewImage: '/images/templates/blog-digest.jpg',
-          htmlTemplate: '<div>Blog Digest Template</div>',
-          cssStyles: '.digest { color: green; }',
-          variables: [
-            { name: 'accentColor', type: 'color', defaultValue: '#10b981', description: 'Accent color for highlights' },
-            { name: 'headerImage', type: 'image', defaultValue: '', description: 'Header background image' }
-          ],
-          category: 'blog_digest',
-          createdAt: new Date('2024-01-12'),
-          updatedAt: new Date('2024-01-14')
-        },
-        {
-          id: 'announcement-bold',
-          name: 'Bold Announcement',
-          description: 'Eye-catching template for important announcements and updates',
-          previewImage: '/images/templates/announcement-bold.jpg',
-          htmlTemplate: '<div>Announcement Template</div>',
-          cssStyles: '.announcement { color: red; }',
-          variables: [
-            { name: 'alertColor', type: 'color', defaultValue: '#ef4444', description: 'Alert color for urgent messages' },
-            { name: 'buttonColor', type: 'color', defaultValue: '#1f2937', description: 'Call-to-action button color' }
-          ],
-          category: 'announcement',
-          createdAt: new Date('2024-01-08'),
-          updatedAt: new Date('2024-01-15')
-        },
-        {
-          id: 'professional-modern',
-          name: 'Modern Professional',
-          description: 'Sleek design for business communications and professional updates',
-          previewImage: '/images/templates/professional-modern.jpg',
-          htmlTemplate: '<div>Professional Template</div>',
-          cssStyles: '.professional { color: purple; }',
-          variables: [
-            { name: 'brandColor', type: 'color', defaultValue: '#6366f1', description: 'Brand color' },
-            { name: 'backgroundColor', type: 'color', defaultValue: '#f8fafc', description: 'Background color' }
-          ],
-          category: 'custom',
-          createdAt: new Date('2024-01-05'),
-          updatedAt: new Date('2024-01-11')
-        },
-        {
-          id: 'newsletter-classic',
-          name: 'Classic Newsletter',
-          description: 'Traditional newsletter layout with header, content sections, and footer',
-          previewImage: '/images/templates/classic.jpg',
-          htmlTemplate: '<div>Classic Template</div>',
-          cssStyles: '.classic { color: black; }',
-          variables: [
-            { name: 'logoUrl', type: 'image', defaultValue: '', description: 'Company logo URL' },
-            { name: 'fontFamily', type: 'text', defaultValue: 'Arial, sans-serif', description: 'Font family' }
-          ],
-          category: 'basic',
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-05')
-        },
-        {
-          id: 'product-showcase',
-          name: 'Product Showcase',
-          description: 'Highlight products, services, or portfolio items with visual appeal',
-          previewImage: '/images/templates/product-showcase.jpg',
-          htmlTemplate: '<div>Product Template</div>',
-          cssStyles: '.product { color: orange; }',
-          variables: [
-            { name: 'ctaColor', type: 'color', defaultValue: '#f59e0b', description: 'Call-to-action color' },
-            { name: 'showPricing', type: 'text', defaultValue: 'true', description: 'Show pricing information' }
-          ],
-          category: 'custom',
-          createdAt: new Date('2024-01-06'),
-          updatedAt: new Date('2024-01-09')
-        }
-      ];
-
-      setTemplates(mockTemplates);
-      
-      const mockStats: TemplateStats = {
-        totalTemplates: mockTemplates.length,
-        activeTemplates: mockTemplates.length,
-        popularTemplates: mockTemplates.slice(0, 2),
-        recentTemplates: mockTemplates.slice(-2)
-      };
-      
-      setStats(mockStats);
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-    } finally {
-      setIsLoading(false);
+      const res = await fetch('/api/admin/newsletter/templates?include_inactive=true');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setTemplates(data.templates || []);
+      setError('');
+    } catch (e) {
+      setError(`Could not load templates: ${e instanceof Error ? e.message : String(e)}`);
     }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const remove = async (t: TemplateRow) => {
+    if (!window.confirm(`Delete the template "${t.name}"? This cannot be undone.`)) return;
+    setMessage('');
+    const res = await fetch(`/api/admin/newsletter/templates/${t.id}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    setMessage(res.ok ? `Deleted "${t.name}".` : (data.error || `Not deleted (HTTP ${res.status})`));
+    if (res.ok) await load();
   };
 
-  const filteredTemplates = templates.filter(template => {
-    const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         template.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory;
-    
-    return matchesSearch && matchesCategory;
-  });
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'basic':
-        return <DocumentDuplicateIcon className="h-5 w-5" />;
-      case 'blog_digest':
-        return <PhotoIcon className="h-5 w-5" />;
-      case 'announcement':
-        return <SwatchIcon className="h-5 w-5" />;
-      case 'custom':
-        return <CodeBracketIcon className="h-5 w-5" />;
-      default:
-        return <DocumentDuplicateIcon className="h-5 w-5" />;
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'basic':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'blog_digest':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'announcement':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'custom':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-    }
-  };
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(date);
-  };
-
-  const handleDuplicateTemplate = (templateId: string) => {
-    const template = templates.find(t => t.id === templateId);
-    if (template) {
-      const duplicated = {
-        ...template,
-        id: `${template.id}-copy-${Date.now()}`,
-        name: `${template.name} (Copy)`,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      setTemplates(prev => [...prev, duplicated]);
-    }
-  };
-
-  const handleDeleteTemplate = (templateId: string) => {
-    setTemplates(prev => prev.filter(t => t.id !== templateId));
-    setShowDeleteModal(null);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-gray-200 rounded-lg h-64"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const shown = (templates || []).filter((t) =>
+    (type === 'all' || t.type === type) &&
+    (!search || `${t.name} ${t.description || ''}`.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Newsletter Templates
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Create and manage beautiful newsletter templates
-          </p>
+    <AdminLayout title="Newsletter Templates">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Newsletter Templates</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              {templates ? `${templates.length} template(s), ${templates.filter((t) => t.is_active).length} active` : 'Loading...'}
+            </p>
+          </div>
+          <Link href="/admin/newsletter/templates/create" className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+            <PlusIcon className="h-5 w-5 mr-2" /> Create template
+          </Link>
         </div>
-        <Link
-          href="/admin/newsletter/templates/create"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Create Template
-        </Link>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {templates.map((template) => (
-          <div key={template.id} className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
-            <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-t-lg flex items-center justify-center">
-              <PhotoIcon className="h-16 w-16 text-gray-400" />
-            </div>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                {template.name}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                {template.description}
+        <div className="flex gap-4 mb-6">
+          <input
+            aria-label="Search templates"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+          <select
+            aria-label="Filter by type"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          >
+            <option value="all">All types</option>
+            {TEMPLATE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
+
+        {error && <p role="alert" className="mb-4 text-sm text-red-700 dark:text-red-300">{error}</p>}
+        {message && <p role="status" className="mb-4 text-sm text-gray-700 dark:text-gray-300">{message}</p>}
+
+        {templates && shown.length === 0 && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {templates.length === 0 ? 'No templates yet.' : 'No templates match.'}
+          </p>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {shown.map((t) => (
+            <div key={t.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col">
+              <div className="flex items-start justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.name}</h3>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {t.type}{t.is_system ? ' · system' : ''}{t.is_active ? '' : ' · inactive'}
+                </span>
+              </div>
+              {t.description && <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{t.description}</p>}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Used {t.usage_count || 0} time(s) · updated {new Date(t.updated_at).toLocaleDateString()}
               </p>
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors">
-                    <EyeIcon className="h-4 w-4" />
-                  </button>
-                  <Link
-                    href={`/admin/newsletter/templates/${template.id}/edit`}
-                    className="p-2 text-gray-600 hover:text-green-600 transition-colors"
-                  >
-                    <PencilIcon className="h-4 w-4" />
-                  </Link>
-                  <button className="p-2 text-gray-600 hover:text-red-600 transition-colors">
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-                <Link
-                  href={`/admin/newsletter/create?template=${template.id}`}
-                  className="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
-                >
-                  Use Template
+              <div className="flex flex-wrap gap-2 mt-4">
+                <Link href={`/admin/newsletter/templates/${t.id}/edit`} className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200">
+                  <PencilIcon className="h-4 w-4 mr-1" /> {t.is_system ? 'View' : 'Edit'}
                 </Link>
+                <Link href={`/admin/newsletter/templates/${t.id}/preview`} className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200">
+                  <EyeIcon className="h-4 w-4 mr-1" /> Preview
+                </Link>
+                {t.is_active && (
+                  <Link href={`/admin/newsletter/campaigns/create?template=${t.id}`} className="inline-flex items-center px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                    Use in campaign
+                  </Link>
+                )}
+                {!t.is_system && (
+                  <button type="button" onClick={() => remove(t)} className="inline-flex items-center px-3 py-1.5 text-sm text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg">
+                    <TrashIcon className="h-4 w-4 mr-1" /> Delete
+                  </button>
+                )}
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+    </AdminLayout>
   );
-};
-
-export default NewsletterTemplatesPage; 
+}

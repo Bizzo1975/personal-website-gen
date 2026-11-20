@@ -47,7 +47,7 @@ export default function NewsletterContentPage() {
       const response = await fetch('/api/newsletter/admin/stats');
       if (response.ok) {
         const data = await response.json();
-        setSubscriberCount(data.totalSubscribers || 0);
+        setSubscriberCount(data.subscribers?.confirmed ?? 0);
       }
     } catch (error) {
       console.error('Error fetching subscriber count:', error);
@@ -115,10 +115,10 @@ export default function NewsletterContentPage() {
             Current Subscriber Count
           </h3>
           <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-            {subscriberCount.toLocaleString()} subscribers
+            {subscriberCount.toLocaleString()} confirmed subscribers
           </div>
           <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-            This count is automatically updated from your database
+            From the database. Only people who confirmed by email are counted (the same number the public signup box shows).
           </p>
         </div>
 
