@@ -1,3 +1,4 @@
+import { isCmsReturnToDraft, readCmsBridgeJson } from '@/lib/cms-legacy-bridge';
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { revalidatePath } from "next/cache";
@@ -60,54 +61,22 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  if (!authorize(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { id } = await params;
-  const body = await request.json();
-
+export async function PATCH(request: Request, {params}: {params:Promise<{id:string}>}) {
+  if(!authorize(request)) return NextResponse.json({error:'Unauthorized'},{status:401});
+  const body=await readCmsBridgeJson(request);
+  if(!isCmsReturnToDraft(body)) return NextResponse.json({error:'Generic updates permit only explicit return to draft; use draft-content or reviewed-publication',code:'VERSIONED_MUTATION_REQUIRED'},{status:428,headers:{'Cache-Control':'no-store'}});
+  const {id}=await params;
   try {
-    const result = await query(
-      `UPDATE posts SET
-        title = COALESCE($1, title),
-        slug = COALESCE($2, slug),
-        content = COALESCE($3, content),
-        excerpt = COALESCE($4, excerpt),
-        status = COALESCE($5, status),
-        published = COALESCE($6, published),
-        updated_at = CURRENT_TIMESTAMP
-       WHERE id = $7
-       RETURNING id, title, slug, status, published, excerpt, updated_at`,
-      [
-        body.title ?? null,
-        body.slug ?? null,
-        body.content ?? null,
-        body.excerpt ?? null,
-        body.status ?? null,
-        typeof body.published === "boolean" ? body.published : null,
-        id,
-      ]
-    );
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ ok: true, post: result.rows[0] });
-  } catch (error) {
-    console.error("me-manager patch failed:", error);
-    return NextResponse.json(
-      { error: "Failed to update post" },
-      { status: 500 }
-    );
+    
+    const result=await query(`UPDATE posts SET status='draft',published=false,published_at=NULL,scheduled_publish_at=NULL,
+      updated_at=GREATEST(timezone('UTC',clock_timestamp()),updated_at+interval '1 millisecond') WHERE id=$1
+      RETURNING id,title,slug,status,published,excerpt,updated_at,scheduled_publish_at,published_at`,[id]);
+    if(!result.rows[0]) return NextResponse.json({error:'Post not found'},{status:404});
+    return NextResponse.json({ok:true,post:result.rows[0]},{headers:{'Cache-Control':'no-store'}});
+  } catch {
+    return NextResponse.json({error:'Return-to-draft outcome unconfirmed; reload before retrying',code:'DRAFT_RESET_UNCONFIRMED'},{status:503,headers:{'Cache-Control':'no-store'}});
   }
 }
-
 
 /**
  * DELETE /api/me-manager/posts/:id — ME Manager "delete everywhere".

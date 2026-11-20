@@ -1,6 +1,8 @@
-import { query } from '@/lib/db';
+import { runWebsiteCacheEffects } from '@/lib/cms-publication-effects';
+import { executeDueWebsitePublication,recordNativeWebsitePublication } from '@/lib/cms-reviewed-publication';
+import { query,getClient } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { notifyMeManagerTeaser } from '@/lib/me-manager-teaser';
+
 
 /**
  * Scheduler Service for Automated Content Publishing
@@ -9,9 +11,13 @@ import { notifyMeManagerTeaser } from '@/lib/me-manager-teaser';
 
 export interface ScheduledContentStats {
   postsToPublish: number;
+  postsPublished: number;
+  postsRefused: number;
+  postsRefusedDetails: Array<{ id: string; reason: string }>;
   projectsToPublish: number;
   newslettersToSend: number;
   lastRunAt: Date;
+  cacheEffects?: Awaited<ReturnType<typeof runWebsiteCacheEffects>> | {available:false};
 }
 
 export class SchedulerService {
@@ -20,8 +26,11 @@ export class SchedulerService {
    */
   static async publishScheduledContent(): Promise<ScheduledContentStats> {
     const now = new Date();
-    const stats = {
+    const stats: ScheduledContentStats = {
       postsToPublish: 0,
+      postsPublished: 0,
+      postsRefused: 0,
+      postsRefusedDetails: [] as Array<{ id: string; reason: string }>,
       projectsToPublish: 0,
       newslettersToSend: 0,
       lastRunAt: now
@@ -38,8 +47,12 @@ export class SchedulerService {
       stats.newslettersToSend = newsletterCount;
 
       // Publish scheduled posts
-      await this.publishScheduledPosts(now);
-      console.log(`📝 Published ${postCount} scheduled posts`);
+      const postResults = await this.publishScheduledPosts(now);
+      stats.postsPublished = postResults.published;
+      stats.postsRefused = postResults.refused;
+      stats.postsRefusedDetails = postResults.refusedPosts;
+      stats.cacheEffects=postResults.cacheEffects;
+      console.log(`📝 Published ${postResults.published} scheduled posts; ${postResults.refused} refused or already recorded`);
 
       // Publish scheduled projects
       await this.publishScheduledProjects(now);
@@ -60,32 +73,41 @@ export class SchedulerService {
    * Publish posts that are scheduled to be published,
    * then fire ME Manager teasers and revalidate blog paths.
    */
-  private static async publishScheduledPosts(now: Date): Promise<void> {
-    const result = await query(
-      `UPDATE posts 
-       SET status = 'published', 
-           published = true,
-           published_at = CURRENT_TIMESTAMP,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE status = 'scheduled' 
-         AND scheduled_publish_at <= $1
-       RETURNING id, title, slug, excerpt`,
-      [now]
-    );
-
-    for (const post of result.rows) {
+  static async publishScheduledPosts(now: Date): Promise<{ published: number; refused: number; refusedPosts: Array<{ id: string; reason: string }>; cacheEffects: Awaited<ReturnType<typeof runWebsiteCacheEffects>> | {available:false} }> {
+    const due = await query(`SELECT id, updated_at::text AS revision,
+      to_char(scheduled_publish_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS scheduled_for
+      FROM posts WHERE status = 'scheduled' AND published = false
+        AND scheduled_publish_at <= ($1::timestamptz AT TIME ZONE 'UTC')`, [now.toISOString()]);
+    const counts = { published: 0, refused: 0, refusedPosts: [] as Array<{ id: string; reason: string }> };
+    for (const candidate of due.rows) {
+      let execution: Awaited<ReturnType<typeof executeDueWebsitePublication>>;
+      try { execution = await executeDueWebsitePublication(candidate.id, now); }
+      catch { counts.refused++; counts.refusedPosts.push({ id: candidate.id, reason: 'SCHEDULE_APPROVAL_UNVERIFIED' }); continue; }
+      let post: { id: string; title: string; slug: string; excerpt: string | null };
+      if (execution.managed) {
+        if (!execution.newlyApplied || !execution.receipt?.post) { counts.refused++; counts.refusedPosts.push({ id: candidate.id, reason: execution.reason || execution.receipt?.reason || 'APPROVED_EXECUTION_ALREADY_RECORDED' }); continue; }
+        post = execution.receipt.post;
+      } else {
+        const client=await getClient();
+        let native;
+        try{
+          await client.query('BEGIN');await client.query("SET LOCAL TIME ZONE 'UTC'");
+          const changed = await client.query(`UPDATE posts SET status = 'published', published = true,
+          published_at = ($3::timestamptz AT TIME ZONE 'UTC'), scheduled_publish_at = NULL,
+          updated_at = GREATEST(timezone('UTC', clock_timestamp()), updated_at + interval '1 millisecond')
+          WHERE id = $1 AND updated_at::text = $2 AND status = 'scheduled' AND published = false
+            AND scheduled_publish_at = ($4::timestamptz AT TIME ZONE 'UTC')
+            AND scheduled_publish_at <= ($3::timestamptz AT TIME ZONE 'UTC')
+          RETURNING id, title, slug, excerpt`, [candidate.id, candidate.revision, now.toISOString(), candidate.scheduled_for]);
+          if(changed.rows[0])await recordNativeWebsitePublication(client,candidate.id,'native-scheduler');
+          await client.query('COMMIT');native=changed;
+        }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+        if (!native.rows[0]) { counts.refused++; counts.refusedPosts.push({ id: candidate.id, reason: 'NATIVE_SCHEDULE_CHANGED' }); continue; }
+        post = native.rows[0];
+      }
+      counts.published++;
       console.log(`✅ Published post: "${post.title}" (${post.slug})`);
 
-      try {
-        const teaser = await notifyMeManagerTeaser({
-          title: post.title,
-          slug: post.slug,
-          excerpt: post.excerpt,
-        });
-        console.log(`📣 Teaser for "${post.title}":`, teaser);
-      } catch (error) {
-        console.error(`❌ Teaser failed for "${post.title}":`, error);
-      }
 
       try {
         revalidatePath('/blog');
@@ -95,6 +117,9 @@ export class SchedulerService {
         console.error(`⚠️ Revalidate failed for "${post.slug}":`, error);
       }
     }
+    let cacheEffects: Awaited<ReturnType<typeof runWebsiteCacheEffects>> | {available:false};
+    try { cacheEffects=await runWebsiteCacheEffects(); } catch { cacheEffects={available:false}; }
+    return {...counts,cacheEffects};
   }
 
   /**

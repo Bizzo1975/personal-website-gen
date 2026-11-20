@@ -1,3 +1,4 @@
+import { parseCmsBridgeDraft, readCmsBridgeJson } from '@/lib/cms-legacy-bridge';
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
@@ -44,21 +45,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
-    const title = body.title as string;
-    const slug = (body.slug as string) || title?.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    const content = (body.content as string) || "";
-    const excerpt = (body.excerpt as string) || "";
-    const tags = (body.tags as string[]) || ["me-manager"];
-    const status = (body.status as string) || "draft";
-    const published = Boolean(body.published);
-
-    if (!title || !slug) {
-      return NextResponse.json(
-        { error: "title and slug required" },
-        { status: 400 }
-      );
-    }
+    const body = parseCmsBridgeDraft(await readCmsBridgeJson(request));
+    if (!body) return NextResponse.json({error:'Create only a valid unpublished draft; use reviewed-publication for publication or scheduling',code:'INVALID_DRAFT'},{status:400,headers:{'Cache-Control':'no-store'}});
+    const { title, slug, content, excerpt, tags } = body;
+    const status = 'draft';
+    const published = false;
 
     // Resolve a system user for created_by if possible
     const userRes = await query(

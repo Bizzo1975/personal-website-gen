@@ -29,7 +29,7 @@ export class EmailNotificationService {
     if (!this.transporter) {
       const nm = await getNodemailer();
       // Safe access to process.env to avoid build-time evaluation
-      const env = typeof process !== 'undefined' ? process.env : {};
+      const env: Readonly<Record<string, string | undefined>> = typeof process !== 'undefined' ? process.env : {};
       this.transporter = nm.createTransport({
         host: env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(env.SMTP_PORT || '587'),
@@ -48,7 +48,7 @@ export class EmailNotificationService {
    */
   async sendAdminNotification(requestData: AccessRequestEmailData): Promise<void> {
     try {
-      const env = typeof process !== 'undefined' ? process.env : {};
+      const env: Readonly<Record<string, string | undefined>> = typeof process !== 'undefined' ? process.env : {};
       const adminEmail = env.ADMIN_EMAIL || env.SMTP_USER || 'admin@willworkforlunch.com';
       const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
       const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
@@ -118,7 +118,7 @@ export class EmailNotificationService {
    */
   async sendApprovalNotification(requestData: AccessRequestEmailData): Promise<void> {
     try {
-      const env = typeof process !== 'undefined' ? process.env : {};
+      const env: Readonly<Record<string, string | undefined>> = typeof process !== 'undefined' ? process.env : {};
       const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
       const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
       const htmlContent = `
@@ -183,7 +183,7 @@ export class EmailNotificationService {
    */
   async sendRejectionNotification(requestData: AccessRequestEmailData): Promise<void> {
     try {
-      const env = typeof process !== 'undefined' ? process.env : {};
+      const env: Readonly<Record<string, string | undefined>> = typeof process !== 'undefined' ? process.env : {};
       const websiteUrl = env.NEXTAUTH_URL || 'https://www.willworkforlunch.com';
       const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
       const htmlContent = `
@@ -240,6 +240,8 @@ export class EmailNotificationService {
    */
   async sendEmail(to: string, subject: string, html: string): Promise<void> {
     try {
+      const env: Readonly<Record<string, string | undefined>> = typeof process !== 'undefined' ? process.env : {};
+      const smtpUser = env.SMTP_USER || 'admin@willworkforlunch.com';
       const transporter = await this.getTransporter();
       await transporter.sendMail({
         from: smtpUser,

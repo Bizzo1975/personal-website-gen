@@ -1,3 +1,4 @@
+import { scheduleNativeWebsitePost } from '@/lib/cms-reviewed-publication';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     // Validate the scheduled date is in the future
     const scheduleTime = new Date(scheduledDate);
-    if (scheduleTime <= new Date()) {
+    if (!Number.isFinite(scheduleTime.getTime()) || scheduleTime <= new Date()) {
       return NextResponse.json(
         { error: 'Scheduled date must be in the future' },
         { status: 400 }
@@ -67,10 +68,7 @@ export async function POST(request: NextRequest) {
 
     // Update the content status to 'scheduled' and set the scheduled_publish_at date
     if (contentType === 'post') {
-      await query(
-        'UPDATE posts SET status = $1, scheduled_publish_at = $2 WHERE id = $3',
-        ['scheduled', scheduleTime, contentId]
-      );
+      await scheduleNativeWebsitePost(contentId, scheduleTime.toISOString());
     } else {
       await query(
         'UPDATE projects SET status = $1, scheduled_publish_at = $2 WHERE id = $3',

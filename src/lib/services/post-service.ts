@@ -1,5 +1,6 @@
 import { Post as DBPost, CreatePostData, UpdatePostData } from '@/lib/models/Post';
-import { query } from '@/lib/db';
+import { query, getClient } from '@/lib/db';
+import { recordNativeWebsiteSchedule,recordNativeWebsitePublication } from '@/lib/cms-reviewed-publication';
 
 // Frontend Post interface with camelCase properties
 export interface Post {
@@ -264,8 +265,12 @@ export class PostService {
 
   // Create a new post (admin only)
   static async createPost(postData: CreatePostData, createdBy: string): Promise<Post> {
+    const client=await getClient();
     try {
-      const result = await query(
+      await client.query('BEGIN');
+      await client.query("SET LOCAL TIME ZONE 'UTC'");
+      await client.query("SET LOCAL statement_timeout='15000ms'");
+      const result = await client.query(
         `INSERT INTO posts (
           title, slug, content, excerpt, featured_image, tags, 
           author, read_time, date, permission_level, published, created_by
@@ -287,6 +292,12 @@ export class PostService {
         ]
       );
 
+      if(result.rows[0].published){
+        const normalized=await client.query("UPDATE posts SET status='published',published_at=COALESCE(published_at,timezone('UTC',clock_timestamp())),scheduled_publish_at=NULL WHERE id=$1 RETURNING *",[result.rows[0].id]);
+        result.rows[0]=normalized.rows[0];
+        await recordNativeWebsitePublication(client,result.rows[0].id);
+      }
+      await client.query('COMMIT');
       const row = result.rows[0];
       return {
         id: row.id,
@@ -306,19 +317,28 @@ export class PostService {
         updatedAt: row.updated_at
       };
     } catch (error) {
+      await client.query('ROLLBACK');
       console.error('Failed to create post:', error);
       throw new Error('Failed to create post in database');
-    }
+    } finally {client.release();}
   }
 
   // Update a post (admin only)
   static async updatePost(id: string, postData: UpdatePostData): Promise<Post> {
+    let scheduleClient: Awaited<ReturnType<typeof getClient>> | null = null;
     try {
-      const result = await query(
+      {
+        scheduleClient = await getClient();
+        await scheduleClient.query('BEGIN');
+        await scheduleClient.query("SET LOCAL TIME ZONE 'UTC'");
+        await scheduleClient.query("SET LOCAL statement_timeout='15000ms'");
+      }
+      const runQuery = async (text: string, values: unknown[]) => scheduleClient ? scheduleClient.query(text, values) : query(text, values);
+      const result = await runQuery(
         `UPDATE posts 
            SET title = $1, slug = $2, content = $3, excerpt = $4, featured_image = $5, 
                tags = $6, author = $7, read_time = $8, date = $9, permission_level = $10, 
-               published = $11, status = $12, featured = $13, updated_at = CURRENT_TIMESTAMP 
+               published = COALESCE($11,published), status = CASE WHEN COALESCE($11,published) THEN 'published' ELSE COALESCE($12,CASE WHEN status='published' THEN 'draft' ELSE status END) END, featured = $13, updated_at = GREATEST(timezone('UTC',clock_timestamp()),updated_at+interval '1 millisecond') 
            WHERE id = $14 
            RETURNING *`,
           [
@@ -343,6 +363,14 @@ export class PostService {
         throw new Error('Post not found');
       }
 
+      if(scheduleClient){
+        if(result.rows[0].published){
+          const normalized=await scheduleClient.query("UPDATE posts SET status='published',published_at=COALESCE(published_at,timezone('UTC',clock_timestamp())),scheduled_publish_at=NULL WHERE id=$1 RETURNING *",[id]);
+          result.rows[0]=normalized.rows[0];
+          await recordNativeWebsitePublication(scheduleClient,id);
+        }else if(result.rows[0].status==='scheduled')await recordNativeWebsiteSchedule(scheduleClient,id);
+        await scheduleClient.query('COMMIT');
+      }
       const row = result.rows[0];
       return {
         id: row.id,
@@ -363,9 +391,10 @@ export class PostService {
         updatedAt: row.updated_at
       };
     } catch (error) {
+      if (scheduleClient) await scheduleClient.query('ROLLBACK');
       console.error('Failed to update post:', error);
       throw new Error('Failed to update post in database');
-    }
+    } finally { scheduleClient?.release(); }
   }
 
   // Delete a post (admin only)

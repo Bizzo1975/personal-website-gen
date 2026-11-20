@@ -105,6 +105,24 @@ export default function AdminAccessRequestsPage() {
     }
   };
 
+  const handleAccessLevelUpdate = async (id: string, requestedAccessLevel: 'personal' | 'professional') => {
+    setProcessingId(id);
+    try {
+      const response = await fetch(`/api/access-requests/${encodeURIComponent(id)}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestedAccessLevel }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.success !== true) throw new Error(data.error || 'Access level update was not confirmed');
+      await fetchAccessRequests();
+      setEditingAccessLevel(null);
+      setNewAccessLevel('');
+      setStatusMessage({ type: 'success', message: 'Access level updated successfully' });
+    } catch (error) {
+      setStatusMessage({ type: 'error', message: error instanceof Error ? error.message : 'Failed to update access level' });
+    } finally { setProcessingId(null); }
+  };
+
   // Handle bulk operations
   const handleBulkOperation = async (action: 'approve' | 'reject', adminNotes?: string) => {
     if (selectedRequests.length === 0) return;

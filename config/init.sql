@@ -82,6 +82,7 @@ CREATE TABLE posts (
   scheduled_publish_at TIMESTAMP,
   published_at TIMESTAMP,
   published BOOLEAN DEFAULT false,
+  featured BOOLEAN NOT NULL DEFAULT false,
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -100,7 +101,7 @@ CREATE TABLE projects (
   source_code VARCHAR(500),
   featured BOOLEAN DEFAULT false,
   permission_level VARCHAR(50) DEFAULT 'all' CHECK (permission_level IN ('all', 'professional', 'personal')),
-  status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'published')),
+  status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'published', 'archived')),
   scheduled_publish_at TIMESTAMP,
   published_at TIMESTAMP,
   created_by UUID REFERENCES users(id),
