@@ -19,7 +19,7 @@ jest.mock('marked', () => {
 
 import { query, closeDatabase } from '@/lib/db';
 import {
-  sendCampaign, sendConfirmation, confirmByToken, unsubscribeByToken, confirmedRecipients,
+  sendCampaign, sendConfirmation, confirmByToken, unsubscribeByToken, confirmedRecipients, sendTargetedEmail,
 } from '@/lib/newsletter/delivery';
 
 const d = TEST_DB ? describe : describe.skip;
@@ -131,6 +131,33 @@ d('newsletter delivery (DB)', () => {
     expect((await confirmByToken(row.confirmation_token)).ok).toBe(false);
     const after = (await query('SELECT is_confirmed, gdpr_consent FROM newsletter_subscribers WHERE id = $1', [pending.id])).rows[0];
     expect(after).toEqual({ is_confirmed: true, gdpr_consent: true });
+  });
+
+  it('targeted email (W15): only selected + confirmed subscribers, recorded as its own campaign', async () => {
+    const to: string[] = [];
+    const out = await sendTargetedEmail(
+      { subscriberIds: [b.id, pending.id], subject: 'Hello B', content: 'Hi', author: 'test' },
+      { send: async (m) => { to.push(m.to); return { ok: true }; }, sleep: noSleep }
+    );
+    // 'pending' was confirmed by the previous test, so both are eligible now; 'a' was not selected.
+    expect(to.sort()).toEqual([`b-${TAG}@local.test`, `p-${TAG}@local.test`]);
+    expect(out).toMatchObject({ ok: true, status: 'sent', sent: 2 });
+    const c = (await query('SELECT title, status, sent_count FROM newsletter_campaigns WHERE id = $1', [out.campaignId])).rows[0];
+    expect(c).toEqual({ title: 'Targeted: Hello B', status: 'sent', sent_count: 2 });
+    await query(`UPDATE newsletter_campaigns SET slug = $2 WHERE id = $1`, [out.campaignId, `${TAG}-targeted`]);
+  });
+
+  it('targeted email to an unconfirmed subscriber sends nothing and leaves no campaign', async () => {
+    const u = await makeSub(`u-${TAG}@local.test`, false);
+    const before = (await query('SELECT COUNT(*)::int n FROM newsletter_campaigns')).rows[0].n;
+    let called = false;
+    const out = await sendTargetedEmail(
+      { subscriberIds: [u.id], subject: 'X', content: 'Y', author: 'test' },
+      { send: async () => { called = true; return { ok: true }; }, sleep: noSleep }
+    );
+    expect(called).toBe(false);
+    expect(out).toMatchObject({ ok: false, status: 'not_sent', error: 'None of the selected subscribers are confirmed and active' });
+    expect((await query('SELECT COUNT(*)::int n FROM newsletter_campaigns')).rows[0].n).toBe(before);
   });
 
   it('unsubscribe removes the subscriber from recipients', async () => {

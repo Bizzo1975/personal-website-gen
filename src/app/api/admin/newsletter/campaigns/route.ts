@@ -31,19 +31,20 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1;
     
     if (search) {
-      whereConditions.push(`(title ILIKE $${paramIndex} OR subject ILIKE $${paramIndex})`);
+      whereConditions.push(`(nc.title ILIKE $${paramIndex} OR nc.subject ILIKE $${paramIndex})`);
       queryParams.push(`%${search}%`);
       paramIndex++;
     }
     
     if (status !== 'all') {
-      whereConditions.push(`status = $${paramIndex}`);
+      whereConditions.push(`nc.status = $${paramIndex}`);
       queryParams.push(status);
       paramIndex++;
     }
     
     if (type !== 'all') {
-      whereConditions.push(`type = $${paramIndex}`);
+      // qualified: newsletter_templates (joined below) also has a 'type' column
+      whereConditions.push(`nc.type = $${paramIndex}`);
       queryParams.push(type);
       paramIndex++;
     }
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
     
     // Get total count
     const countResult = await query(
-      `SELECT COUNT(*) as total FROM newsletter_campaigns ${whereClause}`,
+      `SELECT COUNT(*) as total FROM newsletter_campaigns nc ${whereClause}`,
       queryParams
     );
     
@@ -62,6 +63,7 @@ export async function GET(request: NextRequest) {
     const result = await query(
       `SELECT nc.id, nc.title, nc.slug, nc.subject, nc.preview_text, nc.status, nc.type, 
               nc.scheduled_send_at, nc.sent_at, nc.recipient_count, nc.author, nc.created_at, nc.updated_at,
+              nc.sent_count, nc.failed_count, nc.last_error,
               nt.name as template_name
        FROM newsletter_campaigns nc
        LEFT JOIN newsletter_templates nt ON nc.template_id = nt.id

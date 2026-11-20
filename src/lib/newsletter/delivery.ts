@@ -133,10 +133,12 @@ export type CampaignSendOutcome = {
 export async function sendCampaign(
   campaignId: string,
   from: Array<'draft' | 'scheduled' | 'failed'>,
-  deps: { send?: Sender; sleep?: Sleeper } = {}
+  deps: { send?: Sender; sleep?: Sleeper; recipientIds?: string[] } = {}
 ): Promise<CampaignSendOutcome> {
   const send = deps.send || graphSendMessage
   const sleep = deps.sleep || defaultSleep
+  // Optional targeting: only these subscribers, and only if they are confirmed and active.
+  const only = deps.recipientIds ? new Set(deps.recipientIds) : null
   // Never send the same campaign twice to one subscriber (matters when a failed
   // campaign is retried): skip anyone already recorded as 'sent' for it.
   const already = await query(
@@ -144,11 +146,15 @@ export async function sendCampaign(
     [campaignId]
   )
   const done = new Set(already.rows.map((r: { subscriber_id: string }) => r.subscriber_id))
-  const recipients = (await confirmedRecipients()).filter((r) => !done.has(r.id))
+  const recipients = (await confirmedRecipients()).filter((r) => !done.has(r.id) && (!only || only.has(r.id)))
   if (recipients.length === 0) {
     return {
       ok: false, status: 'not_sent', recipients: 0, sent: 0, failed: 0,
-      error: done.size > 0 ? 'Every confirmed subscriber has already received this campaign' : 'There are no confirmed subscribers to send to',
+      error: done.size > 0
+        ? 'Every confirmed subscriber has already received this campaign'
+        : only
+          ? 'None of the selected subscribers are confirmed and active'
+          : 'There are no confirmed subscribers to send to',
     }
   }
   const claim = await query(
@@ -208,4 +214,32 @@ export async function sendCampaign(
     [campaign.id, status, sent, delivered, failed, lastError || null]
   )
   return { ok: failed === 0, status, recipients: recipients.length, sent, failed, error: lastError }
+}
+
+/**
+ * W15: an admin email to chosen subscribers. It is recorded as its own campaign
+ * (so it appears in the campaign list with real per-recipient results) and sent
+ * through the same engine, only to those of the chosen subscribers who are
+ * confirmed and active.
+ */
+export async function sendTargetedEmail(
+  input: { subscriberIds: string[]; subject: string; content: string; htmlContent?: string | null; author: string; createdBy?: string | null },
+  deps: { send?: Sender; sleep?: Sleeper } = {}
+): Promise<CampaignSendOutcome & { campaignId?: string }> {
+  const ids = Array.from(new Set(input.subscriberIds.filter(Boolean)))
+  if (ids.length === 0) return { ok: false, status: 'not_sent', recipients: 0, sent: 0, failed: 0, error: 'No subscribers selected' }
+  const slug = `targeted-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const created = await query(
+    `INSERT INTO newsletter_campaigns (title, slug, subject, content, html_content, type, status, author, created_by)
+     VALUES ($1, $2, $3, $4, $5, 'manual', 'draft', $6, $7) RETURNING id`,
+    [`Targeted: ${input.subject}`.slice(0, 255), slug, input.subject, input.content, input.htmlContent || null, input.author, input.createdBy || null]
+  )
+  const campaignId = created.rows[0].id as string
+  const outcome = await sendCampaign(campaignId, ['draft'], { ...deps, recipientIds: ids })
+  if (outcome.status === 'not_sent') {
+    // Nothing was sent: do not leave an empty "targeted" draft behind.
+    await query(`DELETE FROM newsletter_campaigns WHERE id = $1 AND status = 'draft'`, [campaignId])
+    return outcome
+  }
+  return { ...outcome, campaignId }
 }

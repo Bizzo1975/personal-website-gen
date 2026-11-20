@@ -169,6 +169,10 @@ export default function SubscriberManagementPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailContent, setEmailContent] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   
@@ -360,7 +364,9 @@ export default function SubscriberManagementPage() {
   };
 
   // Send targeted email
-  const handleSendEmail = async (subscriber: Subscriber, emailData: any) => {
+  const handleSendEmail = async (subscriber: Subscriber, emailData: { subject: string; content: string }) => {
+    setEmailSending(true);
+    setEmailResult(null);
     try {
       const response = await fetch('/api/admin/subscribers/send-email', {
         method: 'POST',
@@ -370,13 +376,19 @@ export default function SubscriberManagementPage() {
           ...emailData
         })
       });
-      
-      if (!response.ok) throw new Error('Failed to send email');
-      
-      setShowEmailModal(false);
-      setSelectedSubscriber(null);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        // Keep the modal open with the real reason (e.g. not confirmed, Graph error).
+        setEmailResult({ ok: false, message: data.message || data.error || `Email not sent (HTTP ${response.status})` });
+        return;
+      }
+      setEmailResult({ ok: true, message: data.message || 'Email sent' });
+      setEmailSubject('');
+      setEmailContent('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setEmailResult({ ok: false, message: err instanceof Error ? err.message : 'Email not sent' });
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -573,10 +585,7 @@ export default function SubscriberManagementPage() {
         )}
 
         {activeTab === 'campaigns' && (
-          <CampaignsTab 
-            subscribers={filteredSubscribers}
-            onSendEmail={setSelectedSubscriber}
-          />
+          <CampaignsTab subscribers={subscribers} />
         )}
 
         {activeTab === 'privacy' && (
@@ -710,6 +719,7 @@ export default function SubscriberManagementPage() {
                   onClick={() => {
                     setShowEmailModal(false);
                     setSelectedSubscriber(null);
+                    setEmailResult(null);
                   }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
@@ -719,18 +729,52 @@ export default function SubscriberManagementPage() {
               <p className="text-gray-600 dark:text-gray-400 mb-4">
                 Send email to: {selectedSubscriber.email}
               </p>
+              {!selectedSubscriber.is_confirmed && (
+                <p className="mb-4 text-sm text-yellow-700 dark:text-yellow-300">
+                  This subscriber has not confirmed their subscription, so the email will not be sent.
+                </p>
+              )}
+              <div className="space-y-4 mb-4">
+                <div>
+                  <label htmlFor="email-subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject</label>
+                  <input
+                    id="email-subject"
+                    type="text"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="email-content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message (Markdown)</label>
+                  <textarea
+                    id="email-content"
+                    rows={8}
+                    value={emailContent}
+                    onChange={(e) => setEmailContent(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+              </div>
+              {emailResult && (
+                <p className={`mb-4 text-sm ${emailResult.ok ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`} role="status">
+                  {emailResult.message}
+                </p>
+              )}
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => {
                   setShowEmailModal(false);
                   setSelectedSubscriber(null);
+                  setEmailResult(null);
                 }}>
-                  Cancel
+                  {emailResult?.ok ? 'Close' : 'Cancel'}
                 </Button>
-                <Button variant="primary" onClick={() => {
-                  setShowEmailModal(false);
-                  setSelectedSubscriber(null);
-                }}>
-                  Send Email
+                <Button
+                  variant="primary"
+                  disabled={emailSending || !emailSubject.trim() || !emailContent.trim()}
+                  onClick={() => handleSendEmail(selectedSubscriber, { subject: emailSubject.trim(), content: emailContent })}
+                >
+                  {emailSending ? 'Sending...' : 'Send Email'}
                 </Button>
               </div>
             </div>
@@ -1780,26 +1824,88 @@ const AnalyticsTab = ({ analytics, loading, subscribers }: {
 };
 
 // Campaigns Tab Component
-const CampaignsTab = ({ subscribers, onSendEmail }: {
+const CampaignsTab = ({ subscribers }: {
   subscribers: Subscriber[];
-  onSendEmail: (subscriber: Subscriber) => void;
 }) => {
-  const [selectedSegment, setSelectedSegment] = useState('all');
-  const [campaignData, setCampaignData] = useState({
-    subject: '',
-    content: '',
-    template: '',
-    schedule: ''
-  });
+  const [selectedSegment, setSelectedSegment] = useState('active');
+  const [campaignData, setCampaignData] = useState({ subject: '', content: '' });
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [recent, setRecent] = useState<any[] | null>(null);
+  const [recentError, setRecentError] = useState('');
 
+  // Audience sizes come from the server (the list on screen is only one page), and count
+  // only confirmed, active, not-unsubscribed subscribers: the only people ever emailed.
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+  const [countsError, setCountsError] = useState('');
+  const loadCounts = async () => {
+    try {
+      const res = await fetch('/api/admin/subscribers/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preview: true })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.counts) throw new Error(data.error || `HTTP ${res.status}`);
+      setCounts(data.counts);
+      setCountsError('');
+    } catch (e) {
+      setCountsError(`Could not count recipients: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+  useEffect(() => { loadCounts(); }, [subscribers.length]);
   const segments = [
-    { value: 'all', label: 'All Subscribers', count: subscribers.length },
-    { value: 'active', label: 'Active Only', count: subscribers.filter(s => s.is_active).length },
-    { value: 'high_engagement', label: 'High Engagement', count: subscribers.filter(s => s.analytics.open_rate > 50).length },
-    { value: 'new', label: 'New Subscribers', count: subscribers.filter(s => 
-      new Date(s.subscription_date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    ).length }
-  ];
+    { value: 'active', label: 'All confirmed subscribers' },
+    { value: 'high_engagement', label: 'High engagement (opened over 50%)' },
+    { value: 'new', label: 'Joined in the last 30 days' }
+  ].map(s => ({ ...s, count: counts ? counts[s.value] ?? 0 : null as number | null }));
+  const target = segments.find(s => s.value === selectedSegment);
+
+  const loadRecent = async () => {
+    try {
+      const res = await fetch('/api/admin/newsletter/campaigns?limit=5');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setRecent(data.campaigns || []);
+      setRecentError('');
+    } catch (e) {
+      setRecentError(`Could not load campaigns: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+  useEffect(() => { loadRecent(); }, []);
+
+  const ready = campaignData.subject.trim() && campaignData.content.trim();
+
+  const saveDraft = async () => {
+    setBusy(true); setResult(null);
+    try {
+      const res = await fetch('/api/admin/newsletter/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: campaignData.subject.trim(), subject: campaignData.subject.trim(), content: campaignData.content, type: 'manual', status: 'draft' })
+      });
+      const data = await res.json().catch(() => ({}));
+      setResult(res.ok ? { ok: true, message: 'Saved as a draft campaign.' } : { ok: false, message: data.error || `Not saved (HTTP ${res.status})` });
+      if (res.ok) await loadRecent();
+    } finally { setBusy(false); }
+  };
+
+  const sendNow = async () => {
+    if (!target?.count) return;
+    if (!window.confirm(`Send "${campaignData.subject.trim()}" now to ${target.count} confirmed subscriber(s)?`)) return;
+    setBusy(true); setResult(null);
+    try {
+      const res = await fetch('/api/admin/subscribers/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ segment: selectedSegment, subject: campaignData.subject.trim(), content: campaignData.content })
+      });
+      const data = await res.json().catch(() => ({}));
+      setResult({ ok: res.ok && data.success, message: data.message || data.error || `Not sent (HTTP ${res.status})` });
+      if (res.ok && data.success) setCampaignData({ subject: '', content: '' });
+      await Promise.all([loadRecent(), loadCounts()]);
+    } finally { setBusy(false); }
+  };
 
   return (
     <div className="space-y-6">
@@ -1822,9 +1928,9 @@ const CampaignsTab = ({ subscribers, onSendEmail }: {
             label="Target Segment"
             value={selectedSegment}
             onChange={(e) => setSelectedSegment(e.target.value)}
-            options={segments.map(seg => ({ 
-              value: seg.value, 
-              label: `${seg.label} (${seg.count} subscribers)` 
+            options={segments.map(seg => ({
+              value: seg.value,
+              label: seg.count === null ? seg.label : `${seg.label} (${seg.count})`
             }))}
           />
 
@@ -1838,65 +1944,70 @@ const CampaignsTab = ({ subscribers, onSendEmail }: {
 
           <AdminTextarea
             id="campaign-content"
-            label="Email Content"
+            label="Email Content (Markdown)"
             value={campaignData.content}
             onChange={(e) => setCampaignData(prev => ({ ...prev, content: e.target.value }))}
             placeholder="Enter email content..."
             rows={6}
           />
 
+          {result && (
+            <p role="status" className={`text-sm ${result.ok ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+              {result.message}
+            </p>
+          )}
+
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              This will send to {segments.find(s => s.value === selectedSegment)?.count || 0} subscribers
+              {countsError
+                ? countsError
+                : target?.count === null || target?.count === undefined
+                  ? 'Counting recipients...'
+                  : `This will send to ${target.count} confirmed subscriber(s). Unconfirmed and unsubscribed people are never emailed.`}
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="outline">
+              <Button variant="outline" disabled={busy || !ready} onClick={saveDraft}>
                 Save as Draft
               </Button>
-              <Button variant="primary">
-                Send Now
+              <Button variant="primary" disabled={busy || !ready || !target?.count} onClick={sendNow}>
+                {busy ? 'Working...' : 'Send Now'}
               </Button>
             </div>
           </div>
         </CardBody>
       </Card>
 
-      {/* Campaign Templates */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Campaign Templates</h3>
-        </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { name: 'Welcome Series', description: 'Automated welcome email for new subscribers' },
-              { name: 'Newsletter Digest', description: 'Monthly newsletter with latest content' },
-              { name: 'Product Announcement', description: 'Announce new features or products' },
-              { name: 'Re-engagement', description: 'Win back inactive subscribers' }
-            ].map((template, index) => (
-              <div key={index} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-                <h4 className="font-medium text-gray-900 dark:text-white mb-2">{template.name}</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{template.description}</p>
-                <Button size="sm" variant="outline">
-                  Use Template
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Recent Campaigns */}
+      {/* Recent Campaigns (real data) */}
       <Card>
         <CardHeader>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Campaigns</h3>
         </CardHeader>
         <CardBody>
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            <EnvelopeIcon className="h-12 w-12 mx-auto mb-4" />
-            <p>No recent campaigns</p>
-            <p className="text-sm">Create your first campaign to see it here</p>
-          </div>
+          {recentError ? (
+            <p className="text-sm text-red-700 dark:text-red-300">{recentError}</p>
+          ) : recent === null ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+          ) : recent.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <EnvelopeIcon className="h-12 w-12 mx-auto mb-4" />
+              <p>No campaigns yet</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+              {recent.map((c) => (
+                <li key={c.id} className="py-3 flex items-center justify-between">
+                  <a href={`/admin/newsletter/campaigns/${c.id}/edit`} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                    {c.title}
+                  </a>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    {c.status}
+                    {(c.status === 'sent' || c.status === 'failed') ? ` · ${c.sent_count || 0} sent, ${c.failed_count || 0} failed` : ''}
+                    {c.status === 'failed' && c.last_error ? ` · ${String(c.last_error).slice(0, 80)}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardBody>
       </Card>
     </div>

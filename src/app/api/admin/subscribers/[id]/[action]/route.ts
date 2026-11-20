@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
+import { sendTargetedEmail } from '@/lib/newsletter/delivery';
 
 // POST - Perform actions on subscribers
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string; action: string }> }) {
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       case 'send-email':
         const emailData = await request.json();
-        const { subject, content, template_id } = emailData;
+        const { subject, content, html_content } = emailData;
 
         if (!subject || !content) {
           return NextResponse.json(
@@ -146,29 +147,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           );
         }
 
-        // Here you would integrate with your email service
-        // For now, we'll just log the analytics event
-        await query(
-          `INSERT INTO newsletter_analytics 
-           (subscriber_id, email, event_type, event_data, created_at)
-           VALUES ($1, $2, 'sent', $3, CURRENT_TIMESTAMP)`,
-          [
-            subscriberId,
-            subscriber.email,
-            JSON.stringify({
-              subject,
-              content: content.substring(0, 100) + '...',
-              template_id,
-              sent_by: session.user.email,
-              campaign_type: 'manual'
-            })
-          ]
-        );
-
-        return NextResponse.json({
-          success: true,
-          message: 'Email sent successfully'
+        // W15: real send through Microsoft Graph, only if the subscriber is confirmed and active.
+        const outcome = await sendTargetedEmail({
+          subscriberIds: [subscriberId],
+          subject: String(subject),
+          content: String(content),
+          htmlContent: html_content || null,
+          author: session.user.name || session.user.email,
+          createdBy: session.user.id || null,
         });
+        if (outcome.status === 'not_sent') {
+          return NextResponse.json({ success: false, error: outcome.error }, { status: 409 });
+        }
+        return NextResponse.json(
+          {
+            success: outcome.ok,
+            message: outcome.ok ? `Email sent to ${subscriber.email}` : `Email not sent: ${outcome.error}`,
+            campaign_id: outcome.campaignId,
+          },
+          { status: outcome.ok ? 200 : 502 }
+        );
 
       case 'add-tags':
         const { tags } = await request.json();
