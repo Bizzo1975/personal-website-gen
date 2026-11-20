@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
     // Update the content status to 'scheduled' and set the scheduled_publish_at date
     if (contentType === 'post') {
       await query(
-        'UPDATE posts SET status = $1, scheduled_publish_at = $2 WHERE id = $3',
+        // published = false (only drafts reach here) and updated_at for Lunchpail's sync (W8)
+        'UPDATE posts SET status = $1, scheduled_publish_at = $2, published = false, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
         ['scheduled', scheduleTime, contentId]
       );
     } else {

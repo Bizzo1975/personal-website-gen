@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { parsePostStatus, postStatusAssignments } from "@/lib/post-status";
 
 function authorize(request: Request): boolean {
   const key = process.env.ME_MANAGER_API_KEY;
@@ -22,7 +23,8 @@ export async function GET(
   try {
     const result = await query(
       `SELECT id, title, slug, content, excerpt, status, published,
-              featured_image, tags, author, updated_at, created_at
+              featured_image, tags, author, updated_at, created_at,
+              published_at, scheduled_publish_at
        FROM posts
        WHERE id = $1`,
       [id]
@@ -48,6 +50,9 @@ export async function GET(
         author: row.author,
         updated_at: row.updated_at,
         created_at: row.created_at,
+        // W8: Lunchpail verifies an unschedule by reading these back
+        published_at: row.published_at,
+        scheduled_publish_at: row.scheduled_publish_at,
       },
       source: "willworkforlunch",
     });
@@ -70,6 +75,18 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
+  const status = parsePostStatus(body.status);
+  if (status === false) {
+    return NextResponse.json({ error: "status must be draft, scheduled or published" }, { status: 400 });
+  }
+  if (status === null && typeof body.published === "boolean") {
+    // `published` follows the status; publishing goes through POST /publish.
+    return NextResponse.json({ error: "Send status with published (or use POST /api/me-manager/posts/:id/publish)" }, { status: 400 });
+  }
+  if (status === "scheduled") {
+    // A schedule needs a date; that is what POST /schedule is for.
+    return NextResponse.json({ error: "Use POST /api/me-manager/posts/:id/schedule to schedule a post" }, { status: 400 });
+  }
 
   try {
     const result = await query(
@@ -78,18 +95,16 @@ export async function PATCH(
         slug = COALESCE($2, slug),
         content = COALESCE($3, content),
         excerpt = COALESCE($4, excerpt),
-        status = COALESCE($5, status),
-        published = COALESCE($6, published),
+        ${postStatusAssignments("$5")},
         updated_at = CURRENT_TIMESTAMP
-       WHERE id = $7
-       RETURNING id, title, slug, status, published, excerpt, updated_at`,
+       WHERE id = $6
+       RETURNING id, title, slug, status, published, excerpt, updated_at, published_at, scheduled_publish_at`,
       [
         body.title ?? null,
         body.slug ?? null,
         body.content ?? null,
         body.excerpt ?? null,
-        body.status ?? null,
-        typeof body.published === "boolean" ? body.published : null,
+        status,
         id,
       ]
     );

@@ -3,6 +3,8 @@ import { revalidatePath } from 'next/cache';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { PostService } from '@/lib/services/post-service';
+import { query } from '@/lib/db';
+import { parsePostStatus } from '@/lib/post-status';
 
 // GET /api/posts/[id] - Get a specific post by ID
 export async function GET(
@@ -89,21 +91,48 @@ export async function PUT(
       );
     }
 
-    // Update the post data
+    // Fields the editor did not send keep their current values. (The admin edit form
+    // sends no date/author/read time, so these used to be reset on every save: the
+    // post's blog date became "now" and the author became the editor's email.)
+    const currentResult = await query(
+      'SELECT status, author, read_time, date, permission_level, featured, featured_image, scheduled_publish_at FROM posts WHERE id = $1',
+      [resolvedParams.id]
+    );
+    if (currentResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+    const current = currentResult.rows[0];
+
+    const status = parsePostStatus(postData.status);
+    if (status === false) {
+      return NextResponse.json({ error: 'Status must be draft, scheduled or published' }, { status: 400 });
+    }
+    // W8: "scheduled" without a date would never publish (the scheduler needs a date and
+    // the Content Scheduler only schedules drafts). Keep an existing schedule; refuse a new one here.
+    if (status === 'scheduled' && current.status !== 'scheduled') {
+      return NextResponse.json(
+        { error: 'To schedule this post, save it as a draft and set the date in the Content Scheduler.' },
+        { status: 400 }
+      );
+    }
+
+    const has = (k: string) => Object.prototype.hasOwnProperty.call(postData, k);
     const updateData = {
       title: postData.title,
       slug: postData.slug,
       content: postData.content,
       excerpt: postData.excerpt,
-      featured_image: postData.featuredImage || postData.featured_image,
-      tags: postData.tags || [],
-      author: postData.author || session.user.email,
-      read_time: postData.readTime || postData.read_time || 5,
-      date: postData.date ? new Date(postData.date) : new Date(),
-      permission_level: postData.permissions?.level || postData.permissionLevel || 'all',
-      status: postData.status || 'draft',
-      published: postData.status === 'published' || postData.published || false,
-      featured: postData.featured || false
+      featured_image: has('featuredImage') || has('featured_image')
+        ? (postData.featuredImage ?? postData.featured_image ?? null)
+        : current.featured_image,
+      tags: Array.isArray(postData.tags) ? postData.tags : [],
+      author: postData.author || current.author || session.user.email,
+      read_time: postData.readTime || postData.read_time || current.read_time || 5,
+      date: postData.date ? new Date(postData.date) : current.date,
+      permission_level: postData.permissions?.level || postData.permissionLevel || current.permission_level || 'all',
+      // status null = unchanged; published/schedule follow the status rule in updatePost
+      status: (status ?? current.status) as 'draft' | 'scheduled' | 'published',
+      featured: typeof postData.featured === 'boolean' ? postData.featured : current.featured
     };
 
     // Update the post using PostService

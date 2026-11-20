@@ -63,7 +63,8 @@ export async function DELETE(
     // Update the content status back to 'draft' and clear the scheduled_publish_at date
     if (contentType === 'post') {
       await query(
-        'UPDATE posts SET status = $1, scheduled_publish_at = NULL WHERE id = $2',
+        // published = false and updated_at: see lib/post-status (W8) and Lunchpail's sync
+        'UPDATE posts SET status = $1, scheduled_publish_at = NULL, published = false, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
         ['draft', id]
       );
     } else {
@@ -157,7 +158,7 @@ export async function PUT(
     // Update the scheduled_publish_at date
     if (contentType === 'post') {
       await query(
-        'UPDATE posts SET scheduled_publish_at = $1 WHERE id = $2',
+        'UPDATE posts SET scheduled_publish_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
         [scheduleTime, id]
       );
     } else {

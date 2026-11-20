@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
-import { Pool } from 'pg';
+import { query } from '@/lib/db';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:admin123@localhost:5436/personal_website',
-});
+// Shared pool from lib/db (no hard-coded fallback database; UTC timestamps, W31).
+const pool = { query };
 
 // GET - Fetch all projects for Content Management
 export async function GET(request: NextRequest) {

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
-import { Pool } from 'pg';
+import { query } from '@/lib/db';
+import { parsePostStatus, postStatusAssignments } from '@/lib/post-status';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:admin123@localhost:5436/personal_website',
-});
+// Shared pool from lib/db (no hard-coded fallback database; UTC timestamps, W31).
+const pool = { query };
 
 // GET - Fetch all posts for Content Management
 export async function GET(request: NextRequest) {
@@ -210,12 +210,24 @@ export async function PUT(request: NextRequest) {
 
     // Check if post exists
     const postCheck = await pool.query(
-      'SELECT id FROM posts WHERE id = $1',
+      'SELECT id, status FROM posts WHERE id = $1',
       [id]
     );
 
     if (postCheck.rows.length === 0) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+
+    // W8/W34: validate the status; "scheduled" needs a date, set in the Content Scheduler.
+    const parsedStatus = parsePostStatus(status);
+    if (parsedStatus === false) {
+      return NextResponse.json({ error: 'Status must be draft, scheduled or published' }, { status: 400 });
+    }
+    if (parsedStatus === 'scheduled' && postCheck.rows[0].status !== 'scheduled') {
+      return NextResponse.json(
+        { error: 'To schedule this post, save it as a draft and set the date in the Content Scheduler.' },
+        { status: 400 }
+      );
     }
 
     // Calculate reading time if content is provided
@@ -234,16 +246,20 @@ export async function PUT(request: NextRequest) {
         excerpt = COALESCE($4, excerpt),
         tags = COALESCE($5, tags),
         featured_image = COALESCE($6, featured_image),
-        meta_description = COALESCE($7, meta_description),
-        status = COALESCE($8, status),
-        permission_level = COALESCE($9, permission_level),
-        read_time = COALESCE($10, read_time),
-        featured = COALESCE($11, featured),
-        last_edited_by = $12,
-        draft_content = COALESCE($13, draft_content)
-      WHERE id = $14
+        ${postStatusAssignments('$7')},
+        permission_level = COALESCE($8, permission_level),
+        read_time = COALESCE($9, read_time),
+        featured = COALESCE($10, featured),
+        last_edited_by = $11,
+        last_edited_at = CURRENT_TIMESTAMP,
+        draft_content = COALESCE($12, draft_content),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $13
       RETURNING *
     `;
+    // W35: this used to write meta_description, a column the posts table does not have,
+    // so every update here failed with a 500. (metaDescription is accepted and ignored.)
+    void metaDescription;
 
     const values = [
       title,
@@ -252,8 +268,7 @@ export async function PUT(request: NextRequest) {
       excerpt,
       tags,
       featuredImage,
-      metaDescription,
-      status,
+      parsedStatus,
       permissions?.level,
       readingTime,
       featured,

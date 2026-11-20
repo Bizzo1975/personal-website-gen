@@ -65,7 +65,8 @@ export async function POST(
     
     if (contentType === 'post') {
       await query(
-        'UPDATE posts SET status = $1, published_at = $2, published = true WHERE id = $3',
+        // updated_at: Lunchpail's sync and revision lock detect changes by it
+        'UPDATE posts SET status = $1, published_at = $2, published = true, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
         ['published', publishTime, id]
       );
     } else {

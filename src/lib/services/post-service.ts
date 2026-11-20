@@ -1,4 +1,5 @@
 import { Post as DBPost, CreatePostData, UpdatePostData } from '@/lib/models/Post';
+import { postStatusAssignments } from '@/lib/post-status';
 import { query } from '@/lib/db';
 
 // Frontend Post interface with camelCase properties
@@ -315,11 +316,14 @@ export class PostService {
   static async updatePost(id: string, postData: UpdatePostData): Promise<Post> {
     try {
       const result = await query(
+        // W8/W34: `published` and the schedule follow the status (see lib/post-status),
+        // so a post set back to draft is no longer public and carries no old schedule.
         `UPDATE posts 
            SET title = $1, slug = $2, content = $3, excerpt = $4, featured_image = $5, 
                tags = $6, author = $7, read_time = $8, date = $9, permission_level = $10, 
-               published = $11, status = $12, featured = $13, updated_at = CURRENT_TIMESTAMP 
-           WHERE id = $14 
+               ${postStatusAssignments('$11')},
+               featured = $12, updated_at = CURRENT_TIMESTAMP 
+           WHERE id = $13 
            RETURNING *`,
           [
             postData.title,
@@ -332,8 +336,7 @@ export class PostService {
             postData.read_time,
             postData.date,
             postData.permission_level,
-            postData.published,
-            postData.status,
+            postData.status ?? null,
             postData.featured,
             id
           ]
