@@ -12,6 +12,8 @@ export interface Project {
   featured: boolean;
   permission_level: 'all' | 'professional' | 'personal';
   status: 'draft' | 'scheduled' | 'published';
+  /** Lunchpail's stage label, e.g. "Beta"; set through the ME Manager bridge (W7). */
+  stage_label?: string | null;
   scheduled_publish_at?: Date;
   published_at?: Date;
   created_by?: string;

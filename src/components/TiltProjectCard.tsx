@@ -12,6 +12,7 @@ interface TiltProjectCardProps {
     technologies: string[];
     image?: string;
     slug?: string;
+    stageLabel?: string | null;
   };
   index: number;
 }
@@ -275,6 +276,12 @@ const TiltProjectCard: React.FC<TiltProjectCardProps> = ({ project, index }) => 
             } as unknown as React.CSSProperties}
           >
             {project.title}
+            {project.stageLabel && ' '}
+            {project.stageLabel && (
+              <span className="ml-1 align-middle inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                {project.stageLabel}
+              </span>
+            )}
           </motion.h3>
           
           <motion.p 

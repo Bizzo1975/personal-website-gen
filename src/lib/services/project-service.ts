@@ -34,6 +34,7 @@ export class ProjectService {
           featured,
           permission_level,
           status,
+          stage_label,
           created_at,
           updated_at
         FROM projects 
@@ -55,6 +56,7 @@ export class ProjectService {
         featured: row.featured,
         permission_level: row.permission_level,
         status: row.status,
+        stage_label: row.stage_label ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at
       }));
@@ -109,6 +111,7 @@ export class ProjectService {
         featured: row.featured,
         permission_level: row.permission_level,
         status: row.status,
+        stage_label: row.stage_label ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at
       };
@@ -140,6 +143,7 @@ export class ProjectService {
         featured: row.featured,
         permission_level: row.permission_level,
         status: row.status,
+        stage_label: row.stage_label ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at
       }));
@@ -181,6 +185,7 @@ export class ProjectService {
         featured: row.featured,
         permission_level: row.permission_level,
         status: row.status,
+        stage_label: row.stage_label ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at
       };
@@ -230,6 +235,7 @@ export class ProjectService {
         featured: row.featured,
         permission_level: row.permission_level,
         status: row.status,
+        stage_label: row.stage_label ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at
       };
@@ -260,6 +266,7 @@ export class ProjectService {
         featured: row.featured,
         permission_level: row.permission_level,
         status: row.status,
+        stage_label: row.stage_label ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at
       }));
@@ -314,6 +321,7 @@ export class ProjectService {
         featured: row.featured,
         permission_level: row.permission_level,
         status: row.status,
+        stage_label: row.stage_label ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at
       };
@@ -375,6 +383,7 @@ export class ProjectService {
         featured: row.featured,
         permission_level: row.permission_level,
         status: row.status,
+        stage_label: row.stage_label ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at
       };
@@ -415,6 +424,7 @@ export class ProjectService {
         featured: row.featured,
         permission_level: row.permission_level,
         status: row.status,
+        stage_label: row.stage_label ?? null,
         created_at: row.created_at,
         updated_at: row.updated_at
       }));
@@ -496,6 +506,8 @@ export interface ProjectData {
   featured: boolean;
   permissionLevel: 'all' | 'professional' | 'personal';
   status: 'draft' | 'scheduled' | 'published';
+  /** Lunchpail's stage label, e.g. "Beta" (W7). */
+  stageLabel?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -541,6 +553,7 @@ export async function getProjects(options: GetProjectsOptions = {}): Promise<Pro
       featured: project.featured,
       permissionLevel: project.permission_level,
       status: project.status,
+      stageLabel: project.stage_label ?? null,
       createdAt: project.created_at,
       updatedAt: project.updated_at
     }));
@@ -568,6 +581,7 @@ export async function getProjectBySlug(slug: string, userEmail?: string): Promis
       featured: project.featured,
       permissionLevel: project.permission_level,
       status: project.status,
+      stageLabel: project.stage_label ?? null,
       createdAt: project.created_at,
       updatedAt: project.updated_at
     };

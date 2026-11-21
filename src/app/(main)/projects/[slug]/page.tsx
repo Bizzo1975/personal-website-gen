@@ -32,6 +32,7 @@ interface ProjectData {
   sourceCode?: string;
   featured: boolean;
   status: string;
+  stageLabel?: string | null;
   createdAt: string;
   updatedAt?: string;
 }
@@ -84,6 +85,7 @@ export default function ProjectPage() {
         sourceCode: projectData.sourceCode || projectData.source_code,
         featured: projectData.featured || false,
         status: projectData.status || 'published',
+        stageLabel: projectData.stage_label ?? null,
         createdAt: projectData.createdAt || projectData.created_at,
         updatedAt: projectData.updatedAt || projectData.updated_at
       });
@@ -207,6 +209,11 @@ export default function ProjectPage() {
             }`}>
               {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
             </span>
+            {project.stageLabel && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                {project.stageLabel}
+              </span>
+            )}
           </div>
 
           <h1 data-project-slug={project.slug} className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">

@@ -1,178 +1,125 @@
-import { readProjectVideoResources } from "@/lib/project-video-resources";
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import CacheService from "@/lib/cache";
-import { revalidatePath } from "next/cache";
+import {
+  authorizeBridge,
+  parseProjectFields,
+  projectUpdateSet,
+  refreshProjectPages,
+  serializeProject,
+  PROJECT_COLUMNS,
+} from "@/lib/me-manager/project-bridge";
 
 /**
- * Thin ME Manager bridge — list / upsert projects (portfolio).
+ * Thin ME Manager bridge — list / create projects (portfolio).
  * Auth: Authorization: Bearer <ME_MANAGER_API_KEY>
+ * Write rules (W7): see lib/me-manager/project-bridge.ts.
  */
-function authorize(request: Request): boolean {
-  const key = process.env.ME_MANAGER_API_KEY;
-  if (!key) return false;
-  const header = request.headers.get("authorization") || "";
-  return header === `Bearer ${key}`;
-}
-
-function serializeProject(row: Record<string, unknown>) {
-  return {
-    id: row.id,
-    title: row.title,
-    slug: row.slug,
-    description: row.description,
-    content: row.content,
-    image: row.image,
-    technologies: row.technologies || [],
-    live_demo: row.live_demo,
-    source_code: row.source_code,
-    featured: Boolean(row.featured),
-    status: row.status,
-    published_at: row.published_at,
-    updated_at: row.updated_at,
-    created_at: row.created_at,
-  };
-}
-
 export async function GET(request: Request) {
-  if (!authorize(request)) {
+  if (!authorizeBridge(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
+    // Lunchpail matches projects by slug in this list, so it must hold every project.
     const result = await query(
-      `SELECT id, title, slug, description, content, image, technologies,
-              live_demo, source_code, featured, status, published_at,
-              updated_at, created_at
+      `SELECT ${PROJECT_COLUMNS}
        FROM projects
-       ORDER BY updated_at DESC NULLS LAST, created_at DESC
-       LIMIT 100`
+       ORDER BY updated_at DESC NULLS LAST, created_at DESC`
     );
-
-    const projects = result.rows.map((row) => serializeProject(row));
-
     return NextResponse.json({
-      projects,
+      projects: result.rows.map((row) => serializeProject(row)),
       source: "willworkforlunch",
     });
   } catch (error) {
     console.error("me-manager projects list failed:", error);
-    return NextResponse.json(
-      { error: "Failed to list projects" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to list projects" }, { status: 500 });
   }
 }
 
-/** Upsert by slug — ME Manager Portfolio → WWFL /projects */
+/**
+ * Create a project. A body whose slug already exists updates that project instead
+ * (the older upsert-by-slug behaviour), with the same present-key rule as PATCH.
+ */
 export async function POST(request: Request) {
-  if (!authorize(request)) {
+  if (!authorizeBridge(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let body: unknown;
   try {
-    const body = await request.json();
-    try {
-      if (body.content != null && (typeof body.content !== "string" || body.content.length > 2000000)) throw new Error("Invalid project content");
-      readProjectVideoResources(body.content);
-    } catch {
-      return NextResponse.json({ error: "Invalid project video information" }, { status: 400 });
-    }
-    const slug =
-      body.slug ||
-      String(body.title || "project")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-    const title = body.title || slug;
-    const description = body.description ?? null;
-    const content = body.content ?? null;
-    const image = body.image ?? body.featured_image ?? null;
-    const technologies = Array.isArray(body.technologies)
-      ? body.technologies
-      : [];
-    const liveDemo = body.live_demo ?? body.liveUrl ?? body.url ?? null;
-    const sourceCode = body.source_code ?? body.repoPath ?? null;
-    const featured = Boolean(body.featured);
-    const status = body.status || "published";
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
+  }
+  const parsed = parseProjectFields(body);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const fields = { ...parsed.fields };
 
-    const existing = await query(`SELECT id FROM projects WHERE slug = $1`, [
-      slug,
-    ]);
+  if (!fields.title && !fields.slug) {
+    return NextResponse.json({ error: "A title or slug is required" }, { status: 400 });
+  }
+  fields.slug ??= String(fields.title)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  if (!fields.slug) return NextResponse.json({ error: "Could not derive a slug from the title" }, { status: 400 });
+  fields.title ??= fields.slug;
 
-    let result;
+  try {
+    const existing = await query(`SELECT id FROM projects WHERE slug = $1`, [fields.slug]);
+    let row: Record<string, unknown>;
+    let created = false;
     if (existing.rows.length > 0) {
-      result = await query(
+      const { set, values } = projectUpdateSet(fields, 2);
+      const result = await query(
         `UPDATE projects SET
-          title = $1,
-          description = COALESCE($2, description),
-          content = COALESCE($3, content),
-          image = COALESCE($4, image),
-          technologies = COALESCE($5, technologies),
-          live_demo = COALESCE($6, live_demo),
-          source_code = COALESCE($7, source_code),
-          featured = $8,
-          status = COALESCE($9, status),
-          updated_at = CURRENT_TIMESTAMP
-         WHERE slug = $10
-         RETURNING *`,
-        [
-          title,
-          description,
-          content,
-          image,
-          technologies,
-          liveDemo,
-          sourceCode,
-          featured,
-          status,
-          slug,
-        ]
+          ${set}
+         WHERE id = $1
+         RETURNING ${PROJECT_COLUMNS}`,
+        [existing.rows[0].id, ...values]
       );
+      row = result.rows[0];
     } else {
-      result = await query(
+      const status = fields.status ?? "draft";
+      const result = await query(
         `INSERT INTO projects (
-          title, slug, description, content, image, technologies,
-          live_demo, source_code, featured, status, published_at, created_at, updated_at
+          title, slug, description, content, image, technologies, live_demo, source_code,
+          featured, available, stage_label, status, published_at, created_at, updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::varchar,
-          CASE WHEN $10::varchar = 'draft' THEN NULL ELSE CURRENT_TIMESTAMP END,
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::varchar,
+          CASE WHEN $12::varchar = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END,
           CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
-        RETURNING *`,
+        RETURNING ${PROJECT_COLUMNS}`,
         [
-          title,
-          slug,
-          description,
-          content,
-          image,
-          technologies,
-          liveDemo,
-          sourceCode,
-          featured,
+          fields.title,
+          fields.slug,
+          fields.description ?? "",
+          fields.content ?? null,
+          fields.image ?? null,
+          fields.technologies ?? [],
+          fields.live_demo ?? null,
+          fields.source_code ?? null,
+          fields.featured ?? false,
+          fields.available ?? true,
+          fields.stage_label ?? null,
           status,
         ]
       );
+      row = result.rows[0];
+      created = true;
     }
 
-    const cache = CacheService.getInstance();
-    await Promise.all([
-      cache.invalidatePattern("projects:list:*"),
-      cache.del(CacheService.getProjectKey(String(result.rows[0].id))),
-    ]).catch(error => console.warn("Project cache invalidation failed", error instanceof Error ? error.name : "unknown"));
-    revalidatePath("/projects");
-    revalidatePath(`/projects/${slug}`);
-
-    return NextResponse.json({
-      ok: true,
-      project: serializeProject(result.rows[0]),
-      source: "willworkforlunch",
-    });
-  } catch (error) {
-    console.error("me-manager create project failed:", error);
+    await refreshProjectPages(String(row.id), [String(row.slug)]);
     return NextResponse.json(
-      { error: "Failed to create project" },
-      { status: 500 }
+      { ok: true, created, project: serializeProject(row), source: "willworkforlunch" },
+      { status: created ? 201 : 200 }
     );
+  } catch (error) {
+    if ((error as { code?: string }).code === "23505") {
+      return NextResponse.json({ error: "Another project already uses this slug" }, { status: 409 });
+    }
+    console.error("me-manager create project failed:", error);
+    return NextResponse.json({ error: "Failed to create project" }, { status: 500 });
   }
 }
