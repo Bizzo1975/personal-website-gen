@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { notifyMeManagerTeaser } from '@/lib/me-manager-teaser';
 import { sendCampaign } from '@/lib/newsletter/delivery';
 import { processDueRecurringRules } from '@/lib/recurring/processor';
+import { syncProjectsToDemosJson } from '@/lib/kecktech/demos-json';
 
 /**
  * Scheduler Service for Automated Content Publishing
@@ -17,6 +18,8 @@ export interface ScheduledContentStats {
   recurringDraftsCreated?: number;
   recurringFailures?: number;
   recurringError?: string;
+  /** Kecktech instance: demos.json brought in line with the projects table (any change path). */
+  demosJson?: string;
   lastRunAt: Date;
 }
 
@@ -69,6 +72,13 @@ export class SchedulerService {
       } catch (error) {
         stats.recurringError = error instanceof Error ? error.message : String(error);
         console.error('Recurring content processing failed:', error);
+      }
+
+      // Kecktech instance: every project change (admin screens, scheduler, Lunchpail) reaches
+      // demos.json within one scheduler run. No-op on WWFL (DEMOS_JSON_PATH unset).
+      if (process.env.DEMOS_JSON_PATH) {
+        const demos = await syncProjectsToDemosJson();
+        stats.demosJson = demos.ok ? (demos.changed ? `updated (${demos.count} apps)` : 'unchanged') : `failed: ${demos.reason}`;
       }
 
       return stats;

@@ -49,7 +49,7 @@ const DEFAULT_FILE = {
   },
 };
 
-export type DemosSyncResult = { ok: true; count: number; path: string } | { ok: false; reason: string };
+export type DemosSyncResult = { ok: true; count: number; path: string; changed: boolean } | { ok: false; reason: string };
 
 export async function syncProjectsToDemosJson(): Promise<DemosSyncResult> {
   const demosPath = process.env.DEMOS_JSON_PATH;
@@ -95,15 +95,20 @@ export async function syncProjectsToDemosJson(): Promise<DemosSyncResult> {
       });
     }
     const next = { ...existing, apps: [...apps.values()] };
+    const text = JSON.stringify(next, null, 2) + '\n';
+    // Write only on a real change (the scheduler calls this every run).
+    if (fs.existsSync(demosPath) && fs.readFileSync(demosPath, 'utf8') === text) {
+      return { ok: true, count: apps.size, path: demosPath, changed: false };
+    }
     fs.mkdirSync(path.dirname(demosPath), { recursive: true });
     const tmp = `${demosPath}.${process.pid}.${Date.now()}.tmp`;
     try {
-      fs.writeFileSync(tmp, JSON.stringify(next, null, 2) + '\n', { encoding: 'utf8', flag: 'wx', mode: 0o644 });
+      fs.writeFileSync(tmp, text, { encoding: 'utf8', flag: 'wx', mode: 0o644 });
       fs.renameSync(tmp, demosPath);
     } finally {
       if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
     }
-    return { ok: true, count: apps.size, path: demosPath };
+    return { ok: true, count: apps.size, path: demosPath, changed: true };
   } catch (e) {
     console.error('demos.json sync failed:', e instanceof Error ? e.message : e);
     return { ok: false, reason: e instanceof Error ? e.message : 'demos.json sync failed' };
