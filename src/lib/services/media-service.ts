@@ -64,6 +64,11 @@ export class MediaService {
       // Validate file
       await this.validateFile(file, options);
 
+      // W42: contentType is a directory name below public/uploads; only known values.
+      if (!['post', 'project', 'newsletter', 'general'].includes(options.contentType)) {
+        throw new Error('Invalid content type');
+      }
+
       // Generate filename and paths
       const fileExtension = path.extname(file.name);
       const filename = `${uuidv4()}${fileExtension}`;
@@ -94,9 +99,11 @@ export class MediaService {
 
       // Save metadata to database
       const result = await query(
+        // W1c: the folder chosen in the library is stored (it was dropped, so every upload
+        // landed at the top level).
         `INSERT INTO media_files 
-         (id, filename, original_name, file_path, file_size, mime_type, content_type, alt_text, uploaded_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+         (id, filename, original_name, file_path, file_size, mime_type, content_type, alt_text, uploaded_by, folder)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
          RETURNING *`,
         [
           uuidv4(),
@@ -107,7 +114,8 @@ export class MediaService {
           file.type,
           options.contentType,
           options.altText || null,
-          options.uploadedBy
+          options.uploadedBy,
+          options.folder || null
         ]
       );
 
@@ -290,35 +298,75 @@ export class MediaService {
   }
 
   /**
-   * Delete a media file (both database record and file)
+   * W22: where a media file is used. A path is matched as a substring, which covers
+   * "/uploads/x.jpg", "/api/uploads/x.jpg" and absolute URLs ending in it.
    */
-  static async deleteMediaFile(id: string): Promise<boolean> {
-    try {
-      // Get file info first
-      const mediaFile = await this.getMediaById(id);
-      if (!mediaFile) {
-        return false;
-      }
+  static async findMediaUsage(filePath: string): Promise<string[]> {
+    if (!filePath) return [];
+    const like = '%' + filePath.replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+    const r = await query(
+      `SELECT 'post "' || title || '"' AS used_by FROM posts
+        WHERE featured_image LIKE $1 OR content LIKE $1 OR draft_content LIKE $1
+       UNION ALL
+       SELECT 'project "' || title || '"' FROM projects
+        WHERE image LIKE $1 OR content LIKE $1 OR draft_content LIKE $1 OR description LIKE $1
+       UNION ALL
+       SELECT 'page "' || COALESCE(title, slug, id::text) || '"' FROM pages WHERE content LIKE $1
+       UNION ALL
+       SELECT 'site setting "' || setting_key || '"' FROM site_settings WHERE setting_value LIKE $1
+       UNION ALL
+       SELECT 'profile image' FROM profiles WHERE image_url LIKE $1
+       UNION ALL
+       SELECT 'user profile image' FROM users WHERE profile_image LIKE $1
+       UNION ALL
+       SELECT 'newsletter campaign "' || title || '"' FROM newsletter_campaigns
+        WHERE content LIKE $1 OR html_content LIKE $1`,
+      [like]
+    );
+    return r.rows.map((row: { used_by: string }) => row.used_by);
+  }
 
-      // Delete from database
-      await query('DELETE FROM media_files WHERE id = $1', [id]);
+  /**
+   * W22: delete a media file and report exactly what happened.
+   * - Refuses (status 'in_use') when the file is used, unless force is true.
+   * - Removes the file from disk only when it is an upload under public/uploads; images
+   *   that are part of the site build (e.g. /images/...) are only removed from the library.
+   * - A disk deletion that fails is reported, not hidden.
+   */
+  static async deleteMediaFileChecked(id: string, force = false): Promise<
+    | { status: 'not_found' }
+    | { status: 'in_use'; usedBy: string[] }
+    | { status: 'deleted'; disk: 'deleted' | 'not_an_upload' | 'missing' | 'failed'; diskError?: string; usedBy: string[] }
+  > {
+    const mediaFile = await this.getMediaById(id);
+    if (!mediaFile) return { status: 'not_found' };
 
-      // Delete physical file
-      try {
-        const physicalPath = path.join(process.cwd(), 'public', mediaFile.file_path);
-        await fs.access(physicalPath);
-        await fs.unlink(physicalPath);
-        console.log(`🗑️ Deleted file: ${mediaFile.file_path}`);
-      } catch (fileError) {
-        console.warn(`⚠️ Could not delete physical file: ${mediaFile.file_path}`, fileError);
-        // Continue - database deletion succeeded
-      }
+    const usedBy = await this.findMediaUsage(mediaFile.file_path);
+    if (usedBy.length > 0 && !force) return { status: 'in_use', usedBy };
 
-      return true;
-    } catch (error) {
-      console.error('Error deleting media file:', error);
-      throw error;
+    await query('DELETE FROM media_files WHERE id = $1', [id]);
+
+    const rel = String(mediaFile.file_path || '').replace(/^\/api\//, '/');
+    if (!rel.startsWith('/uploads/')) return { status: 'deleted', disk: 'not_an_upload', usedBy };
+    const uploadsRoot = path.join(process.cwd(), 'public', 'uploads');
+    const physicalPath = path.join(process.cwd(), 'public', rel);
+    if (!physicalPath.startsWith(uploadsRoot + path.sep)) {
+      return { status: 'deleted', disk: 'failed', diskError: 'Path is outside the uploads folder', usedBy };
     }
+    try {
+      await fs.unlink(physicalPath);
+      return { status: 'deleted', disk: 'deleted', usedBy };
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') return { status: 'deleted', disk: 'missing', usedBy };
+      return { status: 'deleted', disk: 'failed', diskError: e instanceof Error ? e.message : String(e), usedBy };
+    }
+  }
+
+  /** Kept for existing callers: true when the library entry was removed (forced). */
+  static async deleteMediaFile(id: string): Promise<boolean> {
+    const r = await this.deleteMediaFileChecked(id, true);
+    return r.status === 'deleted';
   }
 
   /**

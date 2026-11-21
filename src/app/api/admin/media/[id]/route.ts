@@ -23,9 +23,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // W41: this selected type/size/url/created_by, which media_files does not have,
+    // so it always failed with a 500.
     const result = await query(
-      `SELECT id, filename, original_name, type, size, url, alt_text, 
-              created_at, updated_at, created_by
+      `SELECT id, filename, original_name, file_path, file_size, mime_type, content_type,
+              alt_text, uploaded_by, starred, tags, folder, created_at, updated_at
        FROM media_files 
        WHERE id = $1`,
       [resolvedParams.id]
@@ -35,7 +37,8 @@ export async function GET(
       return NextResponse.json({ error: 'Media file not found' }, { status: 404 });
     }
 
-    return NextResponse.json(result.rows[0]);
+    const usedBy = await MediaService.findMediaUsage(result.rows[0].file_path);
+    return NextResponse.json({ ...result.rows[0], usedBy });
 
   } catch (error) {
     console.error('Media get error:', error);
@@ -58,14 +61,21 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { altText, filename } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k);
+    if (has('filename') && (typeof body.filename !== 'string' || !body.filename.trim())) {
+      return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
+    }
 
+    // W41: fields not sent keep their values (an alt-text-only update used to blank the name).
     const result = await query(
       `UPDATE media_files 
-       SET alt_text = $1, original_name = $2, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3
+       SET alt_text = CASE WHEN $1::boolean THEN $2 ELSE alt_text END,
+           original_name = CASE WHEN $3::boolean THEN $4 ELSE original_name END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5
        RETURNING *`,
-      [altText, filename, resolvedParams.id]
+      [has('altText'), body.altText ?? null, has('filename'), has('filename') ? String(body.filename).trim() : null, resolvedParams.id]
     );
 
     if (result.rows.length === 0) {
@@ -95,16 +105,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const deleteResult = await MediaService.deleteMediaFile(resolvedParams.id);
-
-    if (!deleteResult) {
-      return NextResponse.json(
-        { error: 'Failed to delete media file' },
-        { status: 400 }
-      );
+    // W22: refused while the file is used, unless ?force=true; the disk outcome is reported.
+    const force = new URL(request.url).searchParams.get('force') === 'true';
+    const r = await MediaService.deleteMediaFileChecked(resolvedParams.id, force);
+    if (r.status === 'not_found') return NextResponse.json({ error: 'Media file not found' }, { status: 404 });
+    if (r.status === 'in_use') {
+      return NextResponse.json({ error: `In use by ${r.usedBy.join(', ')}`, usedBy: r.usedBy }, { status: 409 });
     }
-
-    return NextResponse.json({ message: 'Media file deleted successfully' });
+    return NextResponse.json(r);
 
   } catch (error) {
     console.error('Media delete error:', error);
@@ -113,4 +121,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

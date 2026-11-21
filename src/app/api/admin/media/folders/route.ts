@@ -70,6 +70,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Folder name is required' }, { status: 400 });
     }
 
+    if (parentId !== undefined && parentId !== null && parentId !== '' && !/^\d+$/.test(String(parentId))) {
+      return NextResponse.json({ error: 'Invalid parent folder id' }, { status: 400 });
+    }
+
     // Validate parent folder exists if provided
     if (parentId) {
       const parentCheck = await query(

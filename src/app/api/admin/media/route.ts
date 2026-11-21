@@ -36,47 +36,33 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const contentType = searchParams.get('type');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
-
-    // Simplified query approach
-    let sqlQuery: string;
-    let queryParams: any[];
-
-    if (contentType) {
-      sqlQuery = `
-        SELECT id, filename, original_name, file_path, file_size, mime_type, 
-               content_type, alt_text, created_at, uploaded_by,
-               starred, tags, folder, updated_at
-        FROM media_files 
-        WHERE content_type = $1
-        ORDER BY created_at DESC 
-        LIMIT $2 OFFSET $3
-      `;
-      queryParams = [contentType, limit, offset];
-    } else {
-      sqlQuery = `
-        SELECT id, filename, original_name, file_path, file_size, mime_type, 
-               content_type, alt_text, created_at, uploaded_by,
-               starred, tags, folder, updated_at
-        FROM media_files 
-        ORDER BY created_at DESC 
-        LIMIT $1 OFFSET $2
-      `;
-      queryParams = [limit, offset];
+    // W40: the library sent no limit and the default of 50 silently hid every file after
+    // the 50th (live has 71). Default and maximum are now 1000; `total` is always returned.
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '1000') || 1000, 1), 1000);
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0') || 0, 0);
+    // W1c: folder=root -> files not in a folder; folder=<id> -> that folder; absent -> all.
+    const folder = searchParams.get('folder');
+    if (folder && folder !== 'root' && !/^\d+$/.test(folder)) {
+      return NextResponse.json({ error: 'folder must be "root" or a folder id' }, { status: 400 });
     }
 
-    console.log('📊 Executing query:', { contentType, limit, offset });
-    const result = await query(sqlQuery, queryParams);
-    console.log('✅ Query successful, found', result.rows.length, 'files');
+    const where: string[] = [];
+    const params: any[] = [];
+    if (contentType) { params.push(contentType); where.push(`content_type = $${params.length}`); }
+    if (folder === 'root') where.push('folder IS NULL');
+    else if (folder) { params.push(folder); where.push(`folder = $${params.length}`); }
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-    // Get total count
-    const countQuery = contentType 
-      ? 'SELECT COUNT(*) as total FROM media_files WHERE content_type = $1'
-      : 'SELECT COUNT(*) as total FROM media_files';
-    const countParams = contentType ? [contentType] : [];
-    
-    const countResult = await query(countQuery, countParams);
+    const result = await query(
+      `SELECT id, filename, original_name, file_path, file_size, mime_type,
+              content_type, alt_text, created_at, uploaded_by,
+              starred, tags, folder, updated_at
+         FROM media_files ${whereClause}
+        ORDER BY created_at DESC
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset]
+    );
+    const countResult = await query(`SELECT COUNT(*) AS total FROM media_files ${whereClause}`, params);
     const total = parseInt(countResult.rows[0]?.total || '0');
 
     console.log('📋 Total files:', total);
@@ -95,8 +81,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to fetch media files',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -201,55 +186,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE: Delete multiple files (for bulk operations)
-export async function DELETE(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { fileIds } = await request.json();
-
-    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
-      return NextResponse.json(
-        { error: 'No file IDs provided' },
-        { status: 400 }
-      );
-    }
-
-    const results = [];
-    for (const fileId of fileIds) {
-      try {
-        const deleted = await MediaService.deleteMediaFile(fileId);
-        results.push({ id: fileId, deleted, error: null });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        results.push({ id: fileId, deleted: false, error: errorMessage });
-      }
-    }
-
-    const successCount = results.filter(r => r.deleted).length;
-    const failCount = results.length - successCount;
-
-    return NextResponse.json({
-      success: failCount === 0,
-      message: `Deleted ${successCount} file(s)${failCount > 0 ? `, failed to delete ${failCount}` : ''}`,
-      results
-    });
-
-  } catch (error) {
-    console.error('Error deleting media files:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Failed to delete files',
-        message: errorMessage 
-      },
-      { status: 500 }
-    );
-  }
-} 
-
+// DELETE: same checked deletion as /api/admin/media/delete (W22): files that are in use
+// are refused unless { force: true }, and the real outcome is reported per file.
+export { DELETE } from './delete/route';

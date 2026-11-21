@@ -22,8 +22,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file IDs provided' }, { status: 400 });
     }
 
-    // folderId can be null (root folder) or a valid folder ID
-    if (folderId && typeof folderId !== 'string') {
+    // folderId can be null (root folder) or a numeric folder id (W1c: anything else used to
+    // reach the database and fail with a 500)
+    if (folderId !== null && folderId !== undefined && folderId !== '' && !/^\d+$/.test(String(folderId))) {
       return NextResponse.json({ error: 'Invalid folder ID' }, { status: 400 });
     }
 

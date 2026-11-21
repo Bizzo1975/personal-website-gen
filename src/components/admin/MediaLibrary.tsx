@@ -77,6 +77,10 @@ const MediaLibrary: React.FC = () => {
   const [bulkUploadProgress, setBulkUploadProgress] = useState<BulkUploadProgress | null>(null);
   const [tagFilter, setTagFilter] = useState('');
   const [starredOnly, setStarredOnly] = useState(false);
+  // Result of the last action, from the server (W1c/W22: errors used to be swallowed)
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [totalInFolder, setTotalInFolder] = useState<number | null>(null);
+  const [moveTarget, setMoveTarget] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Memoize filtered files to avoid recalculation on every render
@@ -196,16 +200,21 @@ const MediaLibrary: React.FC = () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (currentFolder) params.append('folder', currentFolder);
-      params.append('sortBy', sortBy);
-      params.append('sortOrder', sortOrder);
+      // W1c: show the files in the current folder; the top level shows files not in a folder.
+      params.append('folder', currentFolder ?? 'root');
+      params.append('limit', '1000');
       
       // Add cache-busting parameter to ensure fresh data
       params.append('_t', Date.now().toString());
       
       const response = await fetch(`/api/admin/media?${params}`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setMessage({ ok: false, text: `Could not load media: ${data.error || `HTTP ${response.status}`}` });
+      }
       if (response.ok) {
         const data = await response.json();
+        setTotalInFolder(typeof data.total === 'number' ? data.total : null);
         // Extract the media array from the API response and map fields
         const mediaFiles = Array.isArray(data.media) ? data.media.map((file: any) => {
           // Ensure file_path is a proper URL path (starts with /)
@@ -214,27 +223,10 @@ const MediaLibrary: React.FC = () => {
             fileUrl = '/' + fileUrl;
           }
           
-          // Convert uploads paths to API route for Next.js standalone mode
-          // /uploads/general/file.jpg -> /api/uploads/general/file.jpg
-          if (fileUrl.startsWith('/uploads/')) {
-            fileUrl = '/api' + fileUrl;
-          }
-          
-          // Use file_path as thumbnail if no thumbnail_url exists
-          let thumbnailUrl = file.thumbnail_url || file.file_path || '';
-          if (thumbnailUrl && !thumbnailUrl.startsWith('/') && !thumbnailUrl.startsWith('http')) {
-            thumbnailUrl = '/' + thumbnailUrl;
-          }
-          
-          // Convert uploads paths to API route for thumbnails too
-          if (thumbnailUrl.startsWith('/uploads/')) {
-            thumbnailUrl = '/api' + thumbnailUrl;
-          }
-          
-          // If thumbnail_url is not set, use file_path as thumbnail
-          if (!file.thumbnail_url && fileUrl) {
-            thumbnailUrl = fileUrl;
-          }
+          // W43: uploads are served at /uploads/... (verified on live: 200). These used to be
+          // rewritten to /api/uploads/..., a route that does not exist (404 on live), so every
+          // uploaded image was broken in the library.
+          const thumbnailUrl = fileUrl;
           
           return {
             id: file.id,
@@ -267,118 +259,136 @@ const MediaLibrary: React.FC = () => {
   const fetchFolders = async () => {
     try {
       const response = await fetch('/api/admin/media/folders');
-      if (response.ok) {
-        const data = await response.json();
-        setFolders(data);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !Array.isArray(data)) {
+        setMessage({ ok: false, text: `Could not load folders: ${data?.error || `HTTP ${response.status}`}` });
+        return;
       }
+      setFolders(data.map((f: MediaFolder & { id: string | number; parentId?: string | number | null }) => ({
+        ...f, id: String(f.id), parentId: f.parentId == null ? undefined : String(f.parentId),
+      })));
     } catch (error) {
-      console.error('Failed to fetch folders:', error);
+      setMessage({ ok: false, text: `Could not load folders: ${error instanceof Error ? error.message : String(error)}` });
     }
   };
 
+  /** "Top level / Parent / Child" for a folder id, for breadcrumbs and the move picker. */
+  const folderPath = (id: string | null | undefined): MediaFolder[] => {
+    const chain: MediaFolder[] = [];
+    let f = folders.find((x) => x.id === id);
+    while (f && chain.length < 20) { chain.unshift(f); f = folders.find((x) => x.id === f!.parentId); }
+    return chain;
+  };
+
+  /** Read a JSON error/result body without throwing. */
+  const body = async (res: Response) => res.json().catch(() => ({} as Record<string, any>));
+
   const handleBulkFileUpload = async (uploadedFiles: FileList) => {
     const fileArray = Array.from(uploadedFiles);
-    setBulkUploadProgress({
-      total: fileArray.length,
-      completed: 0,
-      errors: []
-    });
+    setBulkUploadProgress({ total: fileArray.length, completed: 0, errors: [] });
 
     const formData = new FormData();
-    fileArray.forEach(file => {
-      formData.append('files', file);
-    });
-    
-    if (currentFolder) {
-      formData.append('folder', currentFolder);
-    }
+    fileArray.forEach(file => formData.append('files', file));
+    if (currentFolder) formData.append('folder', currentFolder);
 
     try {
-      // Use a different endpoint for bulk uploads
-      const response = await fetch('/api/admin/media/bulk-upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setBulkUploadProgress(prev => prev ? {
-          ...prev,
-          completed: result.successful,
-          errors: result.errors || []
-        } : null);
-        
-        // Add a delay to ensure database is fully committed and files are accessible
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Force refresh the media files list with cache busting
-        setLoading(true);
-        await fetchMediaFiles();
-        setLoading(false);
-        
-        setShowUploadModal(false);
-        
-        // Clear progress after 3 seconds
-        setTimeout(() => setBulkUploadProgress(null), 3000);
-      } else {
-        throw new Error('Bulk upload failed');
-      }
+      const response = await fetch('/api/admin/media/bulk-upload', { method: 'POST', body: formData });
+      const result = await body(response);
+      if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+      setBulkUploadProgress(prev => prev ? { ...prev, completed: result.successful ?? 0, errors: result.errors || [] } : null);
+      await fetchMediaFiles();
+      await fetchFolders();
+      setShowUploadModal(false);
+      setTimeout(() => setBulkUploadProgress(null), 5000);
     } catch (error) {
-      console.error('Failed to upload files:', error);
       setBulkUploadProgress(prev => prev ? {
         ...prev,
-        errors: [...prev.errors, 'Upload failed: ' + error]
+        errors: [...prev.errors, `Upload failed: ${error instanceof Error ? error.message : String(error)}`]
       } : null);
     }
   };
 
+  // W22: deletion is real; files in use need an explicit second confirmation.
   const handleDeleteFiles = async (fileIds?: string[]) => {
     const idsToDelete = fileIds || Array.from(selectedFiles);
     if (idsToDelete.length === 0) return;
+    if (!window.confirm(`Delete ${idsToDelete.length} file(s)? This cannot be undone.`)) return;
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${idsToDelete.length} file(s)? This action cannot be undone.`
-    );
-
-    if (!confirmed) return;
-
-    try {
+    const send = async (force: boolean) => {
       const response = await fetch('/api/admin/media/delete', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileIds: idsToDelete })
+        body: JSON.stringify({ fileIds: idsToDelete, force })
       });
+      return { response, data: await body(response) };
+    };
 
-      if (response.ok) {
-        await fetchMediaFiles();
-        setSelectedFiles(new Set());
+    try {
+      let { response, data } = await send(false);
+      const inUse = (data.results || []).filter((r: any) => r.status === 'in_use');
+      if (inUse.length > 0) {
+        const where = inUse.map((r: any) => `- ${files.find((f) => f.id === r.id)?.originalName || r.id}: ${r.usedBy.join(', ')}`).join('\n');
+        if (window.confirm(`${inUse.length} file(s) are in use and were not deleted:\n${where}\n\nDelete them anyway? Those pages will show a missing image.`)) {
+          ({ response, data } = await send(true));
+        }
       }
+      const results: any[] = data.results || [];
+      const deleted = results.filter((r) => r.status === 'deleted');
+      const notOnDisk = deleted.filter((r) => r.disk === 'failed');
+      const problems = results.filter((r) => r.status === 'error' || r.status === 'not_found').length;
+      const kept = results.filter((r) => r.status === 'in_use').length;
+      if (!response.ok && deleted.length === 0 && !kept) throw new Error(data.error || `HTTP ${response.status}`);
+      const parts = [`Deleted ${deleted.length} of ${idsToDelete.length}`];
+      if (kept) parts.push(`${kept} kept because in use`);
+      if (problems) parts.push(`${problems} failed`);
+      if (notOnDisk.length) parts.push(`${notOnDisk.length} removed from the library but the file could not be removed from disk (${notOnDisk[0].diskError})`);
+      setMessage({ ok: problems === 0 && notOnDisk.length === 0, text: parts.join('; ') + '.' });
+      await fetchMediaFiles();
+      await fetchFolders();
+      setSelectedFiles(new Set());
     } catch (error) {
-      console.error('Failed to delete files:', error);
+      setMessage({ ok: false, text: `Not deleted: ${error instanceof Error ? error.message : String(error)}` });
     }
   };
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
-
     try {
       const response = await fetch('/api/admin/media/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          name: newFolderName.trim(),
-          parentId: currentFolder 
-        })
+        body: JSON.stringify({ name: newFolderName.trim(), parentId: currentFolder })
       });
-
-      if (response.ok) {
-        await fetchFolders();
-        setNewFolderName('');
-        setShowCreateFolder(false);
-      }
+      const data = await body(response);
+      if (!response.ok) { setMessage({ ok: false, text: `Folder not created: ${data.error || `HTTP ${response.status}`}` }); return; }
+      await fetchFolders();
+      setNewFolderName('');
+      setShowCreateFolder(false);
+      setMessage({ ok: true, text: `Folder "${data.folder?.name}" created.` });
     } catch (error) {
-      console.error('Failed to create folder:', error);
+      setMessage({ ok: false, text: `Folder not created: ${error instanceof Error ? error.message : String(error)}` });
     }
+  };
+
+  const handleRenameFolder = async (folder: MediaFolder) => {
+    const name = window.prompt('New folder name:', folder.name);
+    if (!name || name.trim() === folder.name) return;
+    const response = await fetch(`/api/admin/media/folders/${folder.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() })
+    });
+    const data = await body(response);
+    setMessage(response.ok ? { ok: true, text: `Renamed to "${name.trim()}".` } : { ok: false, text: `Not renamed: ${data.error || `HTTP ${response.status}`}` });
+    await fetchFolders();
+  };
+
+  const handleDeleteFolder = async (folder: MediaFolder) => {
+    if (!window.confirm(`Delete the empty folder "${folder.name}"?`)) return;
+    const response = await fetch(`/api/admin/media/folders/${folder.id}`, { method: 'DELETE' });
+    const data = await body(response);
+    if (!response.ok) { setMessage({ ok: false, text: `Folder not deleted: ${data.error || `HTTP ${response.status}`}` }); return; }
+    setMessage({ ok: true, text: `Folder "${folder.name}" deleted.` });
+    if (currentFolder === folder.id) setCurrentFolder(folder.parentId ?? null);
+    await fetchFolders();
   };
 
   const handleBulkTag = async (tags: string[]) => {
@@ -389,45 +399,50 @@ const MediaLibrary: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileIds, tags })
       });
-
-      if (response.ok) {
-        await fetchMediaFiles();
-        setSelectedFiles(new Set());
-      }
+      const data = await body(response);
+      if (!response.ok) { setMessage({ ok: false, text: `Tags not added: ${data.error || `HTTP ${response.status}`}` }); return; }
+      setMessage({ ok: true, text: `Tags added to ${fileIds.length} file(s).` });
+      await fetchMediaFiles();
+      setSelectedFiles(new Set());
     } catch (error) {
-      console.error('Failed to add tags:', error);
+      setMessage({ ok: false, text: `Tags not added: ${error instanceof Error ? error.message : String(error)}` });
     }
   };
 
-  const handleBulkMove = async (folderId: string) => {
+  // W1c: target chosen from a folder list (it used to ask you to type a folder id).
+  const handleBulkMove = async (target: string) => {
     const fileIds = Array.from(selectedFiles);
+    const folderId = target === 'root' ? null : target;
     try {
       const response = await fetch('/api/admin/media/bulk-move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileIds, folderId })
       });
-
-      if (response.ok) {
-        await fetchMediaFiles();
-        setSelectedFiles(new Set());
-      }
+      const data = await body(response);
+      if (!response.ok) { setMessage({ ok: false, text: `Not moved: ${data.error || `HTTP ${response.status}`}` }); return; }
+      const where = folderId ? `"${folders.find((f) => f.id === folderId)?.name ?? folderId}"` : 'the top level';
+      setMessage({ ok: (data.errors || []).length === 0, text: `Moved ${data.moved} of ${data.total} file(s) to ${where}.${(data.errors || []).length ? ' ' + data.errors.join('; ') : ''}` });
+      setMoveTarget('');
+      await fetchMediaFiles();
+      await fetchFolders();
+      setSelectedFiles(new Set());
     } catch (error) {
-      console.error('Failed to move files:', error);
+      setMessage({ ok: false, text: `Not moved: ${error instanceof Error ? error.message : String(error)}` });
     }
   };
 
   const toggleFileStar = async (fileId: string) => {
     try {
-      const response = await fetch(`/api/admin/media/${fileId}/star`, {
-        method: 'POST'
-      });
-
-      if (response.ok) {
-        await fetchMediaFiles();
+      const response = await fetch(`/api/admin/media/${fileId}/star`, { method: 'POST' });
+      if (!response.ok) {
+        const data = await body(response);
+        setMessage({ ok: false, text: `Star not changed: ${data.error || `HTTP ${response.status}`}` });
+        return;
       }
+      await fetchMediaFiles();
     } catch (error) {
-      console.error('Failed to toggle star:', error);
+      setMessage({ ok: false, text: `Star not changed: ${error instanceof Error ? error.message : String(error)}` });
     }
   };
 
@@ -519,19 +534,21 @@ const MediaLibrary: React.FC = () => {
                 >
                   <TagIcon className="h-4 w-4" />
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const folderId = prompt('Enter folder ID to move to:');
-                    if (folderId) {
-                      handleBulkMove(folderId);
-                    }
-                  }}
-                  className="text-green-600 hover:text-green-700"
+                {/* W1c: pick the target folder (it used to ask for a typed folder id) */}
+                <select
+                  aria-label="Move selected files to folder"
+                  value={moveTarget}
+                  onChange={(e) => { const t = e.target.value; setMoveTarget(t); if (t) handleBulkMove(t); }}
+                  className="text-sm px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
-                  <FolderIcon className="h-4 w-4" />
-                </Button>
+                  <option value="">Move to...</option>
+                  {currentFolder !== null && <option value="root">Top level</option>}
+                  {folders
+                    .filter((f) => f.id !== currentFolder)
+                    .map((f) => ({ f, label: folderPath(f.id).map((p) => p.name).join(' / ') }))
+                    .sort((a, b) => a.label.localeCompare(b.label))
+                    .map(({ f, label }) => <option key={f.id} value={f.id}>{label}</option>)}
+                </select>
                 <Button
                   size="sm"
                   variant="outline"
@@ -785,6 +802,55 @@ const MediaLibrary: React.FC = () => {
         </div>
       )}
 
+      {/* Result of the last action (server's answer) */}
+      {message && (
+        <div role={message.ok ? 'status' : 'alert'} className={`flex items-start justify-between gap-4 rounded-md border p-3 text-sm ${message.ok ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200' : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'}`}>
+          <span className="whitespace-pre-line">{message.text}</span>
+          <button type="button" onClick={() => setMessage(null)} className="underline shrink-0">Dismiss</button>
+        </div>
+      )}
+
+      {/* W1c: folders - where you are, the folders inside it, rename/delete */}
+      <nav aria-label="Folders" className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+        <div className="flex flex-wrap items-center gap-1 text-sm">
+          <button type="button" onClick={() => setCurrentFolder(null)} className={`px-2 py-1 rounded ${currentFolder === null ? 'font-semibold text-gray-900 dark:text-white' : 'text-blue-600 dark:text-blue-400 hover:underline'}`}>
+            Top level
+          </button>
+          {folderPath(currentFolder).map((f) => (
+            <React.Fragment key={f.id}>
+              <span className="text-gray-400">/</span>
+              <button type="button" onClick={() => setCurrentFolder(f.id)} className={`px-2 py-1 rounded ${f.id === currentFolder ? 'font-semibold text-gray-900 dark:text-white' : 'text-blue-600 dark:text-blue-400 hover:underline'}`}>
+                {f.name}
+              </button>
+            </React.Fragment>
+          ))}
+          {currentFolderData && (
+            <span className="ml-auto flex gap-2">
+              <button type="button" onClick={() => handleRenameFolder(currentFolderData)} className="text-xs text-gray-600 dark:text-gray-300 hover:underline">Rename folder</button>
+              <button type="button" onClick={() => handleDeleteFolder(currentFolderData)} className="text-xs text-red-600 dark:text-red-400 hover:underline">Delete folder</button>
+            </span>
+          )}
+        </div>
+        {folders.filter((f) => (f.parentId ?? null) === currentFolder).length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {folders
+              .filter((f) => (f.parentId ?? null) === currentFolder)
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((f) => (
+                <button key={f.id} type="button" onClick={() => setCurrentFolder(f.id)}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-200">
+                  <FolderIcon className="h-4 w-4 text-yellow-500" />
+                  {f.name}
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{f.fileCount}</span>
+                </button>
+              ))}
+          </div>
+        )}
+        {totalInFolder !== null && totalInFolder > files.length && (
+          <p className="text-xs text-yellow-700 dark:text-yellow-300">Showing the first {files.length} of {totalInFolder} files in this folder.</p>
+        )}
+      </nav>
+
       {/* File Selection Actions */}
       {selectedFiles.size > 0 && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
@@ -831,20 +897,23 @@ const MediaLibrary: React.FC = () => {
                 <TagIcon className="h-4 w-4 mr-1" />
                 Tag
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  const folderId = prompt('Move to folder ID:');
-                  if (folderId) {
-                    handleBulkMove(folderId);
-                  }
-                }}
-                className="text-blue-600 hover:text-blue-700"
-              >
-                <FolderIcon className="h-4 w-4 mr-1" />
-                Move
-              </Button>
+              <label className="inline-flex items-center gap-1 text-sm text-blue-600">
+                <FolderIcon className="h-4 w-4" />
+                <select
+                  aria-label="Move selected files to"
+                  value={moveTarget}
+                  onChange={(e) => { const t = e.target.value; setMoveTarget(t); if (t) handleBulkMove(t); }}
+                  className="text-sm px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">Move to...</option>
+                  {currentFolder !== null && <option value="root">Top level</option>}
+                  {folders
+                    .filter((f) => f.id !== currentFolder)
+                    .map((f) => ({ f, label: folderPath(f.id).map((p) => p.name).join(' / ') }))
+                    .sort((a, b) => a.label.localeCompare(b.label))
+                    .map(({ f, label }) => <option key={f.id} value={f.id}>{label}</option>)}
+                </select>
+              </label>
               <Button
                 size="sm"
                 variant="outline"

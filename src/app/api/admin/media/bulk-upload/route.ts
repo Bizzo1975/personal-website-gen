@@ -26,6 +26,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 });
     }
 
+    // W42: contentType becomes part of the upload directory path; only known values are
+    // allowed (anything else, e.g. "../..", could write outside public/uploads).
+    if (!['post', 'project', 'newsletter', 'general'].includes(contentType)) {
+      return NextResponse.json({ error: 'Invalid content type' }, { status: 400 });
+    }
+    // W1c: the folder must be an existing folder id
+    if (folder) {
+      if (!/^\d+$/.test(folder)) return NextResponse.json({ error: 'Invalid folder' }, { status: 400 });
+      const exists = await query('SELECT 1 FROM media_folders WHERE id = $1', [folder]);
+      if (exists.rows.length === 0) return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
+    }
+
     // Get the user's ID from the database
     const userQuery = await query(
       'SELECT id FROM users WHERE email = $1',
