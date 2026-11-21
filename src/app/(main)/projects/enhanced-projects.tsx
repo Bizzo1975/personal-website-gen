@@ -79,7 +79,9 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
     )
   ).sort();
 
-  const allStatuses = ['all', 'completed', 'in-progress', 'planned'];
+  // W49: the status list was fixed ('completed', 'in-progress', 'planned') but no project
+  // carries that field, so choosing one emptied the page. Offer only values the data has.
+  const allStatuses = ['all', ...Array.from(new Set(enhancedProjects.map(p => p.projectStatus).filter(Boolean) as string[])).sort()];
   
   // Filter projects based on selected filters
   const filteredProjects = enhancedProjects.filter(project => {
@@ -155,7 +157,8 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
           {/* Filter Controls - Single Line Layout */}
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-6">
             <div className="flex flex-wrap items-center gap-3">
-              {/* Category Filter */}
+              {/* Category Filter (only when projects have categories) */}
+              {allCategories.length > 0 && (
               <div className="relative flex-shrink-0">
                 <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <select
@@ -169,8 +172,10 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
                   ))}
                 </select>
               </div>
+              )}
 
-              {/* Status Filter */}
+              {/* Status Filter (only when projects have a status) */}
+              {allStatuses.length > 1 && (
               <div className="relative flex-shrink-0">
                 <ChartBarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <select
@@ -185,6 +190,7 @@ export default function EnhancedProjectsPage({ projects, pageData }: ProjectsCli
                   ))}
                 </select>
               </div>
+              )}
 
               {/* Technology Filter Toggle */}
               <button

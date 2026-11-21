@@ -46,14 +46,15 @@ interface Comment {
 
 const SPAM_KEYWORDS = ['spam', 'viagra', 'casino', 'lottery'];
 
-function mapRow(row: DbCommentRow): Comment {
+// W50: e-mail addresses are only returned to an admin (the public GET returned them).
+function mapRow(row: DbCommentRow, includeEmail = false): Comment {
   return {
     id: row.id,
     postId: row.post_id,
     parentId: row.parent_id || undefined,
     author: {
       name: row.author_name,
-      email: row.author_email || '',
+      email: includeEmail ? row.author_email || '' : '',
       avatar: row.author_avatar || undefined,
     },
     content: row.content,
@@ -161,7 +162,7 @@ export async function GET(request: NextRequest) {
       params
     );
 
-    const flat = result.rows.map(mapRow);
+    const flat = result.rows.map(r => mapRow(r, isAdmin));
     const comments = postId ? sortComments(nestComments(flat), sortBy) : flat;
 
     return NextResponse.json({
@@ -188,6 +189,13 @@ export async function POST(request: NextRequest) {
     if (content.length > 2000) {
       return NextResponse.json({ error: 'Comment is too long (max 2000 characters)' }, { status: 400 });
     }
+    // W50: only real posts can be commented on, and a reply must belong to the same post.
+    const post = await query('SELECT 1 FROM posts WHERE id::text = $1', [String(postId)]);
+    if (!post.rowCount) return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    if (parentId) {
+      const parent = await query('SELECT 1 FROM blog_comments WHERE id::text = $1 AND post_id = $2', [String(parentId), String(postId)]);
+      if (!parent.rowCount) return NextResponse.json({ error: 'The comment you replied to was not found' }, { status: 404 });
+    }
 
     let authorName: string;
     let authorEmail: string;
@@ -204,9 +212,13 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      authorName = guestInfo.name.trim();
-      authorEmail = guestInfo.email.trim();
-      authorAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(authorName)}`;
+      authorName = String(guestInfo.name).trim().slice(0, 100);
+      authorEmail = String(guestInfo.email).trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authorEmail) || authorEmail.length > 254) {
+        return NextResponse.json({ error: 'Please enter a valid e-mail address' }, { status: 400 });
+      }
+      // No third-party avatar service: it received every commenter's name.
+      authorAvatar = null;
     }
 
     const isSpam = SPAM_KEYWORDS.some((keyword) => content.toLowerCase().includes(keyword));
@@ -232,7 +244,7 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    const comment = mapRow(result.rows[0]);
+    const comment = mapRow(result.rows[0], true);
 
     return NextResponse.json(
       {

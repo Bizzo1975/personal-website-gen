@@ -13,8 +13,6 @@ import {
   StarIcon as StarOutlineIcon 
 } from '@heroicons/react/24/outline';
 import { 
-  HeartIcon, 
-  BookmarkIcon,
   StarIcon as StarSolidIcon 
 } from '@heroicons/react/24/solid';
 import BlogComments from '@/components/BlogComments';
@@ -68,9 +66,6 @@ export default function BlogPostPage() {
   const [relatedPosts, setRelatedPosts] = useState<RelatedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
 
   useEffect(() => {
     if (slug) {
@@ -121,8 +116,7 @@ export default function BlogPostPage() {
         readingTime: postData.readTime || postData.read_time || 5,
         featuredImage: postData.featuredImage || postData.featured_image
       });
-      
-      setLikesCount(89); // Placeholder
+
     } catch (err) {
       console.error('Failed to fetch post:', err);
       setError('Failed to load post');
@@ -173,15 +167,6 @@ export default function BlogPostPage() {
       month: 'long',
       day: 'numeric'
     });
-  };
-
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
-  };
-
-  const handleBookmark = () => {
-    setIsBookmarked(!isBookmarked);
   };
 
   if (loading) {
@@ -358,31 +343,8 @@ export default function BlogPostPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center justify-between py-6 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={handleLike}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                isLiked 
-                  ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' 
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              <HeartIcon className={`h-5 w-5 ${isLiked ? 'text-red-500' : ''}`} />
-              <span>{likesCount}</span>
-            </button>
-            
-            <button
-              onClick={handleBookmark}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                isBookmarked 
-                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' 
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-yellow-500' : ''}`} />
-              <span>{isBookmarked ? 'Saved' : 'Save'}</span>
-            </button>
-          </div>
+          {/* W48: a "like" counter (always 89 + 1) and a "Save" button that stored nothing were removed. */}
+          <div />
 
           <SocialShare
             url={`${typeof window !== 'undefined' ? window.location.origin : ''}/blog/${post.slug}`}
@@ -395,7 +357,7 @@ export default function BlogPostPage() {
       {/* Related Posts */}
       {relatedPosts.length > 0 && (
         <section className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold mb-6">Related Posts</h2>
+          <h2 className="text-2xl font-bold mb-6">More Posts</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {relatedPosts.map((relatedPost) => (
               <article key={relatedPost.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
