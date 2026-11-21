@@ -69,6 +69,20 @@ export class CacheService {
     return CacheService.instance;
   }
 
+  /** W25: real Redis check for health metrics. 'disabled' = not configured or switched off after an error. */
+  async ping(timeoutMs = 2000): Promise<'ok' | 'disabled' | 'error'> {
+    if (!this.redis) return 'disabled';
+    try {
+      const reply = await Promise.race([
+        this.redis.ping(),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), timeoutMs)),
+      ]);
+      return reply === 'PONG' ? 'ok' : 'error';
+    } catch {
+      return 'error';
+    }
+  }
+
   async get<T>(key: string): Promise<T | null> {
     if (!this.redis) {
       return null; // Cache disabled

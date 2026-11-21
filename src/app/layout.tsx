@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import '@/styles/globals.css';
 import Providers from './providers';
-import PerformanceMonitor from '@/components/PerformanceMonitor';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -25,11 +24,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <Providers>
-          <PerformanceMonitor 
-            enabled={true}
-            reportToAnalytics={process.env.NODE_ENV === 'production'}
-            showDebugInfo={process.env.NODE_ENV === 'development'}
-          />
           {children}
         </Providers>
       </body>
