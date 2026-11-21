@@ -13,6 +13,8 @@ import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import { BiUpload, BiSave } from 'react-icons/bi';
 import { ContentPermissions } from '@/types/content/permissions';
 import ImageField from '@/components/admin/ImageField';
+import MarkdownEditor from '@/components/MarkdownEditor';
+import { useContentTemplate } from '@/lib/admin/use-content-template';
 
 // Client-side default permissions function
 const getDefaultPermissions = (): ContentPermissions => ({
@@ -27,6 +29,7 @@ interface NewProjectFormData {
   title: string;
   slug: string;
   description: string;
+  content: string;
   technologies: string[];
   featured: boolean;
   status: 'draft' | 'published' | 'scheduled';
@@ -45,6 +48,7 @@ export default function NewProjectPage() {
     title: '',
     slug: '',
     description: '',
+    content: '',
     technologies: [],
     featured: false,
     status: 'draft', // Default to draft
@@ -53,6 +57,9 @@ export default function NewProjectPage() {
     sourceCode: '',
     permissions: getDefaultPermissions() // Default to public access
   });
+
+  // W21: "Use Template" pre-fills the body from /admin/projects/new?template=<id>.
+  const templateState = useContentTemplate('project', content => setFormData(prev => ({ ...prev, content })));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -101,6 +108,7 @@ export default function NewProjectPage() {
 
       const result = await response.json();
       console.log('Project created successfully:', result);
+      await templateState.markUsed();
       setSuccessMessage('Project created successfully!');
       
       // Show additional guidance for scheduled projects
@@ -134,6 +142,17 @@ export default function NewProjectPage() {
           </Button>
         </div>
         
+        {templateState.template && (
+          <div role="status" className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-sm text-blue-800 dark:text-blue-200">
+            Started from the template "{templateState.template.name}". Replace its {'{{placeholders}}'} before publishing.
+          </div>
+        )}
+        {templateState.error && (
+          <div role="alert" className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6 text-sm text-amber-800 dark:text-amber-200">
+            {templateState.error}
+          </div>
+        )}
+
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
             <p className="text-red-600 dark:text-red-400">{error}</p>
@@ -222,6 +241,14 @@ export default function NewProjectPage() {
                 wrapperClassName="mb-0"
               />
               
+              {/* The project body could only be written after creating the project; same editor as the edit page. */}
+              <MarkdownEditor
+                label="Full Body Text"
+                value={formData.content}
+                onChange={(content) => setFormData(prev => ({ ...prev, content }))}
+                placeholder="Write the full project content in Markdown format..."
+              />
+
               <TagInput
                 label="Technologies"
                 value={formData.technologies}

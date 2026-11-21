@@ -16,6 +16,7 @@ import PermissionsEditor from '@/components/admin/PermissionsEditor';
 import { BiUpload, BiSave } from 'react-icons/bi';
 import { ContentPermissions } from '@/types/content/permissions';
 import ImageField from '@/components/admin/ImageField';
+import { useContentTemplate } from '@/lib/admin/use-content-template';
 
 // Default permissions for public content
 const getDefaultPermissions = (): ContentPermissions => ({
@@ -56,6 +57,9 @@ export default function NewPostPage() {
     featuredImage: '',
     permissions: getDefaultPermissions() // Default to public access
   });
+
+  // W21: "Use Template" pre-fills the body from /admin/posts/new?template=<id>.
+  const templateState = useContentTemplate('post', content => setFormData(prev => ({ ...prev, content })));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -105,6 +109,7 @@ export default function NewPostPage() {
         throw new Error(data.error || 'Failed to create post');
       }
 
+      await templateState.markUsed();
       setSuccessMessage('Post created successfully!');
       
       // Show additional guidance for scheduled posts
@@ -138,6 +143,17 @@ export default function NewPostPage() {
           </Button>
         </div>
         
+        {templateState.template && (
+          <div role="status" className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-sm text-blue-800 dark:text-blue-200">
+            Started from the template "{templateState.template.name}". Replace its {'{{placeholders}}'} before publishing.
+          </div>
+        )}
+        {templateState.error && (
+          <div role="alert" className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6 text-sm text-amber-800 dark:text-amber-200">
+            {templateState.error}
+          </div>
+        )}
+
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
             <p className="text-red-600 dark:text-red-400">{error}</p>

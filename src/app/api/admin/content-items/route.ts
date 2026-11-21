@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { PostService } from '@/lib/services/post-service';
 import { ProjectService } from '@/lib/services/project-service';
+import { query } from '@/lib/db';
 
 // GET /api/admin/content-items - Get all content items (posts and projects)
 export async function GET(request: NextRequest) {
@@ -21,10 +22,13 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
 
     // Get all posts and projects
-    const [posts, projects] = await Promise.all([
+    const [posts, projects, creators] = await Promise.all([
       PostService.getAllPostsForAdmin(),
-      ProjectService.getAllProjectsForAdmin()
+      ProjectService.getAllProjectsForAdmin(),
+      // W20: projects showed a hard-coded "Admin"; use the user who created them.
+      query(`SELECT p.id, COALESCE(u.name, u.email) AS creator FROM projects p LEFT JOIN users u ON u.id = p.created_by`),
     ]);
+    const creatorOf = new Map<string, string | null>(creators.rows.map((r: { id: string; creator: string | null }) => [r.id, r.creator]));
 
     // Convert to content management format
     const contentItems = [
@@ -45,7 +49,7 @@ export async function GET(request: NextRequest) {
         id: project.id,
         title: project.title,
         type: 'project' as const,
-        author: 'Admin', // Projects don't have author field in current schema
+        author: creatorOf.get(project.id) || 'Not recorded',
         lastModified: project.updated_at?.toISOString() || project.created_at?.toISOString() || new Date().toISOString(),
         status: project.status === 'published' ? 'published' as const : 'draft' as const,
         collaborators: [],

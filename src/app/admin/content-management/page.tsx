@@ -891,13 +891,14 @@ function ContentManagementPageContent() {
                     <BiRefresh className="h-4 w-4 mr-2" />
                     Refresh
                   </Button>
-                  <Button 
-                    variant="primary" 
-                    size="sm"
-                    onClick={() => window.location.href = '/admin/editor/new'}
-                  >
+                  {/* W20: these opened /admin/editor, a mock whose Save saved nothing. */}
+                  <Button variant="primary" size="sm" onClick={() => window.location.href = '/admin/posts/new'}>
                     <BiPlus className="h-4 w-4 mr-2" />
-                    New Draft
+                    New Post
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => window.location.href = '/admin/projects/new'}>
+                    <BiPlus className="h-4 w-4 mr-2" />
+                    New Project
                   </Button>
                 </div>
               </div>
@@ -948,7 +949,8 @@ function ContentManagementPageContent() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.location.href = `/admin/editor/${draft.id}`}
+                        title="Edit"
+                        onClick={() => window.location.href = `/admin/${draft.type === 'project' ? 'projects' : 'posts'}/${draft.id}`}
                       >
                         <BiEdit className="h-4 w-4" />
                       </Button>
@@ -965,8 +967,6 @@ function ContentManagementPageContent() {
                             // For projects, use slug if available, otherwise use ID
                             const identifier = draft.slug || draft.id;
                             window.location.href = `/projects/${identifier}?preview=true`;
-                          } else {
-                            window.location.href = `/admin/editor/${draft.id}`;
                           }
                         }}
                       >
@@ -1076,14 +1076,16 @@ function ContentManagementPageContent() {
                       </div>
                       
                       <div className="flex items-center space-x-2">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => window.location.href = `/admin/editor/new?template=${template.id}`}
-                        >
-                          Use Template
-                        </Button>
+                        {template.type !== 'page' && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => window.location.href = `/admin/${template.type === 'project' ? 'projects' : 'posts'}/new?template=${template.id}`}
+                          >
+                            Use Template
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -1430,7 +1432,7 @@ function ContentManagementPageContent() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => window.location.href = `/admin/editor/${draft.id}`}
+                          onClick={() => window.location.href = `/admin/${draft.type === 'project' ? 'projects' : 'posts'}/${draft.id}`}
                         >
                           <BiEdit className="h-4 w-4 mr-1" />
                           Edit

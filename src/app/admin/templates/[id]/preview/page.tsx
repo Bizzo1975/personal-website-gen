@@ -7,6 +7,9 @@ import Card, { CardBody, CardHeader } from '@/components/Card';
 import Button from '@/components/Button';
 import { BiEdit, BiFile } from 'react-icons/bi';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import { templateVariables } from '@/lib/content-templates';
 
 interface ContentTemplate {
   id: string;
@@ -39,11 +42,13 @@ export default function ContentTemplatePreviewPage() {
       setLoading(true);
       const response = await fetch(`/api/admin/templates/${params.id}`);
       
-      if (response.ok) {
-        const data = await response.json();
-        setTemplate(data);
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.template) {
+        // Older rows have no stored variable list; read it from the content.
+        const t = data.template;
+        setTemplate({ ...t, variables: t.variables?.length ? t.variables : templateVariables(t.content) });
       } else {
-        setError('Failed to fetch template');
+        setError(response.status === 404 ? 'Template not found' : data.error || 'Failed to fetch template');
       }
     } catch (err) {
       setError('Error fetching template');
@@ -332,7 +337,7 @@ export default userSlice.reducer;`,
               <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border">
                 <div 
                   className="prose dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: processedContent.replace(/\n/g, '<br>') }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(processedContent))) }}
                 />
               </div>
             ) : (
