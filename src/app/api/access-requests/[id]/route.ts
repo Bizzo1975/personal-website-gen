@@ -1,184 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
-import { EnhancedAccessRequestService } from '@/lib/services/enhanced-access-request-service';
+import { query } from '@/lib/db';
+import {
+  ACCESS_LEVELS,
+  DecisionError,
+  adminUserIdFor,
+  decideAccessRequest,
+  listAccessRequests,
+  notifyDecision,
+} from '@/lib/access-requests/service';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+/** W46: one access request — read, decide (approve/reject), change its level while pending, delete. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+type Ctx = { params: Promise<{ id: string }> };
 
-    const resolvedParams = await params;
-    const enhancedService = new EnhancedAccessRequestService();
-    const accessRequest = await enhancedService.getById(resolvedParams.id);
-    
-    if (!accessRequest) {
-      return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
-    }
-
-    return NextResponse.json(accessRequest);
-  } catch (error) {
-    console.error('Error fetching access request:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch access request' },
-      { status: 500 }
-    );
+async function guard(ctx: Ctx) {
+  const session = await getServerSession(authOptions);
+  if (!session || session.user?.role !== 'admin' || !session.user.email) {
+    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
+  const { id } = await ctx.params;
+  if (!UUID_RE.test(id)) return { error: NextResponse.json({ error: 'Access request not found' }, { status: 404 }) };
+  return { id, email: session.user.email };
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const resolvedParams = await params;
-    const { status, adminNotes, createUserAccount = true } = await request.json();
-    
-    if (!['approved', 'rejected'].includes(status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-    }
-
-    // Ensure email exists
-    if (!session.user?.email) {
-      return NextResponse.json({ error: 'User email not found' }, { status: 400 });
-    }
-
-    const enhancedService = new EnhancedAccessRequestService();
-    
-    // Get admin user ID
-    const adminUserId = await enhancedService.getAdminUserId(session.user.email);
-    if (!adminUserId) {
-      return NextResponse.json({ error: 'Admin user not found' }, { status: 404 });
-    }
-
-    let result;
-    
-    if (status === 'approved') {
-      // Use enhanced service for approval with automatic user creation and email notifications
-      result = await enhancedService.approveWithUserCreation(
-        resolvedParams.id,
-        adminUserId,
-        adminNotes,
-        createUserAccount
-      );
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Access request approved successfully',
-        request: result.request,
-        userCreated: !!result.user,
-        generatedPassword: result.generatedPassword ? '****' : null // Don't expose password in response
-      });
-    } else {
-      // Use enhanced service for rejection with email notifications
-      result = await enhancedService.rejectWithNotification(
-        resolvedParams.id,
-        adminUserId,
-        adminNotes
-      );
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Access request rejected successfully',
-        request: result
-      });
-    }
-    
-  } catch (error) {
-    console.error('Error updating access request:', error);
-    return NextResponse.json(
-      { error: 'Failed to update access request' },
-      { status: 500 }
-    );
-  }
+export async function GET(_request: NextRequest, ctx: Ctx) {
+  const g = await guard(ctx);
+  if ('error' in g) return g.error;
+  const rows = (await listAccessRequests(null, null)).filter(r => r.id === g.id);
+  if (!rows.length) return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
+  return NextResponse.json(rows[0]);
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/** Body: { status: 'approved' | 'rejected', adminNotes?, createUserAccount? (default true) } */
+export async function PUT(request: NextRequest, ctx: Ctx) {
+  const g = await guard(ctx);
+  if ('error' in g) return g.error;
+  const body = await request.json().catch(() => null);
+  const status = body?.status;
+  if (status !== 'approved' && status !== 'rejected') return NextResponse.json({ error: 'status must be approved or rejected' }, { status: 400 });
+  const adminId = await adminUserIdFor(g.email);
+  if (!adminId) return NextResponse.json({ error: 'Your admin user was not found' }, { status: 403 });
+  const action = status === 'approved' ? 'approve' : 'reject';
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const resolvedParams = await params;
-    const { requestedAccessLevel } = await request.json();
-    
-    if (!requestedAccessLevel || !['personal', 'professional'].includes(requestedAccessLevel)) {
-      return NextResponse.json({ error: 'Invalid access level. Must be "personal" or "professional"' }, { status: 400 });
-    }
-
-    const enhancedService = new EnhancedAccessRequestService();
-    
-    // Update the access level in the database
-    const { query } = await import('@/lib/db');
-    const result = await query(
-      `UPDATE access_requests 
-       SET requested_access_level = $1, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2
-       RETURNING *`,
-      [requestedAccessLevel, resolvedParams.id]
+    const d = await decideAccessRequest(
+      g.id, action, adminId,
+      typeof body.adminNotes === 'string' && body.adminNotes.trim() ? body.adminNotes.trim() : null,
+      body.createUserAccount !== false
     );
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
-    }
-
+    const email = await notifyDecision(d, action);
     return NextResponse.json({
       success: true,
-      message: 'Access level updated successfully',
-      request: result.rows[0]
+      message: `Access request ${status}`,
+      request: d.request,
+      accountCreated: d.accountCreated,
+      email,
     });
-    
-  } catch (error) {
-    console.error('Error updating access level:', error);
-    return NextResponse.json(
-      { error: 'Failed to update access level' },
-      { status: 500 }
-    );
+  } catch (e) {
+    if (e instanceof DecisionError) return NextResponse.json({ error: e.message }, { status: e.status });
+    console.error('Access request decision failed:', e);
+    return NextResponse.json({ error: 'The decision could not be saved; nothing was changed' }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const resolvedParams = await params;
-    const enhancedService = new EnhancedAccessRequestService();
-    const result = await enhancedService.deleteById(resolvedParams.id);
-    
-    if (!result) {
-      return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ message: 'Access request deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting access request:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete access request' },
-      { status: 500 }
-    );
+/** Body: { requestedAccessLevel } — only while the request is pending. */
+export async function PATCH(request: NextRequest, ctx: Ctx) {
+  const g = await guard(ctx);
+  if ('error' in g) return g.error;
+  const body = await request.json().catch(() => null);
+  const level = body?.requestedAccessLevel;
+  if (!(ACCESS_LEVELS as readonly string[]).includes(level)) {
+    return NextResponse.json({ error: 'requestedAccessLevel must be personal or professional' }, { status: 400 });
   }
-} 
+  // access_requests has no updated_at column; the old SET updated_at made this always fail.
+  const r = await query(
+    `UPDATE access_requests SET requested_access_level = $1, subject = $2
+      WHERE id = $3 AND request_type = 'access_request' AND status = 'pending' RETURNING *`,
+    [level, `Access Request - ${level}`, g.id]
+  );
+  if (!r.rows.length) {
+    const exists = await query(`SELECT status FROM access_requests WHERE id = $1`, [g.id]);
+    return exists.rows.length
+      ? NextResponse.json({ error: `Only a pending request can change level (this one is ${exists.rows[0].status})` }, { status: 409 })
+      : NextResponse.json({ error: 'Access request not found' }, { status: 404 });
+  }
+  return NextResponse.json({ success: true, message: 'Access level updated', request: r.rows[0] });
+}
+
+/** Deletes the request record only; access already granted is managed under Users. */
+export async function DELETE(_request: NextRequest, ctx: Ctx) {
+  const g = await guard(ctx);
+  if ('error' in g) return g.error;
+  const r = await query(`DELETE FROM access_requests WHERE id = $1 AND request_type = 'access_request' RETURNING id`, [g.id]);
+  if (!r.rows.length) return NextResponse.json({ error: 'Access request not found' }, { status: 404 });
+  return NextResponse.json({ success: true, message: 'Access request deleted' });
+}

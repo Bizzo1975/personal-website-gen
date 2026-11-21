@@ -6,36 +6,23 @@ import Card, { CardBody, CardHeader } from '@/components/Card';
 import Button from '@/components/Button';
 import HeaderSection from '@/components/HeaderSection';
 
+// W46: the lookup is public, so it returns only level, status and dates (no names,
+// messages, admin notes or access flags).
 interface AccessRequest {
   id: string;
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
   accessLevel: 'professional' | 'personal';
   status: 'pending' | 'approved' | 'rejected';
   submittedAt: string;
   processedAt?: string;
-  adminNotes?: string;
-}
-
-interface CurrentAccess {
-  hasProfessionalAccess: boolean;
-  hasPersonalAccess: boolean;
-  isActive: boolean;
-  grantedAt: string;
 }
 
 interface StatusResponse {
-  email: string;
   requests: AccessRequest[];
-  currentAccess: CurrentAccess | null;
   summary: {
     totalRequests: number;
     pendingRequests: number;
     approvedRequests: number;
     rejectedRequests: number;
-    hasAnyAccess: boolean;
   };
 }
 
@@ -115,7 +102,7 @@ export default function RequestStatusPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <HeaderSection
         title="Access Request Status"
-        subtitle="Check the status of your access requests and current permissions"
+        subtitle="Check the status of your access requests"
         className="mb-12"
       />
 
@@ -128,7 +115,7 @@ export default function RequestStatusPage() {
               Check Your Status
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Enter your email address to view your access request history and current permissions
+              Enter the email address you used to request access
             </p>
           </CardHeader>
           <CardBody>
@@ -210,60 +197,6 @@ export default function RequestStatusPage() {
               </Card>
             </div>
 
-            {/* Current Access Status */}
-            {statusData.currentAccess && (
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center">
-                    <BiCheck className="w-5 h-5 mr-2 text-green-500" />
-                    Current Access
-                  </h3>
-                </CardHeader>
-                <CardBody>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Professional Access:</span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        statusData.currentAccess.hasProfessionalAccess
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-200'
-                      }`}>
-                        {statusData.currentAccess.hasProfessionalAccess ? 'Granted' : 'Not Granted'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Personal Access:</span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        statusData.currentAccess.hasPersonalAccess
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-200'
-                      }`}>
-                        {statusData.currentAccess.hasPersonalAccess ? 'Granted' : 'Not Granted'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Account Status:</span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        statusData.currentAccess.isActive
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200'
-                      }`}>
-                        {statusData.currentAccess.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    {statusData.currentAccess.grantedAt && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Granted:</span>
-                        <span className="text-sm text-gray-900 dark:text-gray-100">
-                          {formatDate(statusData.currentAccess.grantedAt)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </CardBody>
-              </Card>
-            )}
-
             {/* Request History */}
             <Card>
               <CardHeader>
@@ -293,7 +226,7 @@ export default function RequestStatusPage() {
                             </div>
                             <div>
                               <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                                {request.subject}
+                                <span className="capitalize">{request.accessLevel}</span> access request
                               </h4>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
                                 Submitted: {formatDate(request.submittedAt)}
@@ -310,28 +243,12 @@ export default function RequestStatusPage() {
                           </div>
                         </div>
 
-                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md mb-3">
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {request.message}
-                          </p>
-                        </div>
-
                         {request.processedAt && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                             Processed: {formatDate(request.processedAt)}
                           </div>
                         )}
 
-                        {request.adminNotes && (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
-                            <h5 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-1">
-                              Admin Notes:
-                            </h5>
-                            <p className="text-sm text-blue-800 dark:text-blue-300">
-                              {request.adminNotes}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -342,7 +259,7 @@ export default function RequestStatusPage() {
         )}
 
         {/* No Results Message */}
-        {hasSearched && statusData && statusData.requests.length === 0 && !statusData.currentAccess && (
+        {hasSearched && statusData && statusData.requests.length === 0 && (
           <Card>
             <CardBody>
               <div className="text-center py-8">
@@ -351,7 +268,7 @@ export default function RequestStatusPage() {
                   No Records Found
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  We couldn't find any access requests or current permissions for this email address.
+                  We couldn't find any access requests for this email address.
                 </p>
                 <p className="text-sm text-gray-400 dark:text-gray-500">
                   If you believe this is an error, please contact support.

@@ -78,7 +78,7 @@ export default function PrivacyPolicyPage() {
                 </ul>
 
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Email Service Provider</h3>
-                <p>We use SendGrid to manage and send our newsletter emails. SendGrid complies with data protection regulations and maintains appropriate security measures.</p>
+                <p>Our emails, including the newsletter, are sent through Microsoft 365 (Microsoft Graph). Subscriber details are stored in this site's own database.</p>
               </div>
             </section>
 
@@ -100,7 +100,7 @@ export default function PrivacyPolicyPage() {
               <div className="space-y-4 text-gray-700 dark:text-gray-300">
                 <p>We may use the following third-party services that may collect information:</p>
                 <ul className="list-disc pl-6 space-y-2">
-                  <li><strong>SendGrid:</strong> For email delivery and newsletter management</li>
+                  <li><strong>Microsoft 365:</strong> For sending email, including the newsletter</li>
                   <li><strong>Analytics Services:</strong> For website traffic analysis (anonymized)</li>
                   <li><strong>Authentication Services:</strong> For secure user login and access control</li>
                 </ul>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { query } from '@/lib/db';
+import { graphBrandFrom, graphConfigured } from '@/lib/services/graph-mail';
 
 // Settings that must never leave the server for anyone but an admin
 // (e.g. sendgridApiKey). This GET is public: the site header/footer use it.
@@ -48,6 +49,10 @@ export async function GET() {
       ...settings
     };
     
+    // W12: which service really sends mail (all site mail goes through Microsoft Graph).
+    if (isAdmin) {
+      (defaultSettings as Record<string, unknown>).mailDelivery = { provider: 'Microsoft Graph', configured: graphConfigured(), from: graphBrandFrom() };
+    }
     return NextResponse.json(defaultSettings);
   } catch (error) {
     console.error('Error fetching site settings:', error);

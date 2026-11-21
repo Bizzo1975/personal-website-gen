@@ -84,9 +84,13 @@ export default function AdminAccessRequestsPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // W46: report what really happened, including the e-mail to the requester.
+        const mail = data.email?.sent
+          ? 'The requester was e-mailed.'
+          : `The requester was NOT e-mailed (${data.email?.error || data.email?.skipped || 'unknown reason'}).`;
         setStatusMessage({
-          type: 'success',
-          message: `Access request ${status} successfully${data.userCreated ? ' and user account created' : ''}`
+          type: data.email?.sent ? 'success' : 'error',
+          message: `Access request ${status}.${data.accountCreated ? ' An account was created; the e-mail carries its set-password link.' : ''} ${mail}`
         });
         
         // Refresh the list
@@ -98,7 +102,7 @@ export default function AdminAccessRequestsPage() {
       console.error(`Error ${status} access request:`, error);
       setStatusMessage({
         type: 'error',
-        message: `Failed to ${status} access request`
+        message: error instanceof Error ? error.message : `Failed to ${status} access request`
       });
     } finally {
       setProcessingId(null);
@@ -145,8 +149,8 @@ export default function AdminAccessRequestsPage() {
 
       if (response.ok) {
         setStatusMessage({
-          type: 'success',
-          message: `Bulk ${action} completed: ${data.successCount} successful, ${data.failureCount} failed`
+          type: data.failureCount || data.emailFailures ? 'error' : 'success',
+          message: `Bulk ${action}: ${data.successCount} done, ${data.failureCount} failed${data.failed?.length ? ' (' + data.failed.map((f: { error: string }) => f.error).join('; ') + ')' : ''}; ${data.emailFailures} e-mail(s) not sent`
         });
         
         // Clear selection and refresh

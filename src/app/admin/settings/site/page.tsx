@@ -22,10 +22,7 @@ interface SiteSettings {
   bioText: string;
   navbarStyle: string;
   navbarLinks: NavbarLink[];
-  sendgridApiKey?: string;
-  sendgridFromEmail?: string;
-  sendgridFromName?: string;
-  sendgridReplyTo?: string;
+  mailDelivery?: { provider: string; configured: boolean; from: string };
   newsletterEnabled?: boolean;
   newsletterDoubleOptin?: boolean;
   accessRequestWelcomeEmailEnabled?: boolean;
@@ -332,91 +329,18 @@ export default function SiteSettingsPage() {
               </div>
             </div>
 
-            <h4 className="text-md font-semibold mb-4">SendGrid Configuration</h4>
-            {!siteSettings.sendgridApiKey && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-blue-800 dark:text-blue-200 font-medium">SendGrid Setup Required</p>
-                    <p className="text-blue-700 dark:text-blue-300 mt-1">
-                      To enable newsletter functionality, you need to configure SendGrid API credentials. 
-                      <a href="https://sendgrid.com/docs/for-developers/sending-email/api-getting-started/" 
-                         target="_blank" 
-                         rel="noopener noreferrer" 
-                         className="underline hover:no-underline">
-                        Learn how to get your API key
-                      </a>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            {siteSettings.sendgridApiKey && (
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-6">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <svg className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-green-800 dark:text-green-200 font-medium">SendGrid Configured</p>
-                    <p className="text-green-700 dark:text-green-300 mt-1">
-                      SendGrid is properly configured and ready to send emails.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AdminInput
-                id="sendgridApiKey"
-                label="SendGrid API Key"
-                name="sendgridApiKey"
-                type="password"
-                value={siteSettings.sendgridApiKey || ''}
-                onChange={handleInputChange}
-                placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                helpText="Your SendGrid API key for sending emails"
-              />
-              
-              <AdminInput
-                id="sendgridFromEmail"
-                label="From Email Address"
-                name="sendgridFromEmail"
-                type="email"
-                value={siteSettings.sendgridFromEmail || ''}
-                onChange={handleInputChange}
-                placeholder="noreply@yoursite.com"
-                helpText="Email address newsletters will be sent from"
-              />
-              
-              <AdminInput
-                id="sendgridFromName"
-                label="From Name"
-                name="sendgridFromName"
-                value={siteSettings.sendgridFromName || ''}
-                onChange={handleInputChange}
-                placeholder="Your Site Newsletter"
-                helpText="Name that appears in the 'From' field"
-              />
-              
-              <AdminInput
-                id="sendgridReplyTo"
-                label="Reply-To Email"
-                name="sendgridReplyTo"
-                type="email"
-                value={siteSettings.sendgridReplyTo || ''}
-                onChange={handleInputChange}
-                placeholder="contact@yoursite.com"
-                helpText="Email address for subscriber replies"
-              />
+            {/* W12: this section configured SendGrid and said "SendGrid is properly configured and
+                ready to send emails" whenever a key was saved. Nothing sends through SendGrid:
+                newsletters, access-request and contact mail all go through Microsoft Graph. */}
+            <h4 className="text-md font-semibold mb-4">Email Delivery</h4>
+            <div className={`rounded-lg p-4 mb-6 text-sm ${siteSettings.mailDelivery?.configured
+              ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+              : 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200'}`}>
+              {siteSettings.mailDelivery
+                ? siteSettings.mailDelivery.configured
+                  ? <>Mail is sent through Microsoft Graph as <strong>{siteSettings.mailDelivery.from}</strong>. Whether a message was delivered is shown where it is sent.</>
+                  : <>Microsoft Graph is not configured on the server (GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET), so no mail can be sent.</>
+                : <>Mail delivery status could not be read.</>}
             </div>
 
             {/* Access Request Welcome Email Configuration */}
