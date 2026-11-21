@@ -11,12 +11,16 @@ import { MediaService } from '@/lib/services/media-service';
  * DELETE: Delete media file
  */
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const resolvedParams = await params;
+    // Media ids are UUIDs; anything else is simply not found (was a 500 from Postgres).
+    if (!UUID_RE.test(resolvedParams.id)) return NextResponse.json({ error: 'Media file not found' }, { status: 404 });
     const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
@@ -55,6 +59,8 @@ export async function PUT(
 ) {
   try {
     const resolvedParams = await params;
+    // Media ids are UUIDs; anything else is simply not found (was a 500 from Postgres).
+    if (!UUID_RE.test(resolvedParams.id)) return NextResponse.json({ error: 'Media file not found' }, { status: 404 });
     const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
@@ -99,6 +105,8 @@ export async function DELETE(
 ) {
   try {
     const resolvedParams = await params;
+    // Media ids are UUIDs; anything else is simply not found (was a 500 from Postgres).
+    if (!UUID_RE.test(resolvedParams.id)) return NextResponse.json({ error: 'Media file not found' }, { status: 404 });
     const session = await getServerSession(authOptions);
     
     if (!session || session.user?.role !== 'admin') {
