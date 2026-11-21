@@ -283,29 +283,35 @@ function ContentManagementPageContent() {
     }
   };
 
-  const handleExportContent = async (format: string = 'json') => {
+  // W45: the export comes from the server (full rows), not from the lists shown on this page.
+  const [exportKinds, setExportKinds] = useState<string[]>(['posts', 'projects', 'pages', 'templates']);
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const handleExportContent = async () => {
+    setExporting(true);
+    setExportMessage(null);
     try {
-      // Simulate export functionality
-      const exportData = {
-        projects: projects,
-        posts: posts,
-        drafts: drafts,
-        templates: templates,
-        exportDate: new Date().toISOString(),
-        format: format
-      };
-      
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
+      const res = await fetch(`/api/admin/content-export?types=${exportKinds.join(',')}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setExportMessage({ kind: 'error', text: data.error || `Export failed (${res.status})` });
+        return;
+      }
+      const text = await res.text();
+      const counts = JSON.parse(text).counts as Record<string, number>;
+      const url = window.URL.createObjectURL(new Blob([text], { type: 'application/json' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `content-export-${new Date().toISOString().split('T')[0]}.${format}`;
+      a.download = `wwfl-content-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (error) {
-      console.error('Failed to export content:', error);
+      window.URL.revokeObjectURL(url);
+      setExportMessage({ kind: 'ok', text: 'Exported ' + Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ') + '.' });
+    } catch {
+      setExportMessage({ kind: 'error', text: 'Export failed (network error).' });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -462,7 +468,6 @@ function ContentManagementPageContent() {
             { key: 'templates', label: 'Content Templates', icon: <BiBookOpen className="h-4 w-4" /> },
             { key: 'newsletter-templates', label: 'Newsletter Templates', icon: <BiEnvelope className="h-4 w-4" /> },
             { key: 'newsletter-campaigns', label: 'Newsletter Campaigns', icon: <BiCalendar className="h-4 w-4" /> },
-            { key: 'collaboration', label: 'Collaboration', icon: <BiGroup className="h-4 w-4" /> },
             { key: 'import-export', label: 'Import/Export', icon: <BiExport className="h-4 w-4" /> }
           ].map((tab) => (
             <button
@@ -1385,315 +1390,43 @@ function ContentManagementPageContent() {
         </div>
       )}
 
-      {/* Collaboration Tab */}
-      {activeTab === 'collaboration' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                  Active Collaborations
-                </h3>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
-                  {drafts.filter(d => d.collaborators.length > 0).map((draft) => (
-                    <div key={draft.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h5 className="font-medium text-gray-900 dark:text-gray-100">
-                          {draft.title}
-                        </h5>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(draft.status)}`}>
-                          {draft.status}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2 mb-3 flex-wrap">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Collaborators:
-                        </span>
-                        {draft.collaborators.map((collaborator, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded"
-                          >
-                            {collaborator}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.location.href = `/admin/comments/${draft.id}`}
-                        >
-                          <BiMessage className="h-4 w-4 mr-1" />
-                          Comments ({draft.comments})
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.location.href = `/admin/${draft.type === 'project' ? 'projects' : 'posts'}/${draft.id}`}
-                        >
-                          <BiEdit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                  Collaboration Settings
-                </h3>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium text-gray-900 dark:text-gray-100">
-                          Real-time Editing
-                        </h5>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Enable simultaneous editing by multiple users
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium text-gray-900 dark:text-gray-100">
-                          Comment Notifications
-                        </h5>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Notify collaborators of new comments
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium text-gray-900 dark:text-gray-100">
-                          Auto-save Drafts
-                        </h5>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Automatically save changes every 30 seconds
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                    <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
-                      Invite Collaborator
-                    </h5>
-                    <div className="space-y-3">
-                      <input
-                        type="email"
-                        placeholder="Enter email address"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                      />
-                      <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-                        <option>Editor - Can edit content</option>
-                        <option>Reviewer - Can review and comment</option>
-                        <option>Viewer - Can view only</option>
-                      </select>
-                      <Button variant="primary" size="sm" className="w-full">
-                        <BiGroup className="h-4 w-4 mr-2" />
-                        Send Invitation
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* Import/Export Tab */}
+      {/* W45: Collaboration tab removed - its toggles, invite form and collaborator list were
+          never connected to anything (no multi-user editing exists). Import was a disabled stub. */}
       {activeTab === 'import-export' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                  Content Export
-                </h3>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Export your content for backup or migration purposes
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Export Format
-                      </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-                        <option value="json">JSON</option>
-                        <option value="markdown">Markdown</option>
-                        <option value="csv">CSV</option>
-                        <option value="xml">XML</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Content Types
-                      </label>
-                      <div className="space-y-2">
-                        {['Posts', 'Projects', 'Pages', 'Templates', 'User Data', 'Comments'].map((type) => (
-                          <div key={type} className="flex items-center">
-                            <input
-                              type="checkbox"
-                              id={type}
-                              defaultChecked
-                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            />
-                            <label htmlFor={type} className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                              {type}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <Button
-                      variant="primary"
-                      className="w-full"
-                      onClick={() => handleExportContent('json')}
-                    >
-                      <BiDownload className="h-4 w-4 mr-2" />
-                      Export Content
-                    </Button>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                  Content Import
-                </h3>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Import content from external sources or backups
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Import Source
-                      </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-                        <option>WordPress Export</option>
-                        <option>Ghost Export</option>
-                        <option>Medium Export</option>
-                        <option>JSON Backup</option>
-                        <option>CSV File</option>
-                        <option>Markdown Files</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Upload File
-                      </label>
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-                        <BiUpload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                          Drag and drop your file here, or click to browse
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">
-                          Supported formats: JSON, XML, CSV, ZIP (max 50MB)
-                        </p>
-                        <Button variant="outline" size="sm">
-                          Choose File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="preserve-ids"
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <label htmlFor="preserve-ids" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                          Preserve original IDs
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="skip-duplicates"
-                          defaultChecked
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <label htmlFor="skip-duplicates" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                          Skip duplicate content
-                        </label>
-                      </div>
-                    </div>
-
-                    <Button variant="primary" className="w-full" disabled>
-                      <BiUpload className="h-4 w-4 mr-2" />
-                      Import Content
-                    </Button>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                Migration History
-              </h3>
-            </CardHeader>
-            <CardBody>
-              <div className="text-center py-12">
-                <div className="text-gray-400 dark:text-gray-500 mb-4">
-                  <BiHistory className="mx-auto h-12 w-12" />
-                </div>
-                <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                  No imports yet
-                </h4>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Your content import history will appear here once you start importing content
-                </p>
-                <Button variant="outline" size="sm">
-                  <BiRefresh className="h-4 w-4 mr-2" />
-                  Refresh History
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Content Export</h3>
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Downloads every field of the chosen content as one JSON file. Users, subscribers and comments are not included.
+              Importing is not available.
+            </p>
+            <fieldset className="space-y-2">
+              <legend className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Include</legend>
+              {(['posts', 'projects', 'pages', 'templates'] as const).map((kind) => (
+                <label key={kind} className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={exportKinds.includes(kind)}
+                    onChange={(e) => setExportKinds(prev => e.target.checked ? [...prev, kind] : prev.filter(k => k !== kind))}
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 mr-2"
+                  />
+                  <span className="capitalize">{kind}</span>
+                </label>
+              ))}
+            </fieldset>
+            {exportMessage && (
+              <p role={exportMessage.kind === 'error' ? 'alert' : 'status'} className={`text-sm ${exportMessage.kind === 'error' ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-300'}`}>
+                {exportMessage.text}
+              </p>
+            )}
+            <Button variant="primary" className="w-full" disabled={exportKinds.length === 0 || exporting} onClick={handleExportContent}>
+              <BiDownload className="h-4 w-4 mr-2" />
+              {exporting ? 'Exporting…' : 'Export Content (JSON)'}
+            </Button>
+          </CardBody>
+        </Card>
       )}
     </AdminPageLayout>
   );
