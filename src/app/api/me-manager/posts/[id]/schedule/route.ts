@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { EXTERNAL_ID, bridgeSource, externalize, resolveBridgeId } from "@/lib/me-manager/bridge-id";
 
 function authorize(request: Request): boolean {
   const key = process.env.ME_MANAGER_API_KEY;
@@ -16,7 +17,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: externalId } = await params;
   const body = await request.json();
   const scheduledDate = body.scheduledDate as string;
 
@@ -36,6 +37,10 @@ export async function POST(
   }
 
   try {
+    const id = await resolveBridgeId("posts", externalId);
+    if (!id) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
     const existing = await query(
       `SELECT id, title, status FROM posts WHERE id = $1`,
       [id]
@@ -50,13 +55,13 @@ export async function POST(
            scheduled_publish_at = $1,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $2
-       RETURNING id, title, slug, status, scheduled_publish_at`,
+       RETURNING id, legacy_id, title, slug, status, scheduled_publish_at`,
       [scheduleTime, id]
     );
 
     return NextResponse.json({
       ok: true,
-      post: result.rows[0],
+      post: externalize(result.rows[0]),
       message: `Scheduled "${result.rows[0].title}" for ${scheduleTime.toISOString()}`,
     });
   } catch (error) {

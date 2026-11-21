@@ -8,6 +8,7 @@ import {
   serializeProject,
   PROJECT_COLUMNS,
 } from "@/lib/me-manager/project-bridge";
+import { bridgeSource } from "@/lib/me-manager/bridge-id";
 
 /**
  * Thin ME Manager bridge — list / create projects (portfolio).
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
     );
     return NextResponse.json({
       projects: result.rows.map((row) => serializeProject(row)),
-      source: "willworkforlunch",
+      source: bridgeSource(),
     });
   } catch (error) {
     console.error("me-manager projects list failed:", error);
@@ -84,9 +85,9 @@ export async function POST(request: Request) {
       const result = await query(
         `INSERT INTO projects (
           title, slug, description, content, image, technologies, live_demo, source_code,
-          featured, available, stage_label, status, published_at, created_at, updated_at
+          featured, available, stage_label, status, contact_email, published_at, created_at, updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::varchar,
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::varchar, $13,
           CASE WHEN $12::varchar = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END,
           CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
@@ -104,15 +105,16 @@ export async function POST(request: Request) {
           fields.available ?? true,
           fields.stage_label ?? null,
           status,
+          fields.contact_email ?? null,
         ]
       );
       row = result.rows[0];
       created = true;
     }
 
-    await refreshProjectPages(String(row.id), [String(row.slug)]);
+    const demos = await refreshProjectPages(String(row.id), [String(row.slug)]);
     return NextResponse.json(
-      { ok: true, created, project: serializeProject(row), source: "willworkforlunch" },
+      { ok: true, created, project: serializeProject(row), source: bridgeSource(), ...(demos.ok || demos.reason !== 'DEMOS_JSON_PATH unset' ? { demos } : {}) },
       { status: created ? 201 : 200 }
     );
   } catch (error) {

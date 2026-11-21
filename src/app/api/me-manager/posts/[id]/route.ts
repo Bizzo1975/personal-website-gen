@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { parsePostStatus, postStatusAssignments } from "@/lib/post-status";
+import { EXTERNAL_ID, bridgeSource, externalize, resolveBridgeId } from "@/lib/me-manager/bridge-id";
 
 function authorize(request: Request): boolean {
   const key = process.env.ME_MANAGER_API_KEY;
@@ -18,9 +19,13 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: externalId } = await params;
 
   try {
+    const id = await resolveBridgeId("posts", externalId);
+    if (!id) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
     const result = await query(
       `SELECT id, title, slug, content, excerpt, status, published,
               featured_image, tags, author, updated_at, created_at,
@@ -38,7 +43,7 @@ export async function GET(
     return NextResponse.json({
       ok: true,
       post: {
-        id: row.id,
+        id: externalId,
         title: row.title,
         slug: row.slug,
         content: row.content,
@@ -54,7 +59,7 @@ export async function GET(
         published_at: row.published_at,
         scheduled_publish_at: row.scheduled_publish_at,
       },
-      source: "willworkforlunch",
+      source: bridgeSource(),
     });
   } catch (error) {
     console.error("me-manager get post failed:", error);
@@ -73,7 +78,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: externalId } = await params;
   const body = await request.json();
   const status = parsePostStatus(body.status);
   if (status === false) {
@@ -89,6 +94,10 @@ export async function PATCH(
   }
 
   try {
+    const id = await resolveBridgeId("posts", externalId);
+    if (!id) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
     const result = await query(
       `UPDATE posts SET
         title = COALESCE($1, title),
@@ -98,7 +107,7 @@ export async function PATCH(
         ${postStatusAssignments("$5")},
         updated_at = CURRENT_TIMESTAMP
        WHERE id = $6
-       RETURNING id, title, slug, status, published, excerpt, updated_at, published_at, scheduled_publish_at`,
+       RETURNING id, legacy_id, title, slug, status, published, excerpt, updated_at, published_at, scheduled_publish_at`,
       [
         body.title ?? null,
         body.slug ?? null,
@@ -113,7 +122,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ ok: true, post: result.rows[0] });
+    return NextResponse.json({ ok: true, post: externalize(result.rows[0]) });
   } catch (error) {
     console.error("me-manager patch failed:", error);
     return NextResponse.json(
@@ -138,12 +147,16 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: externalId } = await params;
 
   try {
+    const id = await resolveBridgeId("posts", externalId);
+    if (!id) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
     const result = await query(
       `DELETE FROM posts WHERE id = $1
-       RETURNING id, title, slug, status, published`,
+       RETURNING id, legacy_id, title, slug, status, published`,
       [id]
     );
 
@@ -151,12 +164,12 @@ export async function DELETE(
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    const post = result.rows[0];
+    const post = externalize(result.rows[0]);
     revalidatePath("/blog");
     revalidatePath("/");
     if (post.slug) revalidatePath(`/blog/${post.slug}`);
 
-    return NextResponse.json({ ok: true, deleted: post, source: "willworkforlunch" });
+    return NextResponse.json({ ok: true, deleted: post, source: bridgeSource() });
   } catch (error) {
     console.error("me-manager delete post failed:", error);
     return NextResponse.json(

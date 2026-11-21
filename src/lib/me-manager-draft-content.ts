@@ -15,14 +15,14 @@ export function parseDraftContent(value: unknown): DraftContentInput | null {
   if (row.tags !== undefined && (!Array.isArray(row.tags) || row.tags.length > 100 || row.tags.some(tag => typeof tag !== 'string' || !tag.trim() || tag.length > 200))) return null;
   return row as DraftContentInput;
 }
-export const readDraftContentSql = `SELECT id, title, slug, content, excerpt, status, published, featured_image, tags, published_at, scheduled_publish_at, updated_at::text AS revision FROM posts WHERE id = $1`;
+export const readDraftContentSql = `SELECT id, legacy_id, title, slug, content, excerpt, status, published, featured_image, tags, published_at, scheduled_publish_at, updated_at::text AS revision FROM posts WHERE id = $1`;
 export const replaceDraftContentSql = `UPDATE posts SET title = $1, excerpt = $2, content = $3, slug = CASE WHEN $8::boolean THEN $9::text ELSE slug END,
   featured_image = CASE WHEN $4::boolean THEN $5::text ELSE featured_image END,
   tags = CASE WHEN $10::boolean THEN $11::text[] ELSE tags END,
   updated_at = GREATEST(clock_timestamp(), updated_at + interval '1 millisecond')
   WHERE id = $6 AND updated_at::text = $7 AND status = 'draft'
     AND published = false AND scheduled_publish_at IS NULL
-  RETURNING id, title, slug, content, excerpt, status, published, featured_image, tags, published_at, scheduled_publish_at, updated_at::text AS revision`;
+  RETURNING id, legacy_id, title, slug, content, excerpt, status, published, featured_image, tags, published_at, scheduled_publish_at, updated_at::text AS revision`;
 export function draftContentParameters(id: string, body: DraftContentInput): unknown[] {
   return [body.title, body.excerpt, body.content, Object.prototype.hasOwnProperty.call(body, 'featured_image'), body.featured_image ?? null, id, body.expectedRevision, Object.prototype.hasOwnProperty.call(body, 'slug'), body.slug ?? null, Object.prototype.hasOwnProperty.call(body, 'tags'), body.tags ?? []];
 }

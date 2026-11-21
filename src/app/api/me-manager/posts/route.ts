@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { EXTERNAL_ID, bridgeSource, externalize, resolveBridgeId } from "@/lib/me-manager/bridge-id";
 
 /**
  * Thin ME Manager bridge — list + create posts.
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await query(
-      `SELECT id, title, slug, status, published, excerpt, updated_at, created_at
+      `SELECT ${EXTERNAL_ID} AS id, title, slug, status, published, excerpt, updated_at, created_at
        FROM posts
        ORDER BY updated_at DESC NULLS LAST, created_at DESC
        LIMIT 100`
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       posts: result.rows,
-      source: "willworkforlunch",
+      source: bridgeSource(),
     });
   } catch (error) {
     console.error("me-manager posts list failed:", error);
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       post: result.rows[0],
-      source: "willworkforlunch",
+      source: bridgeSource(),
     });
   } catch (error) {
     console.error("me-manager create post failed:", error);

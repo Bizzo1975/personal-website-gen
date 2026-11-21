@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { notifyMeManagerTeaser } from "@/lib/me-manager-teaser";
+import { EXTERNAL_ID, bridgeSource, externalize, resolveBridgeId } from "@/lib/me-manager/bridge-id";
 
 function authorize(request: Request): boolean {
   const key = process.env.ME_MANAGER_API_KEY;
@@ -18,9 +19,13 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: externalId } = await params;
 
   try {
+    const id = await resolveBridgeId("posts", externalId);
+    if (!id) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
     const result = await query(
       `UPDATE posts
        SET published = true,
@@ -28,7 +33,7 @@ export async function POST(
            published_at = CURRENT_TIMESTAMP,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1
-       RETURNING id, title, slug, status, published, published_at, excerpt`,
+       RETURNING id, legacy_id, title, slug, status, published, published_at, excerpt`,
       [id]
     );
 
@@ -39,7 +44,7 @@ export async function POST(
     revalidatePath("/blog");
     revalidatePath("/");
 
-    const post = result.rows[0];
+    const post = externalize(result.rows[0]);
     const teaser = await notifyMeManagerTeaser(post);
 
     return NextResponse.json({

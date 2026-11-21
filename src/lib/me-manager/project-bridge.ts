@@ -12,6 +12,8 @@
 import { readProjectVideoResources } from '@/lib/project-video-resources';
 import CacheService from '@/lib/cache';
 import { revalidatePath } from 'next/cache';
+import { projectStatuses } from '@/lib/site-profile';
+import { syncProjectsToDemosJson, type DemosSyncResult } from '@/lib/kecktech/demos-json';
 
 /** Bearer ME_MANAGER_API_KEY, like the rest of the bridge. */
 export function authorizeBridge(request: Request): boolean {
@@ -20,8 +22,9 @@ export function authorizeBridge(request: Request): boolean {
   return (request.headers.get('authorization') || '') === `Bearer ${key}`;
 }
 
-/** After any write: drop cached project lists/rows and re-render the public pages. */
-export async function refreshProjectPages(id: string, slugs: (string | null | undefined)[]) {
+/** After any write: drop cached project lists/rows, re-render the public pages and (Kecktech
+ *  instance, DEMOS_JSON_PATH set) rewrite demos.json. Returns the demos.json outcome. */
+export async function refreshProjectPages(id: string, slugs: (string | null | undefined)[]): Promise<DemosSyncResult> {
   const cache = CacheService.getInstance();
   await Promise.all([
     cache.invalidatePattern('projects:list:*'),
@@ -34,17 +37,18 @@ export async function refreshProjectPages(id: string, slugs: (string | null | un
   } catch (e) {
     console.warn('revalidatePath failed (non-fatal):', e instanceof Error ? e.message : e);
   }
+  return syncProjectsToDemosJson();
 }
 
-export const PROJECT_STATUSES = ['draft', 'scheduled', 'published'] as const;
 
-export const PROJECT_COLUMNS = `id, title, slug, description, content, image, technologies,
-  live_demo, source_code, featured, available, stage_label, status, published_at,
+export const PROJECT_COLUMNS = `id, legacy_id, title, slug, description, content, image, technologies,
+  live_demo, source_code, contact_email, featured, available, stage_label, status, published_at,
   updated_at, created_at`;
 
 export function serializeProject(row: Record<string, unknown>) {
   return {
-    id: row.id,
+    // Lunchpail's external id: the old Kecktech id for migrated rows (see bridge-id.ts).
+    id: row.legacy_id ?? row.id,
     title: row.title,
     slug: row.slug,
     description: row.description,
@@ -53,6 +57,7 @@ export function serializeProject(row: Record<string, unknown>) {
     technologies: row.technologies || [],
     live_demo: row.live_demo,
     source_code: row.source_code,
+    contact_email: row.contact_email ?? null,
     featured: Boolean(row.featured),
     available: row.available !== false,
     stage_label: row.stage_label ?? null,
@@ -66,7 +71,7 @@ export function serializeProject(row: Record<string, unknown>) {
 export type ProjectFields = Partial<{
   title: string; slug: string; description: string; content: string | null; image: string | null;
   technologies: string[]; live_demo: string | null; source_code: string | null; featured: boolean;
-  available: boolean; stage_label: string | null; status: string;
+  available: boolean; stage_label: string | null; status: string; contact_email: string | null;
 }>;
 
 const has = (o: Record<string, unknown>, k: string) => Object.prototype.hasOwnProperty.call(o, k);
@@ -108,8 +113,14 @@ export function parseProjectFields(body: unknown): { ok: true; fields: ProjectFi
       if (has(b, k)) { if (typeof b[k] !== 'boolean') throw new Error(`Invalid ${k}`); f[k] = b[k] as boolean; }
     }
     if (has(b, 'stage_label')) f.stage_label = text('stage_label', 100, true);
+    const contact = alias('contact_email', 'contactEmail');
+    if (contact) {
+      f.contact_email = text(contact, 255, true);
+      if (f.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.contact_email)) throw new Error('Invalid contact_email');
+    }
     if (has(b, 'status')) {
-      if (!(PROJECT_STATUSES as readonly string[]).includes(String(b.status))) throw new Error(`Invalid status (allowed: ${PROJECT_STATUSES.join(', ')})`);
+      const allowed = projectStatuses();
+      if (!allowed.includes(String(b.status))) throw new Error(`Invalid status (allowed: ${allowed.join(', ')})`);
       f.status = String(b.status);
     }
   } catch (e) {
@@ -119,7 +130,7 @@ export function parseProjectFields(body: unknown): { ok: true; fields: ProjectFi
 }
 
 const COLUMNS = ['title', 'slug', 'description', 'content', 'image', 'technologies', 'live_demo',
-  'source_code', 'featured', 'available', 'stage_label', 'status'] as const;
+  'source_code', 'contact_email', 'featured', 'available', 'stage_label', 'status'] as const;
 
 /** SET list + values for an UPDATE; placeholders start at $<offset>. */
 export function projectUpdateSet(f: ProjectFields, offset = 1): { set: string; values: unknown[] } {
